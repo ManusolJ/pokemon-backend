@@ -2,6 +2,9 @@ package com.pkm.utils.enums;
 
 import org.springframework.security.core.GrantedAuthority;
 
+import lombok.Getter;
+
+@Getter
 public enum UserRole implements GrantedAuthority {
     USER("ROLE_USER"),
     MODERATOR("ROLE_MODERATOR"),

@@ -4,13 +4,13 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 
 import com.pkm.utils.enums.UserRole;
 
 @Entity
 @Table(name = "users")
-@RequiredArgsConstructor
+@Data
 public class User {
 
     @Id
