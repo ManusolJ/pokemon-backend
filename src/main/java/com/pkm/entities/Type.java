@@ -11,6 +11,7 @@ public class Type {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, unique = true, updatable = false, insertable = false)
     private Long id;
 
     @Column(length = 20)
