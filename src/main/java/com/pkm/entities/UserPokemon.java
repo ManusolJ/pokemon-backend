@@ -1,11 +1,11 @@
 package com.pkm.entities;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import jakarta.persistence.*;
 
 import lombok.Data;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "user_pokemon")

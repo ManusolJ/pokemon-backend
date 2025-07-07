@@ -1,8 +1,10 @@
 package com.pkm.entities;
 
-import com.pkm.utils.enums.Stat;
 import jakarta.persistence.*;
+
 import lombok.Data;
+
+import com.pkm.utils.enums.Stat;
 
 @Entity
 @Table(name = "natures")

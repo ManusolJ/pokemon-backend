@@ -2,9 +2,9 @@ package com.pkm.entities;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
-
 import lombok.Data;
+
+import java.time.LocalDateTime;
 
 import com.pkm.utils.enums.UserRole;
 

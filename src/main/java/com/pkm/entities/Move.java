@@ -1,10 +1,10 @@
 package com.pkm.entities;
 
-import com.pkm.utils.enums.MoveCategory;
-
 import jakarta.persistence.*;
 
 import lombok.Data;
+
+import com.pkm.utils.enums.MoveCategory;
 
 @Entity
 @Table(name = "moves")
