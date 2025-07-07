@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "pokemon")
@@ -50,4 +52,20 @@ public class Pokemon {
 
     @Column(name = "speed")
     private int speed;
+
+    @ManyToMany
+    @JoinTable(
+        name = "pokemon_abilities",
+        joinColumns = @JoinColumn(name = "pokemon_id"),
+        inverseJoinColumns = @JoinColumn(name = "ability_id")
+    )
+    private Set<Ability> abilities = new HashSet<>();
+
+    @ManyToMany
+    @JoinTable(
+        name = "pokemon_moves",
+        joinColumns = @JoinColumn(name = "pokemon_id"),
+        inverseJoinColumns = @JoinColumn(name = "move_id")
+    )
+    private Set<Move> moves = new HashSet<>();
 }
