@@ -30,9 +30,12 @@ public class User {
     @Column(name = "profile_photo", nullable = false)
     private String profilePhoto;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "user_role", nullable = false)
+    @Enumerated(EnumType.STRING)
     private UserRole role = UserRole.USER;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private LocalDateTime createdAt;

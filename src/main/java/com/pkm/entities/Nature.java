@@ -12,7 +12,7 @@ public class Nature {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, unique = true, updatable = false, insertable = false)
-    private Long id;
+    private int id;
 
     @Column(name = "name", nullable = false, unique = true)
     private String name;

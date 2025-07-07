@@ -18,11 +18,11 @@ public class Pokemon {
     @Column(name = "name", nullable = false, length = 50, unique = true)
     private String name;
 
-    @Column(name = "type1", nullable = false)
+    @JoinColumn(name = "type1_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Type type1;
 
-    @Column(name = "type2")
+    @JoinColumn(name = "type2_id")
     @ManyToOne(fetch = FetchType.LAZY)
     private Type type2 = null;
 
@@ -33,6 +33,7 @@ public class Pokemon {
     private BigDecimal weight;
 
     @Column(name = "description")
+    @Lob
     private String description;
 
     @Column(name = "hp")

@@ -16,10 +16,6 @@ public enum UserRole implements GrantedAuthority {
         this.authority = authority;
     }
 
-    public String getAuthority() {
-        return authority;
-    }
-
     public static UserRole fromString(String roleName) {
         if (roleName != null) {
             for (UserRole role : UserRole.values()) {
