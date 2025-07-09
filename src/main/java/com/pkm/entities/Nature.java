@@ -18,7 +18,7 @@ public class Nature {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "id", nullable = false, unique = true, updatable = false, insertable = false)
-    private int id;
+    private Long id;
 
     /** Name of the nature (unique) */
     @Column(name = "name", nullable = false, unique = true)

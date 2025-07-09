@@ -16,7 +16,7 @@ public class Type {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true, updatable = false, insertable = false)
-    private int id;
+    private Long id;
 
     /** Type name (e.g. Fire, Water) */
     @Column(length = 20, nullable = false)
