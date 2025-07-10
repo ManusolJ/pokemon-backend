@@ -22,14 +22,6 @@ public interface UserMapper {
     UserDTO toDTO(User user);
 
     /**
-     * Converts a UserDTO to a User entity.
-     *
-     * @param userDTO the UserDTO to convert
-     * @return the converted User entity
-     */
-    User toEntity(UserDTO userDTO);
-
-    /**
      * Converts a UserRole enum to its string representation.
      *
      * @param role the UserRole to convert
