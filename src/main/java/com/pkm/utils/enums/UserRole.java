@@ -6,9 +6,9 @@ import lombok.Getter;
 
 @Getter
 public enum UserRole implements GrantedAuthority {
-    USER("ROLE_USER"),
-    MODERATOR("ROLE_MODERATOR"),
-    ADMIN("ROLE_ADMIN");
+    USER("USER"),
+    MODERATOR("MODERATOR"),
+    ADMIN("ADMIN");
 
     private final String authority;
 

@@ -36,7 +36,7 @@ public class User {
 
     /** Profile image path */
     @Column(name = "profile_photo", nullable = false)
-    private String profilePhoto;
+    private String profilePhoto = "default.png";
 
     /** System role (USER/MODERATOR/ADMIN) */
     @Column(name = "user_role", nullable = false)
