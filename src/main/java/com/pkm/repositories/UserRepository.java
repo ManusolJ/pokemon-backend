@@ -54,6 +54,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findAllByUsernameContainingIgnoreCase(String username, Pageable pageable);
 
     /**
+     * Find all users, paginated.
+     *
+     * @param pageable pagination information
+     * @return a {@link Page} of all users
+     */
+    Page<User> findAllByCreatedAt(Pageable pageable);
+
+    /**
      * Find users created after the given timestamp.
      *
      * @param createdAt the lower bound for creation time
@@ -61,6 +69,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * @return a {@link Page} of users created after the timestamp
      */
     Page<User> findAllByCreatedAtAfter(LocalDateTime createdAt, Pageable pageable);
+
+    /**
+     * Find all users, paginated by their last updated timestamp.
+     *
+     * @param pageable pagination information
+     * @return a {@link Page} of users sorted by their last updated timestamp
+     */
+    Page<User> findAllByUpdatedAt(Pageable pageable);
 
     /**
      * Find users updated after the given timestamp.
