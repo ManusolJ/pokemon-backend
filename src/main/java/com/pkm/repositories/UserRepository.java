@@ -24,7 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Determine if a user exists with the given username.
      *
      * @param username the username to check
-     * @return {@code true} if a user with that username exists; {@code false} otherwise
+     * @return {@code true} if a user with that username exists; {@code false}
+     *         otherwise
      */
     boolean existsByUsername(String username);
 
@@ -45,7 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsernameIgnoreCase(String username);
 
     /**
-     * Find users whose usernames contain the specified substring (case-insensitive).
+     * Find users whose usernames contain the specified substring
+     * (case-insensitive).
      *
      * @param username partial username to match
      * @param pageable pagination information
@@ -65,7 +67,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Find users created after the given timestamp.
      *
      * @param createdAt the lower bound for creation time
-     * @param pageable pagination information
+     * @param pageable  pagination information
      * @return a {@link Page} of users created after the timestamp
      */
     Page<User> findAllByCreatedAtAfter(LocalDateTime createdAt, Pageable pageable);
@@ -82,7 +84,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Find users updated after the given timestamp.
      *
      * @param updatedAt the lower bound for update time
-     * @param pageable pagination information
+     * @param pageable  pagination information
      * @return a {@link Page} of users updated after the timestamp
      */
     Page<User> findAllByUpdatedAtAfter(LocalDateTime updatedAt, Pageable pageable);
@@ -90,7 +92,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * Find users by their role.
      *
-     * @param role the {@link UserRole} to match
+     * @param role     the {@link UserRole} to match
      * @param pageable pagination information
      * @return a {@link Page} of users with the specified role
      */

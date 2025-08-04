@@ -28,7 +28,7 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     /**
      * Find items whose names contain the given substring (case-insensitive).
      *
-     * @param name partial name to search
+     * @param name     partial name to search
      * @param pageable pagination information
      * @return a {@link Page} of matching items
      */

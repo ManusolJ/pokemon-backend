@@ -28,7 +28,7 @@ public interface AbilityRepository extends JpaRepository<Ability, Long> {
     /**
      * Find abilities whose names contain the given substring (case-insensitive).
      *
-     * @param name partial name to search
+     * @param name     partial name to search
      * @param pageable pagination information
      * @return a {@link Page} of matching abilities
      */
