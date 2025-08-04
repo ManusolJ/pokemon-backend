@@ -16,7 +16,7 @@ import com.pkm.entities.keys.TeamMemberId;
 @Table(name = "team_members")
 @Data
 public class TeamMember {
-    
+
     /** Composite identifier (team + pokemon) */
     @EmbeddedId
     private TeamMemberId id;
@@ -35,6 +35,7 @@ public class TeamMember {
 
     /** Battle position (1-6) */
     @Column(name = "position")
-    @Min(1) @Max(6)
+    @Min(1)
+    @Max(6)
     private int position;
 }

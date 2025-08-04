@@ -17,10 +17,6 @@ public class UserDTO {
     @NotBlank
     private String username;
 
-    // User's email address, must not be blank
-    @NotBlank
-    private String email;
-
     // User's profile photo, must not be blank
     @NotBlank
     private String profilePhoto;

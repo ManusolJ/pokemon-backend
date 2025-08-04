@@ -15,7 +15,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode
 public class TeamMemberId implements Serializable {
-    
+
     /** Team identifier */
     private Long teamId;
 

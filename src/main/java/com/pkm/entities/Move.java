@@ -41,7 +41,7 @@ public class Move {
     @Column(name = "power")
     private Integer power;
 
-    /** Hit accuracy percentage (0 or null for infalible moves)*/
+    /** Hit accuracy percentage (0 or null for infalible moves) */
     @Column(name = "accuracy")
     private Integer accuracy;
 

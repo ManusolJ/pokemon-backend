@@ -33,7 +33,8 @@ public class Nature {
     private Stat decreasedStat;
 
     /** Validates that increased/decreased stats differ */
-    @PrePersist @PreUpdate
+    @PrePersist
+    @PreUpdate
     private void validateStats() {
         if (increasedStat != null && increasedStat.equals(decreasedStat)) {
             throw new IllegalStateException("Increased and decreased stats cannot be the same");

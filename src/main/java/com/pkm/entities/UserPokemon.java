@@ -14,7 +14,7 @@ import java.util.Set;
 @Table(name = "user_pokemon")
 @Data
 public class UserPokemon {
-    
+
     /** Unique instance identifier */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,11 +53,7 @@ public class UserPokemon {
 
     /** Equipped moves */
     @ManyToMany
-    @JoinTable(
-        name = "pokemon_movesets",
-        joinColumns        = @JoinColumn(name = "pokemon_id"),
-        inverseJoinColumns = @JoinColumn(name = "move_id")
-    )
+    @JoinTable(name = "pokemon_movesets", joinColumns = @JoinColumn(name = "pokemon_id"), inverseJoinColumns = @JoinColumn(name = "move_id"))
     private Set<Move> moves = new HashSet<>();
 
     /** Shiny variant status */

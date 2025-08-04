@@ -15,7 +15,7 @@ import java.util.List;
 @Table(name = "teams")
 @Data
 public class Team {
-    
+
     /** Unique team identifier */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

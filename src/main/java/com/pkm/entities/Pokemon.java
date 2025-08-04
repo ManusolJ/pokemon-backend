@@ -64,20 +64,12 @@ public class Pokemon {
 
     /** Learnable abilities */
     @ManyToMany
-    @JoinTable(
-        name = "pokemon_abilities",
-        joinColumns = @JoinColumn(name = "pokemon_id"),
-        inverseJoinColumns = @JoinColumn(name = "ability_id")
-    )
+    @JoinTable(name = "pokemon_abilities", joinColumns = @JoinColumn(name = "pokemon_id"), inverseJoinColumns = @JoinColumn(name = "ability_id"))
     private Set<Ability> abilities = new HashSet<>();
 
     /** Learnable moves */
     @ManyToMany
-    @JoinTable(
-        name = "pokemon_moves",
-        joinColumns = @JoinColumn(name = "pokemon_id"),
-        inverseJoinColumns = @JoinColumn(name = "move_id")
-    )
+    @JoinTable(name = "pokemon_moves", joinColumns = @JoinColumn(name = "pokemon_id"), inverseJoinColumns = @JoinColumn(name = "move_id"))
     private Set<Move> moves = new HashSet<>();
 
     @PrePersist

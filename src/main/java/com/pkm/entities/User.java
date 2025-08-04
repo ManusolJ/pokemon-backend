@@ -30,10 +30,6 @@ public class User {
     @Column(name = "password", nullable = false, length = 97)
     private String password;
 
-    /** Email address (unique) */
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
-
     /** Profile image path */
     @Column(name = "profile_photo", nullable = false)
     private String profilePhoto = "default.png";
