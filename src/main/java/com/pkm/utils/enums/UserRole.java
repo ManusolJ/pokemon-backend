@@ -12,10 +12,10 @@ import lombok.Getter;
 public enum UserRole implements GrantedAuthority {
     /** Standard user permissions */
     USER("USER"),
-    
+
     /** Moderator with elevated permissions */
     MODERATOR("MODERATOR"),
-    
+
     /** Administrator with full system access */
     ADMIN("ADMIN");
 

@@ -23,10 +23,11 @@ public interface UserMapper {
     UserDTO toDTO(User user);
 
     /**
-     * Converts a User entity to a UserResponseDTO, including access and refresh tokens.
+     * Converts a User entity to a UserResponseDTO, including access and refresh
+     * tokens.
      *
-     * @param user the User entity to convert
-     * @param accessToken the access token to include in the response
+     * @param user         the User entity to convert
+     * @param accessToken  the access token to include in the response
      * @param refreshToken the refresh token to include in the response
      * @return the converted UserResponseDTO
      */
