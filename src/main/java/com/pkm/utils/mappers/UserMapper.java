@@ -1,7 +1,9 @@
 package com.pkm.utils.mappers;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
@@ -21,6 +23,8 @@ public interface UserMapper {
      */
     @Mapping(target = "role", source = "role", qualifiedByName = "roleToString")
     UserDTO toDTO(User user);
+
+    void updateUserFromDto(UserDTO dto, @MappingTarget User user);
 
     /**
      * Converts a User entity to a UserResponseDTO, including access and refresh
@@ -46,4 +50,41 @@ public interface UserMapper {
     default String roleToString(UserRole role) {
         return role != null ? role.getAuthority() : null;
     }
+
+    /**
+     * Helper: Converts a role string to UserRole enum.
+     *
+     * @param role String representation of the role
+     * @return Corresponding UserRole or null if invalid
+     */
+    private UserRole convertStringToRole(String role) {
+        if (role == null)
+            return null;
+        for (UserRole r : UserRole.values()) {
+            if (r.getAuthority().equals(role) || r.name().equalsIgnoreCase(role)) {
+                return r;
+            }
+        }
+        return null; // Invalid role string
+    }
+
+    /**
+     * Converts a role string to UserRole enum. Uses the existing role if conversion
+     * fails.
+     * Executed automatically after the main update mapping.
+     *
+     * @param dto  Source DTO
+     * @param user Target User entity being updated
+     */
+    @AfterMapping
+    default void updateRoleFromDto(UserDTO dto, @MappingTarget User user) {
+        if (dto.getRole() != null) {
+            UserRole newRole = convertStringToRole(dto.getRole());
+            if (newRole != null) {
+                user.setRole(newRole);
+            }
+            // If invalid role, retain the existing user.getRole()
+        }
+    }
+
 }

@@ -34,6 +34,8 @@ public class JWTService {
 
     private static final int TOKEN_PREFIX_LENGTH = 7;
 
+    private static final String ISSUER = "pokemon-forge-app";
+
     @PostConstruct
     void init() {
         byte[] keyBytes = Decoders.BASE64.decode(secretBase64);
@@ -55,6 +57,7 @@ public class JWTService {
         return Jwts.builder()
                 .subject(subject)
                 .claims(claims)
+                .issuer(ISSUER)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(signingKey, SIG.HS256)

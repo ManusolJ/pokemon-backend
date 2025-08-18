@@ -32,11 +32,7 @@ public class UserResponseDTO {
     @NotNull
     private LocalDateTime updatedAt;
 
-    // User's auth token, must not be blank
-    @NotBlank
     private String accessToken;
 
-    // User's refresh token, must not be blank
-    @NotBlank
     private String refreshToken;
 }

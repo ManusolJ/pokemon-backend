@@ -1,12 +1,12 @@
 package com.pkm.services.user;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -15,6 +15,7 @@ import com.pkm.DTOs.user.UserResponseDTO;
 import com.pkm.entities.User;
 import com.pkm.repositories.UserRepository;
 import com.pkm.services.auth.JWTService;
+import com.pkm.services.auth.TokenStorageService;
 import com.pkm.utils.mappers.UserMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class UserAuthService {
     private final JWTService jwtService;
     private final UserMapper userMapper;
     private final AuthenticationManager authenticationManager;
+    private final TokenStorageService tokenStorage;
 
     /**
      * Authenticate with username/password and return user payload + tokens.
@@ -39,7 +41,6 @@ public class UserAuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication failed");
         }
 
-        // If authentication passes, load the domain user
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -47,6 +48,11 @@ public class UserAuthService {
 
         String accessToken = jwtService.generateAccessToken(user.getUsername(), claims);
         String refreshToken = jwtService.generateRefreshToken(user.getUsername(), claims);
+
+        tokenStorage.storeRefreshToken(
+                refreshToken,
+                username,
+                Duration.ofDays(14));
 
         return userMapper.toResponseDTO(user, accessToken, refreshToken);
     }
@@ -56,17 +62,21 @@ public class UserAuthService {
      */
     public UserResponseDTO refresh(String refreshToken) {
         String username = jwtService.extractUsername(refreshToken);
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        if (!jwtService.isTokenValid(refreshToken, new org.springframework.security.core.userdetails.User(
-                user.getUsername(), user.getPassword(), java.util.Collections.emptyList()))) {
-            throw new IllegalArgumentException("Invalid refresh token");
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        if (!tokenStorage.isValidRefreshToken(refreshToken, username)) {
+            throw new SecurityException("Invalid refresh token");
         }
 
         Map<String, Object> claims = Map.of("role", user.getRole().getAuthority());
+
         String newAccess = jwtService.generateAccessToken(user.getUsername(), claims);
         String newRefresh = jwtService.generateRefreshToken(user.getUsername(), claims);
-        return userMapper.toResponseDTO(user, newAccess, newRefresh);
+
+        tokenStorage.storeRefreshToken(newRefresh, username, Duration.ofDays(14));
+
+        return userMapper.toResponseDTO(user, newAccess, refreshToken);
     }
 }
