@@ -1,0 +1,15 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    show-sql: true
+
+  flyway:
+    clean-disabled: false
+
+logging:
+  level:
+    "[com.poketeambuilder]": DEBUG
+    "[org.springframework.web]": DEBUG

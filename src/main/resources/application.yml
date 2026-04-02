@@ -39,7 +39,7 @@ app:
 
 # Server
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:8080}
 
 # OpenAPI / Swagger
 springdoc:
@@ -54,20 +54,3 @@ logging:
   level:
     "[com.poketeambuilder]": INFO
     "[org.springframework.security]": INFO
-
----
-# Dev profile
-spring:
-  config:
-    activate:
-      on-profile: dev
-
-  jpa:
-    show-sql: true
-    properties:
-      "[hibernate.format_sql]": true
-
-logging:
-  level:
-    "[com.poketeambuilder]": DEBUG
-    "[org.springframework.web]": DEBUG
