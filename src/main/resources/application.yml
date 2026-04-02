@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: poketeam-builder
+
+  # DB
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:poketeam}
+    username: ${DB_USER:poketeam}
+    password: ${DB_PASSWORD:poketeam}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      "[hibernate.format_sql]": true
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Cache
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=3600s
+
+# JWT
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+
+# Server
+server:
+  port: ${SERVER_PORT:8080}
+
+# OpenAPI / Swagger
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Logging
+logging:
+  level:
+    "[com.poketeambuilder]": INFO
+    "[org.springframework.security]": INFO
+
+---
+# Dev profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    show-sql: true
+    properties:
+      "[hibernate.format_sql]": true
+
+logging:
+  level:
+    "[com.poketeambuilder]": DEBUG
+    "[org.springframework.web]": DEBUG
