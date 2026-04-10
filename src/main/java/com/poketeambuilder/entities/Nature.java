@@ -40,12 +40,10 @@ public class Nature {
     @Column(name = "name", nullable = false, unique = true, length = 20)
     private String name;
 
-    @Size(max = 20)
     @Builder.Default
     @Column(name = "increased_stat", length = 20)
     private StatName increasedStat = null;
-
-    @Size(max = 20)
+    
     @Builder.Default
     @Column(name = "decreased_stat", length = 20)
     private StatName decreasedStat = null;

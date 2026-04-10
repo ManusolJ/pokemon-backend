@@ -46,7 +46,6 @@ public class Move {
     @JoinColumn(name = "type_id", nullable = false)
     private Type type;
 
-    @Size(max = 10)
     @Column(name = "category", nullable = false, length = 10)
     private MoveCategory category;
 

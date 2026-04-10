@@ -39,7 +39,6 @@ public class Item {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @NotBlank
     @Size(max = 50)
     @Column(name = "category", length = 50)
     private String category;

@@ -12,4 +12,4 @@ ALTER TABLE pokemon
     ADD COLUMN evolution_min_happiness INTEGER,
     ADD COLUMN evolution_time_of_day VARCHAR(10);
 
-CREATE INDEX idx_pokemon_evolves_from ON pokemon(evolves_from_pokemon_id);
+CREATE INDEX idx_pokemon_previous_evolution ON pokemon(previous_evolution_id);
