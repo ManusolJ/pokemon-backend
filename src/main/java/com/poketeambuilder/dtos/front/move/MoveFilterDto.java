@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 public class MoveFilterDto implements FilterDtoInterface{
     
-    private Long id;
+    private Integer id;
 
     private String name;
 
@@ -17,25 +17,28 @@ public class MoveFilterDto implements FilterDtoInterface{
 
     private String category;
 
-    private Integer pp;
-
-    private Integer power;
-
-    private Integer accuracy;
-
     private Integer priority;
+
+    private Integer minPower;
+
+    private Integer maxPower;
+
+    private Integer minAccuracy;
+
+    private Integer maxAccuracy;
 
     @Override
     public boolean hasAnyCriteria() {
         return id != null
-                || (name != null && !name.isBlank())
-                || (nameExact != null && !nameExact.isBlank())
-                || typeId != null
-                || (category != null && !category.isBlank())
-                || pp != null
-                || power != null
-                || accuracy != null
-                || priority != null;
+        || typeId != null
+        || priority != null
+        || minPower != null
+        || maxPower != null
+        || minAccuracy != null
+        || maxAccuracy != null
+        || name != null
+        || category != null
+        || nameExact != null;
     }
 
 }

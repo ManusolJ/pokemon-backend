@@ -7,19 +7,19 @@ import lombok.Getter;
 @Getter
 public class TypeEffectivenessFilterDto implements FilterDtoInterface{
     
-    private long id;
+    private Integer id;
 
-    private double multiplier;
+    private Double multiplier;
     
-    private long attackingTypeId;
+    private Integer attackingTypeId;
     
-    private long defendingTypeId;
+    private Integer defendingTypeId;
 
     @Override
     public boolean hasAnyCriteria() {
-        return id != 0
-                || multiplier != 0
-                || attackingTypeId != 0
-                || defendingTypeId != 0;
+        return id != null
+                || multiplier != null
+                || attackingTypeId != null
+                || defendingTypeId != null;
     }
 }

@@ -4,7 +4,7 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 public class NatureFilterDto implements FilterDtoInterface{
     
-    private Long id;
+    private Integer id;
 
     private String name;
 
@@ -16,10 +16,10 @@ public class NatureFilterDto implements FilterDtoInterface{
 
     @Override
     public boolean hasAnyCriteria() {
-        return id != 0
-                || (name != null && !name.isBlank())
-                || (nameExact != null && !nameExact.isBlank())
-                || (increasedStat != null && !increasedStat.isBlank())
-                || (decreasedStat != null && !decreasedStat.isBlank());
+        return id != null
+                || name != null
+                || nameExact != null
+                || increasedStat != null
+                || decreasedStat != null;
     }
 }
