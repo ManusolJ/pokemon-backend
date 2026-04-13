@@ -36,3 +36,4 @@ build/
 .env.dev
 HELP.md
 spec-doc.md
+db-schema-doc.md
