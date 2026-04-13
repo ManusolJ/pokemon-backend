@@ -44,13 +44,14 @@ public class Pokemon {
     @Column(name = "form_name", length = 50)
     private String formName;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "base_species_id")
-    private Pokemon baseSpecies;
-
     @NotNull
-    @Column(name = "national_dex_number", nullable = false)
-    private Integer nationalDexNumber;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "species_id", nullable = false)
+    private PokemonSpecies species;
+
+    @Builder.Default
+    @Column(name = "is_default_form", nullable = false)
+    private Boolean isDefaultForm = true;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
@@ -91,58 +92,6 @@ public class Pokemon {
 
     @Column(name = "weight")
     private Integer weight;
-
-    @Column(name = "gender_rate")
-    private Integer genderRate;
-
-    @Column(name = "flavor_text", columnDefinition = "TEXT")
-    private String flavorText;
-
-    @Column(name = "generation")
-    private Integer generation;
-
-    @Builder.Default
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "previous_evolution_id")
-    private Pokemon previousEvolution = null;
-
-    @Size(max = 30)
-    @Column(name = "evolution_trigger", length = 30)
-    private String evolutionTrigger;
-
-    @Column(name = "evolution_min_level")
-    private Integer evolutionMinLevel;
-
-    @Size(max = 50)
-    @Column(name = "evolution_item", length = 50)
-    private String evolutionItem;
-
-    @Size(max = 50)
-    @Column(name = "evolution_held_item", length = 50)
-    private String evolutionHeldItem;
-
-    @Column(name = "evolution_min_happiness")
-    private Integer evolutionMinHappiness;
-
-    @Size(max = 10)
-    @Column(name = "evolution_time_of_day", length = 10)
-    private String evolutionTimeOfDay;
-
-    @Builder.Default
-    @Column(name = "is_default_form", nullable = false)
-    private Boolean isDefaultForm = true;
-
-    @Builder.Default
-    @Column(name = "is_legendary", nullable = false)
-    private Boolean isLegendary = false;
-
-    @Builder.Default
-    @Column(name = "is_mythical", nullable = false)
-    private Boolean isMythical = false;
-
-    @Builder.Default
-    @Column(name = "is_baby", nullable = false)
-    private Boolean isBaby = false;
 
     @Column(name = "sprite_default", columnDefinition = "TEXT")
     private String spriteDefault;
