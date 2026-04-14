@@ -75,6 +75,14 @@ public class PokemonSpecies {
     private PokemonSpecies previousEvolution = null;
 
     @Size(max = 30)
+    @Column(name = "egg_group_1", length = 30)
+    private String eggGroup1;
+ 
+    @Size(max = 30)
+    @Column(name = "egg_group_2", length = 30)
+    private String eggGroup2;
+
+    @Size(max = 30)
     @Column(name = "evolution_trigger", length = 30)
     private String evolutionTrigger;
 
