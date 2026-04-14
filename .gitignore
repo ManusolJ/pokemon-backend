@@ -34,6 +34,4 @@ build/
 ### Project specific ###
 .env
 .env.dev
-HELP.md
-spec-doc.md
-db-schema-doc.md
+docs/
