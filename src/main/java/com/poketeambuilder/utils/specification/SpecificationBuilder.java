@@ -16,21 +16,20 @@ public class SpecificationBuilder<T> {
         return this;
     }
 
-    public SpecificationBuilder<T> between(String key, Object valueFrom, Object valueTo) {
-        criteriaList.add(new SearchCriteria(key, valueFrom, valueTo, SearchOperation.BETWEEN));
+    public SpecificationBuilder<T> with(String key, Object value, SearchOperation operation) {
+        criteriaList.add(new SearchCriteria(key, value, null, operation));
         return this;
     }
 
     public Specification<T> build() {
         if (criteriaList.isEmpty()) {
-            return null;
+            return Specification.unrestricted();
         }
 
         Specification<T> spec = Specification.unrestricted();
 
         for (SearchCriteria criteria : criteriaList) {
-            BaseSpecification<T> baseSpec = new BaseSpecification<>(criteria);
-            spec = spec.and(baseSpec);
+            spec = spec.and(new BaseSpecification<>(criteria));
         }
 
         return spec;
