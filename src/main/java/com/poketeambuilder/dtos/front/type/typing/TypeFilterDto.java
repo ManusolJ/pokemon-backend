@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.front.type.type;
+package com.poketeambuilder.dtos.front.type.typing;
 
 import com.poketeambuilder.interfaces.FilterDtoInterface;
 
@@ -12,11 +12,4 @@ public class TypeFilterDto implements FilterDtoInterface {
     private String name;
 
     private String nameExact;
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-                || name != null
-                || nameExact != null;
-    }
 }

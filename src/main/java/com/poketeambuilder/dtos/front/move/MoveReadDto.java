@@ -1,7 +1,17 @@
 package com.poketeambuilder.dtos.front.move;
 
-import com.poketeambuilder.dtos.front.type.type.TypeReadDto;
+import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
 
-public record MoveReadDto(long id, String name, TypeReadDto type, String category, Integer pp, Integer power, Integer accuracy, Integer priority, String effectDescription) {
+public record MoveReadDto(
+    long id,
+    String name,
+    String category,
+    TypeReadDto type,
+    Integer pp,
+    Integer power,
+    Integer accuracy,
+    Integer priority,
+    String effectDescription
+) {
     
 }

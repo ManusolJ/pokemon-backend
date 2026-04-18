@@ -1,5 +1,7 @@
 package com.poketeambuilder.dtos.front.type.effectiveness;
 
-public record TypeEffectivenessReadDto(long id, long attackingTypeId, long defendingTypeId, double multiplier) {
+import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
+
+public record TypeEffectivenessReadDto(TypeReadDto attackingType, TypeReadDto defendingType, double multiplier) {
     
 }

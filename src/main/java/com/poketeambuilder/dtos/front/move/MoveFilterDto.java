@@ -5,7 +5,7 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 import lombok.Getter;
 
 @Getter
-public class MoveFilterDto implements FilterDtoInterface{
+public class MoveFilterDto implements FilterDtoInterface {
     
     private Integer id;
 
@@ -13,7 +13,7 @@ public class MoveFilterDto implements FilterDtoInterface{
 
     private String nameExact;
 
-    private Long typeId;
+    private Integer typeId;
 
     private String category;
 
@@ -26,19 +26,4 @@ public class MoveFilterDto implements FilterDtoInterface{
     private Integer minAccuracy;
 
     private Integer maxAccuracy;
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-        || typeId != null
-        || priority != null
-        || minPower != null
-        || maxPower != null
-        || minAccuracy != null
-        || maxAccuracy != null
-        || name != null
-        || category != null
-        || nameExact != null;
-    }
-
 }
