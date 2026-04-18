@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -34,6 +35,20 @@ public class PokemonSpecies {
     @Column(name = "id", nullable = false, updatable = false)
     private Integer id;
 
+    @NotBlank
+    @Size(max = 50)
+    @Column(name = "name", nullable = false, unique = true, length = 50)
+    private String name;
+
+    @NotNull
+    @Column(name = "order", nullable = false)
+    private Integer order;
+
+    @NotBlank
+    @Size(max = 50)
+    @Column(name = "genus", nullable = false, length = 50)
+    private String genus;
+
     @NotNull
     @Column(name = "national_dex_number", nullable = false)
     private Integer nationalDexNumber;
@@ -50,6 +65,9 @@ public class PokemonSpecies {
     @Column(name = "catch_rate")
     private Integer catchRate;
 
+    @Column(name = "hatch_counter")
+    private Integer hatchCounter;
+
     @Column(name = "base_happiness")
     private Integer baseHappiness;
 
@@ -58,16 +76,16 @@ public class PokemonSpecies {
     private String growthRate;
 
     @Builder.Default
-    @Column(name = "is_legendary", nullable = false)
-    private Boolean isLegendary = false;
+    @Column(name = "is_baby", nullable = false)
+    private Boolean isBaby = false;
 
     @Builder.Default
     @Column(name = "is_mythical", nullable = false)
     private Boolean isMythical = false;
 
     @Builder.Default
-    @Column(name = "is_baby", nullable = false)
-    private Boolean isBaby = false;
+    @Column(name = "is_legendary", nullable = false)
+    private Boolean isLegendary = false;
 
     @Builder.Default
     @ManyToOne(fetch = FetchType.LAZY)

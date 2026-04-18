@@ -40,9 +40,9 @@ public class Pokemon {
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;
 
-    @Size(max = 50)
-    @Column(name = "form_name", length = 50)
-    private String formName;
+    @NotNull
+    @Column(name = "order", nullable = false)
+    private Integer order;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
