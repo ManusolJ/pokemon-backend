@@ -3,6 +3,9 @@ package com.poketeambuilder.dtos.front.species;
 public record PokemonSpeciesReadDto(
     long id,
     String name,
+    String genus,
+    Integer order,
+    Integer hatchCounter,
     Integer nationalDexNumber,
     String flavorText,
     Integer catchRate,
