@@ -1,6 +1,10 @@
 package com.poketeambuilder.dtos.front.pokemon;
 
 import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
+
+import java.util.List;
+
+import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
 import com.poketeambuilder.dtos.front.species.PokemonSpeciesSummaryDto;
 
 public record PokemonReadDto(
@@ -19,6 +23,7 @@ public record PokemonReadDto(
     Integer baseSpeed,
     Double height,
     Double weight,
+    List<AbilityEmbedDto> abilities,
     String spriteDefault,
     String spriteShiny,
     String artworkUrl
