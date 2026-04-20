@@ -9,9 +9,9 @@ public class UserFilterDto implements FilterDtoInterface {
 
     private Long id;
 
-    private String name;
+    private String username;
 
-    private String nameExact;
+    private String usernameExact;
 
     private String email;
 

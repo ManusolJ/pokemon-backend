@@ -53,7 +53,7 @@ public class PokemonFilterDto implements FilterDtoInterface {
     private Integer maxBaseHappiness;
 
     private String growthRate;
-    private List<String> eggGroup;
+    private List<String> eggGroups;
 
     private Boolean hasPreviousEvolution;
 

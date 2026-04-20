@@ -20,14 +20,4 @@ public class SeedLogFilterDto implements FilterDtoInterface {
     private Instant dateFrom;
     
     private Instant dateTo;
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-                || status != null
-                || triggeredBy != null
-                || triggeredByExact != null
-                || dateFrom != null
-                || dateTo != null;
-    }
 }

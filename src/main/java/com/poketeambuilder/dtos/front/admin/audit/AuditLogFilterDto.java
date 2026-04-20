@@ -24,16 +24,4 @@ public class AuditLogFilterDto implements FilterDtoInterface {
     private Instant dateFrom;
     
     private Instant dateTo;
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-                || username != null
-                || usernameExact != null
-                || action != null
-                || entity != null
-                || entityId != null
-                || dateFrom != null
-                || dateTo != null;
-    }
 }

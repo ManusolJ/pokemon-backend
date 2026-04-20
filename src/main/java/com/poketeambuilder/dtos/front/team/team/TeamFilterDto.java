@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.front.team;
+package com.poketeambuilder.dtos.front.team.team;
 
 import com.poketeambuilder.interfaces.FilterDtoInterface;
 
