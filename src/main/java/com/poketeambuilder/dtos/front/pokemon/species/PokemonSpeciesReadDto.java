@@ -1,4 +1,6 @@
-package com.poketeambuilder.dtos.front.species;
+package com.poketeambuilder.dtos.front.pokemon.species;
+
+import java.util.List;
 
 public record PokemonSpeciesReadDto(
     long id,
@@ -16,8 +18,7 @@ public record PokemonSpeciesReadDto(
     Boolean isBaby,
     Boolean isMythical,
     Boolean isLegendary,
-    String eggGroup1,
-    String eggGroup2,
+    List<String> eggGroups,
     PokemonSpeciesSummaryDto previousEvolution,
     String evolutionItem,
     String evolutionTrigger,

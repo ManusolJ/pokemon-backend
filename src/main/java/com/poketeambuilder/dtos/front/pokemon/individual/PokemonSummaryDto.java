@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.front.pokemon;
+package com.poketeambuilder.dtos.front.pokemon.individual;
 
 import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
 
