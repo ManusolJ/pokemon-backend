@@ -18,15 +18,4 @@ public class TeamFilterDto implements FilterDtoInterface {
     private String nameExact;
 
     private Boolean isPublic;
-    
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-                || slug != null
-                || name != null 
-                || userId != null
-                || isPublic != null
-                || nameExact != null;
-    }
 }

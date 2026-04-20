@@ -18,14 +18,4 @@ public class UserFilterDto implements FilterDtoInterface {
     private String role;
     
     private Boolean enabled;
-
-    @Override
-    public boolean hasAnyCriteria() {
-        return id != null
-                || name != null
-                || nameExact != null
-                || email != null
-                || role != null
-                || enabled != null;
-    }
 }
