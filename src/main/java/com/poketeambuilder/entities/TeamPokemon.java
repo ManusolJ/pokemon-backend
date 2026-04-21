@@ -71,7 +71,7 @@ public class TeamPokemon {
     private Boolean shiny = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "nature_id", nullable = false)
+    @JoinColumn(name = "nature_id") 
     private Nature nature;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -91,46 +91,57 @@ public class TeamPokemon {
     @Column(name = "ev_hp", nullable = false)
     private Integer evHp = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "ev_atk", nullable = false)
     private Integer evAtk = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "ev_def", nullable = false)
     private Integer evDef = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "ev_sp_atk", nullable = false)
     private Integer evSpAtk = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "ev_sp_def", nullable = false)
     private Integer evSpDef = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "ev_speed", nullable = false)
     private Integer evSpeed = 0;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_hp", nullable = false)
     private Integer ivHp = 31;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_atk", nullable = false)
     private Integer ivAtk = 31;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_def", nullable = false)
     private Integer ivDef = 31;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_sp_atk", nullable = false)
     private Integer ivSpAtk = 31;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_sp_def", nullable = false)
     private Integer ivSpDef = 31;
 
+    @NotNull
     @Builder.Default
     @Column(name = "iv_speed", nullable = false)
     private Integer ivSpeed = 31;
