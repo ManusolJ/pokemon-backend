@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 public class LoginDto {
 
     @NotBlank
-    private String username;
+    private String identifier;
 
     @NotBlank
     private String password;
