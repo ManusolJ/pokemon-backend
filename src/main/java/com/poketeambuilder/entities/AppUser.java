@@ -40,8 +40,8 @@ public class AppUser {
     private Long id;
 
     @NotBlank
-    @Size(min = 3, max = 50)
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @Size(min = 3, max = 30)
+    @Column(name = "username", nullable = false, unique = true, length = 30)
     private String username;
 
     @NotBlank

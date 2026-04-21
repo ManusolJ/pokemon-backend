@@ -32,8 +32,8 @@ public class Item {
     private Integer id;
 
     @NotBlank
-    @Size(max = 50)
-    @Column(name = "name", nullable = false, unique = true, length = 50)
+    @Size(max = 100)
+    @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
     @Column(name = "description", columnDefinition = "TEXT")

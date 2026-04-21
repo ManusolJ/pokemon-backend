@@ -38,7 +38,7 @@ public class AuditLog {
 
     @NotBlank
     @Size(max = 30)
-    @Column(name = "username", nullable = false)
+    @Column(name = "username", nullable = false, length = 30)
     private String username;
 
     @NotBlank
