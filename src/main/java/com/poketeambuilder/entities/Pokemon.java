@@ -41,7 +41,7 @@ public class Pokemon {
     private String name;
 
     @NotNull
-    @Column(name = "order", nullable = false)
+    @Column(name = "sort_order", nullable = false)
     private Integer order;
 
     @NotNull
