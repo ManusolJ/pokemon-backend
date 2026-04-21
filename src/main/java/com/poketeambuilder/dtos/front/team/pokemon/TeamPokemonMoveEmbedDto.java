@@ -1,8 +1,8 @@
 package com.poketeambuilder.dtos.front.team.pokemon;
 
-import lombok.Getter;
+import com.poketeambuilder.dtos.front.move.MoveSummaryDto;
 
-@Getter
-public class TeamPokemonMoveEmbedDto {
-    
-}
+public record TeamPokemonMoveEmbedDto(
+    MoveSummaryDto move,
+    Integer slotPosition
+) {}
