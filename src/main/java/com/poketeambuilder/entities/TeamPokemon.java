@@ -84,7 +84,7 @@ public class TeamPokemon {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tera_type")
-    private Type teratype;
+    private Type teraType;
 
     @NotNull
     @Builder.Default

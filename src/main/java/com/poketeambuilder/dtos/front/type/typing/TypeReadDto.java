@@ -1,5 +1,5 @@
 package com.poketeambuilder.dtos.front.type.typing;
 
-public record TypeReadDto(long id, String name) {
+public record TypeReadDto(int id, String name) {
     
 }

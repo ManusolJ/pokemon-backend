@@ -3,7 +3,7 @@ package com.poketeambuilder.dtos.front.move;
 import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
 
 public record MoveReadDto(
-    long id,
+    int id,
     String name,
     String category,
     TypeReadDto type,

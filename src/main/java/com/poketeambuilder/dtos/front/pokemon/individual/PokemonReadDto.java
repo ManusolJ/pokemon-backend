@@ -8,7 +8,7 @@ import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
 
 public record PokemonReadDto(
-    long id,
+    int id,
     String name,
     Integer order,
     PokemonSpeciesSummaryDto species,
@@ -21,8 +21,8 @@ public record PokemonReadDto(
     Integer baseSpAtk,
     Integer baseSpDef,
     Integer baseSpeed,
-    Double height,
-    Double weight,
+    Double heightInMeters,
+    Double weightInKilograms,
     List<AbilityEmbedDto> abilities,
     String spriteDefault,
     String spriteShiny,

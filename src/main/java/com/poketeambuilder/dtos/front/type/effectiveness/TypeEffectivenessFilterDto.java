@@ -1,5 +1,7 @@
 package com.poketeambuilder.dtos.front.type.effectiveness;
 
+import java.math.BigDecimal;
+
 import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
@@ -7,7 +9,7 @@ import lombok.Getter;
 @Getter
 public class TypeEffectivenessFilterDto implements FilterDtoInterface {
     
-    private Double multiplier;
+    private BigDecimal multiplier;
     
     private Integer attackingTypeId;
     

@@ -1,5 +1,7 @@
 package com.poketeambuilder.dtos.front.user;
 
-public record UserReadDto(long id, String username, String email, String role, boolean enabled) {
+import java.time.Instant;
+
+public record UserReadDto(long id, String username, String email, String role, boolean enabled, Instant createdAt) {
     
 }

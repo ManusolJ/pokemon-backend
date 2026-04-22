@@ -3,7 +3,7 @@ package com.poketeambuilder.dtos.front.pokemon.species;
 import java.util.List;
 
 public record PokemonSpeciesReadDto(
-    long id,
+    int id,
     String name,
     String genus,
     Integer order,

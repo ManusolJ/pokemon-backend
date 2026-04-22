@@ -1,5 +1,5 @@
 package com.poketeambuilder.dtos.front.item;
 
-public record ItemSummaryDto(long id, String name, String spriteUrl) {
+public record ItemSummaryDto(int id, String name, String spriteUrl) {
     
 }

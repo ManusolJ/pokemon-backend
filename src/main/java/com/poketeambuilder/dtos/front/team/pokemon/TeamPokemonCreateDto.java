@@ -21,7 +21,6 @@ public class TeamPokemonCreateDto {
     @NotNull
     private Integer abilityId;
 
-    @NotNull
     private Integer natureId;
 
     private Integer itemId;

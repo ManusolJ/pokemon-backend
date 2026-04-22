@@ -1,5 +1,5 @@
 package com.poketeambuilder.dtos.front.ability;
 
-public record AbilitySummaryDto(long id, String name) {
+public record AbilitySummaryDto(int id, String name) {
     
 }
