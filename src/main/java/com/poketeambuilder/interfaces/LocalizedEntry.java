@@ -1,6 +1,6 @@
 package com.poketeambuilder.interfaces;
 
-import com.poketeambuilder.dtos.REST.common.PokeApiResource;
+import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 
 public interface LocalizedEntry {
     

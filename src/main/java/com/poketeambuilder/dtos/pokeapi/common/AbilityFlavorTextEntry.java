@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.REST.common;
+package com.poketeambuilder.dtos.pokeapi.common;
 
 import com.poketeambuilder.interfaces.LocalizedEntry;
 
@@ -6,10 +6,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record EffectEntry(
-    String effect,
+public record AbilityFlavorTextEntry(
     PokeApiResource language,
-    @JsonProperty("short_effect") String short_effect
-) implements LocalizedEntry {
+    @JsonProperty("flavor_text") String flavorText,
+    @JsonProperty("version_group") PokeApiResource versionGroup
+) implements LocalizedEntry{
     
 }

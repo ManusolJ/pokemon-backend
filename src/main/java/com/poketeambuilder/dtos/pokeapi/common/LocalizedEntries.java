@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.REST.common;
+package com.poketeambuilder.dtos.pokeapi.common;
 
 import java.util.List;
 import java.util.Optional;
