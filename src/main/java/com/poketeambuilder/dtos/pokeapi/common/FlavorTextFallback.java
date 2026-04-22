@@ -103,4 +103,28 @@ public final class FlavorTextFallback {
 
         return byVersion.values().stream().findFirst();
     }
+
+        public static Optional<ItemFlavorTextEntry> pickBestForItem(List<ItemFlavorTextEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Map<String, ItemFlavorTextEntry> byVersion = entries.stream()
+                .filter(e -> e.language() != null && "en".equals(e.language().name()))
+                .filter(e -> e.versionGroup() != null && e.versionGroup().name() != null)
+                .collect(Collectors.toMap(
+                        e -> e.versionGroup().name(),
+                        Function.identity(),
+                        (a, b) -> a
+                ));
+
+        for (String version : VERSION_GROUP_PRIORITY) {
+            ItemFlavorTextEntry entry = byVersion.get(version);
+            if (entry != null) {
+                return Optional.of(entry);
+            }
+        }
+
+        return byVersion.values().stream().findFirst();
+    }
 }
