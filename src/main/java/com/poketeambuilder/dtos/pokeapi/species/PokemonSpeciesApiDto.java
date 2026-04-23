@@ -1,7 +1,7 @@
 package com.poketeambuilder.dtos.pokeapi.species;
 
-import com.poketeambuilder.dtos.pokeapi.common.FlavorTextEntry;
 import com.poketeambuilder.dtos.pokeapi.common.GenusEntry;
+import com.poketeambuilder.dtos.pokeapi.common.FlavorTextEntry;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 
 import java.util.List;
