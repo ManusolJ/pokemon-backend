@@ -11,6 +11,7 @@ public record MoveReadDto(
     Integer power,
     Integer accuracy,
     Integer priority,
+    Integer effectChance,
     String effectDescription
 ) {
     

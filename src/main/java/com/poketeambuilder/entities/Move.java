@@ -61,6 +61,9 @@ public class Move {
     @Column(name = "effect_description", columnDefinition = "TEXT")
     private String effectDescription;
 
+    @Column(name = "effect_chance")
+    private Integer effectChance;
+
     @NotNull
     @Builder.Default
     @Column(name = "priority", nullable = false)
