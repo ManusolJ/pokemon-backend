@@ -2,6 +2,7 @@ package com.poketeambuilder.dtos.pokeapi.move;
 
 import com.poketeambuilder.dtos.pokeapi.common.EffectEntry;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
+import com.poketeambuilder.dtos.pokeapi.common.MoveFlavorTextEntry;
 
 import java.util.List;
 
@@ -19,5 +20,6 @@ public record MoveApiDto(
         @JsonProperty("effect_chance") Integer effectChance,
         PokeApiResource type,
         @JsonProperty("damage_class") PokeApiResource damageClass,
-        @JsonProperty("effect_entries") List<EffectEntry> effectEntries
+        @JsonProperty("effect_entries") List<EffectEntry> effectEntries,
+        @JsonProperty("flavor_text_entries") List<MoveFlavorTextEntry> flavorTextEntries
 ) {}
