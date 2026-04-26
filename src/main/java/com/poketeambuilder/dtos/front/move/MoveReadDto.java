@@ -12,7 +12,8 @@ public record MoveReadDto(
     Integer accuracy,
     Integer priority,
     Integer effectChance,
-    String effectDescription
+    String effectDescription,
+    String flavorText
 ) {
     
 }

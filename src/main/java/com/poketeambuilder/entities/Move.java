@@ -58,6 +58,9 @@ public class Move {
     @Column(name = "accuracy")
     private Integer accuracy;
 
+    @Column(name = "flavor_text", columnDefinition = "TEXT")
+    private String flavorText;
+
     @Column(name = "effect_description", columnDefinition = "TEXT")
     private String effectDescription;
 

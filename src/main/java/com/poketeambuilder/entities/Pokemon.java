@@ -49,6 +49,7 @@ public class Pokemon {
     @JoinColumn(name = "species_id", nullable = false)
     private PokemonSpecies species;
 
+    @NotNull
     @Builder.Default
     @Column(name = "is_default_form", nullable = false)
     private Boolean isDefaultForm = true;

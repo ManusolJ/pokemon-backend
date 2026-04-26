@@ -54,12 +54,12 @@ public class Nature {
         boolean hasIncreased = increasedStat != null;
         boolean hasDecreased = decreasedStat != null;
 
-        if (hasIncreased != hasDecreased) {
-            throw new IllegalStateException("Both increased and decreased stats must be set, or both must be null");
-        }
-
         if (hasIncreased && increasedStat.equals(decreasedStat)) {
             throw new IllegalStateException("Increased and decreased stats cannot be the same");
+        }
+
+        if (hasIncreased != hasDecreased) {
+            throw new IllegalStateException("Both increased and decreased stats must be set, or both must be null");
         }
     }
 }

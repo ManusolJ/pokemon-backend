@@ -35,6 +35,9 @@ public class Item {
     @Size(max = 100)
     @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
+    
+    @Column(name = "effect", columnDefinition = "TEXT")
+    private String effect;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
