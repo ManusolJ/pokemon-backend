@@ -5,9 +5,10 @@ import java.util.Optional;
 
 import com.poketeambuilder.interfaces.LocalizedEntry;
 
-public final class LocalizedEntries {
+import lombok.NoArgsConstructor;
 
-    private LocalizedEntries() {}
+@NoArgsConstructor
+public final class LocalizedEntries {
     
     private static final String ENGLISH = "en";
 
