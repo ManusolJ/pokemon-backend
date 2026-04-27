@@ -27,8 +27,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class NatureQueryService extends AbstractQueryService<Nature, Integer, NatureFilterDto, NatureReadDto> {
 
-    private NatureMapper natureMapper;
-    private NatureRepository natureRepository;
+    private final NatureMapper natureMapper;
+    private final NatureRepository natureRepository;
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -60,11 +60,11 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
 
-        if (filter.getName() != null && !filter.getName().isEmpty()) {
+        if (filter.getName() != null && !filter.getName().isBlank()) {
             builder.with(FIELD_NAME, filter.getName(), SearchOperation.LIKE);
         }
 
-        if (filter.getNameExact() != null && !filter.getNameExact().isEmpty()) {
+        if (filter.getNameExact() != null && !filter.getNameExact().isBlank()) {
             builder.with(FIELD_NAME, filter.getNameExact(), SearchOperation.EQUAL);
         }
 
