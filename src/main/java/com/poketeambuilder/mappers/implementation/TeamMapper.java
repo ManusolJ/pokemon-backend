@@ -13,10 +13,11 @@ import com.poketeambuilder.dtos.front.team.team.TeamSummaryDto;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.SummaryMapper;
+import com.poketeambuilder.mappers.common.WriteMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 @Mapper(config = MapperConfiguration.class, uses = UserMapper.class)
-public interface TeamMapper extends ReadMapper<Team, TeamReadDto>, SummaryMapper<Team, TeamSummaryDto> {
+public interface TeamMapper extends ReadMapper<Team, TeamReadDto>, SummaryMapper<Team, TeamSummaryDto>, WriteMapper<Team, TeamCreateDto> {
 
     @Override
     @Mapping(target = "pokemon", ignore = true)
@@ -26,6 +27,7 @@ public interface TeamMapper extends ReadMapper<Team, TeamReadDto>, SummaryMapper
     @Mapping(target = "pokemonSprites", ignore = true)
     TeamSummaryDto toSummaryDto(Team entity);
 
+    @Override
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "slug", ignore = true)
