@@ -35,4 +35,12 @@ public class MoveIngestionHelper {
                 .map(TextSanitizer::clean)
                 .orElse(null);
     }
+
+    @Named("extractMoveShortEffect")
+    public String extractMoveShortEffect(MoveApiDto dto) {
+        return LocalizedEntries.english(dto.effectEntries())
+                .map(EffectEntry::shortEffect)
+                .map(TextSanitizer::clean)
+                .orElse(null);
+    }
 }

@@ -30,8 +30,8 @@ public interface MoveMapper extends ReadMapper<Move, MoveReadDto>, ApiMapper<Mov
     @Override
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "effect", source = ".", qualifiedByName = "extractMoveEffect")
+    @Mapping(target = "shortEffect", source = ".", qualifiedByName = "extractMoveShortEffect")
     @Mapping(target = "category", source = "damageClass", qualifiedByName = "extractMoveCategory")
-    @Mapping(target = "shortEffect", source = "effectEntries", qualifiedByName = "extractShortEffect")
     @Mapping(target = "flavorText", source = "flavorTextEntries", qualifiedByName = "extractMoveFlavorText")
     Move toEntity(MoveApiDto apiDto);
 }
