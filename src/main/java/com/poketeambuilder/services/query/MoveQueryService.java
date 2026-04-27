@@ -1,23 +1,34 @@
 package com.poketeambuilder.services.query;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
 import org.springframework.stereotype.Service;
+
 import org.springframework.validation.annotation.Validated;
 
 import com.poketeambuilder.entities.Move;
+
 import com.poketeambuilder.dtos.front.move.MoveFilterDto;
 import com.poketeambuilder.dtos.front.move.MoveReadDto;
+import com.poketeambuilder.dtos.front.move.MoveSummaryDto;
+
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.MoveMapper;
+
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.MoveRepository;
+
 import com.poketeambuilder.utils.enums.MoveCategory;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaQuery;
+
 import jakarta.validation.constraints.NotNull;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -55,6 +66,10 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     protected void applyFetches(Root<Move> root, CriteriaQuery<?> query) {
         root.fetch("type");
         query.distinct(true);
+    }
+
+    public Page<MoveSummaryDto> filterSummaries(MoveFilterDto filter, Pageable pageable) {
+        return filterAndMap(filter, pageable, moveMapper::toSummaryDto);    
     }
 
     @Override

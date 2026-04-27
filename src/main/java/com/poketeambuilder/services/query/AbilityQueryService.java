@@ -1,14 +1,15 @@
 package com.poketeambuilder.services.query;
 
 import org.springframework.stereotype.Service;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.validation.annotation.Validated;
 
 import com.poketeambuilder.dtos.front.ability.AbilityFilterDto;
 import com.poketeambuilder.dtos.front.ability.AbilityReadDto;
-
+import com.poketeambuilder.dtos.front.ability.AbilitySummaryDto;
 import com.poketeambuilder.entities.Ability;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
@@ -20,6 +21,8 @@ import com.poketeambuilder.repositories.AbilityRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -46,6 +49,10 @@ public class AbilityQueryService extends AbstractQueryService<Ability, Integer, 
     @Override
     protected BaseRepository<Ability, Integer> getRepository() {
         return abilityRepository;
+    }
+
+    public Page<AbilitySummaryDto> filterAbilitySummaries(@Valid @NotNull AbilityFilterDto filter, @NotNull Pageable pageable) {
+        return filterAndMap(filter, pageable, abilityMapper::toSummaryDto);
     }
 
     @Override

@@ -1,14 +1,15 @@
 package com.poketeambuilder.services.query;
 
 import org.springframework.stereotype.Service;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.validation.annotation.Validated;
 
 import com.poketeambuilder.dtos.front.item.ItemFilterDto;
 import com.poketeambuilder.dtos.front.item.ItemReadDto;
-
+import com.poketeambuilder.dtos.front.item.ItemSummaryDto;
 import com.poketeambuilder.entities.Item;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
@@ -20,6 +21,8 @@ import com.poketeambuilder.repositories.ItemRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -48,8 +51,12 @@ public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFi
         return itemRepository;
     }
 
+    public Page<ItemSummaryDto> filterItemSummaries(@Valid @NotNull ItemFilterDto filter, @NotNull Pageable pageable) {
+        return filterAndMap(filter, pageable, itemMapper::toSummaryDto);
+    }
+
     @Override
-    protected Specification<Item> buildSpecification(ItemFilterDto filter) {
+    protected Specification<Item> buildSpecification(@NotNull ItemFilterDto filter) {
         SpecificationBuilder<Item> builder = new SpecificationBuilder<>();
 
         if (!filter.hasAnyCriteria()) {

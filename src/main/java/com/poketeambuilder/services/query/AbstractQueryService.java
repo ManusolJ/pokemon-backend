@@ -1,5 +1,7 @@
 package com.poketeambuilder.services.query;
 
+import java.util.function.Function;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -46,6 +48,17 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
                 .findAll(combined, pageable)
                 .map(getMapper()::toReadDto);
     }
+
+    protected <D> Page<D> filterAndMap(@Valid @NotNull F filter, @NotNull Pageable pageable, @NotNull Function<E, D> mapper) {
+        Specification<E> spec = buildSpecification(filter);
+        
+        Specification<E> combined = withFetches(spec);
+ 
+        return getRepository()
+                .findAll(combined, pageable)
+                .map(mapper::apply);
+    }
+
 
     @Override
     public long countFilteredEntities(@Valid @NotNull F filter) {
