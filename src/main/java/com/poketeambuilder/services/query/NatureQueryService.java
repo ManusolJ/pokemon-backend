@@ -1,7 +1,8 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+
+import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.validation.annotation.Validated;
 
@@ -15,6 +16,7 @@ import com.poketeambuilder.mappers.implementation.NatureMapper;
 
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.NatureRepository;
+
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 

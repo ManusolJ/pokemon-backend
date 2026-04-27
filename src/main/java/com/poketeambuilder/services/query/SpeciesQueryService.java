@@ -5,25 +5,33 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
 import org.springframework.stereotype.Service;
+
 import org.springframework.validation.annotation.Validated;
 
 import com.poketeambuilder.entities.PokemonSpecies;
+
 import com.poketeambuilder.dtos.front.pokemon.common.PokemonFilterDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesReadDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
+
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.SpeciesMapper;
+
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.SpeciesRepository;
+
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.CriteriaQuery;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+
 import lombok.RequiredArgsConstructor;
 
 @Service

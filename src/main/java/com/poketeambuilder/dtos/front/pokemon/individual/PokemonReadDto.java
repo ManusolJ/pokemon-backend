@@ -1,11 +1,10 @@
 package com.poketeambuilder.dtos.front.pokemon.individual;
 
 import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
-
-import java.util.List;
-
 import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
+
+import java.util.List;
 
 public record PokemonReadDto(
     int id,

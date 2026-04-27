@@ -94,12 +94,12 @@ public class Pokemon {
     @Column(name = "weight")
     private Integer weight;
 
-    @Column(name = "sprite_default", columnDefinition = "TEXT")
-    private String spriteDefault;
-
+    @Column(name = "artwork_url", columnDefinition = "TEXT")
+    private String artworkUrl;
+    
     @Column(name = "sprite_shiny", columnDefinition = "TEXT")
     private String spriteShiny;
 
-    @Column(name = "artwork_url", columnDefinition = "TEXT")
-    private String artworkUrl;
+    @Column(name = "sprite_default", columnDefinition = "TEXT")
+    private String spriteDefault;
 }

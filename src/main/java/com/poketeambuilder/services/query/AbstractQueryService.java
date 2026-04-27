@@ -5,16 +5,21 @@ import java.util.function.Function;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+
 import org.springframework.transaction.annotation.Transactional;
 
-import com.poketeambuilder.interfaces.FilterDtoInterface;
 import com.poketeambuilder.interfaces.QueryInterface;
+import com.poketeambuilder.interfaces.FilterDtoInterface;
+
 import com.poketeambuilder.mappers.common.ReadMapper;
+
 import com.poketeambuilder.repositories.BaseRepository;
+
 import com.poketeambuilder.utils.exceptions.ResourceNotFoundException;
 
-import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaQuery;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 

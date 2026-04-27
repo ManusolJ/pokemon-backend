@@ -1,8 +1,8 @@
 package com.poketeambuilder.entities;
 
-import java.math.BigDecimal;
-
 import com.poketeambuilder.entities.compositeIDs.TypeEffectivenessId;
+
+import java.math.BigDecimal;
 
 import jakarta.persistence.Table;
 import jakarta.persistence.Entity;
