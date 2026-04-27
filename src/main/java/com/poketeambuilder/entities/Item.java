@@ -39,8 +39,11 @@ public class Item {
     @Column(name = "effect", columnDefinition = "TEXT")
     private String effect;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "short_effect", columnDefinition = "TEXT")
+    private String shortEffect;
+
+    @Column(name = "flavor_text", columnDefinition = "TEXT")
+    private String flavorText;
 
     @Size(max = 50)
     @Column(name = "category", length = 50)

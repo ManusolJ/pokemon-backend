@@ -38,7 +38,10 @@ public class Ability {
 
     @Column(name = "effect", columnDefinition = "TEXT")
     private String effect;
+
+    @Column(name = "short_effect", columnDefinition = "TEXT")
+    private String shortEffect;
     
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "flavor_text", columnDefinition = "TEXT")
+    private String flavorText;
 }

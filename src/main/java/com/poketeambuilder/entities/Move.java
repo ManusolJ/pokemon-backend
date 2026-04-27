@@ -61,8 +61,11 @@ public class Move {
     @Column(name = "flavor_text", columnDefinition = "TEXT")
     private String flavorText;
 
-    @Column(name = "effect_description", columnDefinition = "TEXT")
-    private String effectDescription;
+    @Column(name = "short_effect", columnDefinition = "TEXT")
+    private String shortEffect;
+
+    @Column(name = "effect", columnDefinition = "TEXT")
+    private String effect;
 
     @Column(name = "effect_chance")
     private Integer effectChance;
