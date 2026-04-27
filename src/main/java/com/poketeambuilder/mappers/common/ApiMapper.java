@@ -1,6 +1,6 @@
 package com.poketeambuilder.mappers.common;
 
-public interface ApiMapper<D, E> {
+public interface ApiMapper<E, D> {
     
     E toEntity(D dto);
 }

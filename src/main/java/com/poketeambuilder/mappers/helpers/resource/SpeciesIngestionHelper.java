@@ -7,61 +7,70 @@ import com.poketeambuilder.dtos.pokeapi.common.LocalizedEntries;
 import com.poketeambuilder.dtos.pokeapi.common.FlavorTextFallback;
 
 import com.poketeambuilder.dtos.pokeapi.species.PokedexNumber;
-import com.poketeambuilder.dtos.pokeapi.species.PokemonSpeciesApiDto;
 
 import com.poketeambuilder.mappers.helpers.shared.FlavorTextSanitizer;
 
+import java.util.List;
+
+import org.mapstruct.Named;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SpeciesIngestionHelper {
 
-    public Integer extractNationalDex(PokemonSpeciesApiDto dto) {
-        if (dto.pokedexNumbers() == null){
+    @Named("extractNationalDex")
+    public Integer extractNationalDex(List<PokedexNumber> pokedexNumbers) {
+        if (pokedexNumbers == null || pokedexNumbers.isEmpty()) {
             return null;
         }
         
-        return dto.pokedexNumbers().stream()
+        return pokedexNumbers.stream()
                 .filter(pn -> pn.pokedex() != null && "national".equals(pn.pokedex().name()))
                 .map(PokedexNumber::entryNumber)
                 .findFirst()
                 .orElse(null);
     }
 
+    @Named("extractGeneration")
     public Integer extractGeneration(PokeApiResource generation) {
         return generation == null ? null : generation.extractId();
     }
 
+    @Named("extractGrowthRate")
     public String extractGrowthRate(PokeApiResource growthRate) {
         return growthRate == null ? null : growthRate.name();
     }
 
-    public String extractGenus(PokemonSpeciesApiDto dto) {
-        return LocalizedEntries.english(dto.genera())
+    @Named("extractGenus")
+    public String extractGenus(List<GenusEntry> genera) {
+        return LocalizedEntries.english(genera)
                 .map(GenusEntry::genus)
                 .orElse(null);
     }
 
-    public String extractFlavorText(PokemonSpeciesApiDto dto) {
-        return FlavorTextFallback.pickBestForSpecies(dto.flavorTextEntries())
+    @Named("extractFlavorText")
+    public String extractFlavorText(List<FlavorTextEntry> flavorTextEntries) {
+        return FlavorTextFallback.pickBestForSpecies(flavorTextEntries)
                 .map(FlavorTextEntry::flavorText)
                 .map(FlavorTextSanitizer::clean)
                 .orElse(null);
     }
 
-    public String extractEggGroup1(PokemonSpeciesApiDto dto) {
-        if (dto.eggGroups() == null || dto.eggGroups().isEmpty()) {
+    @Named("extractEggGroup1")
+    public String extractEggGroup1(List<PokeApiResource> eggGroups) {
+        if (eggGroups == null || eggGroups.isEmpty()) {
             return null;
         }
 
-        return dto.eggGroups().get(0).name();
+        return eggGroups.get(0).name();
     }
 
-    public String extractEggGroup2(PokemonSpeciesApiDto dto) {
-        if (dto.eggGroups() == null || dto.eggGroups().size() < 2) {
+    @Named("extractEggGroup2")
+    public String extractEggGroup2(List<PokeApiResource> eggGroups) {
+        if (eggGroups == null || eggGroups.size() < 2) {
             return null;
         }
 
-        return dto.eggGroups().get(1).name();
+        return eggGroups.get(1).name();
     }
 }
