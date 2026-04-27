@@ -39,7 +39,8 @@ public class MoveIngestionHelper {
     @Named("extractMoveShortEffect")
     public String extractMoveShortEffect(MoveApiDto dto) {
         return LocalizedEntries.english(dto.effectEntries())
-                .map(EffectEntry::shortEffect)
+                .map(EffectEntry::effect)
+                .map(text -> EffectTextSubstitution.substituteEffectChance(text, dto.effectChance()))
                 .map(TextSanitizer::clean)
                 .orElse(null);
     }

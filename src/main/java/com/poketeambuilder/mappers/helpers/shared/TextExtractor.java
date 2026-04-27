@@ -24,14 +24,6 @@ public class TextExtractor {
                     .map(TextSanitizer::clean)
                     .orElse(null);
         }
-
-        @Named("extractMoveEffect")
-        public static String extractMoveEffect(List<EffectEntry> effectEntries) {
-            return LocalizedEntries.english(effectEntries)
-                    .map(EffectEntry::effect)
-                    .map(TextSanitizer::clean)
-                    .orElse(null);
-        }
     
         @Named("extractShortEffect")
         public static String extractShortEffect(List<EffectEntry> effectEntries) {
