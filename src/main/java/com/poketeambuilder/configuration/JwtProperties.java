@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Configuration
 @ConfigurationProperties(prefix = "app.jwt")
 public record JwtProperties(
+    
     @NotBlank
     String secret,
     
