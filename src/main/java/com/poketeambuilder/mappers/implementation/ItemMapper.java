@@ -1,8 +1,5 @@
 package com.poketeambuilder.mappers.implementation;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-
 import com.poketeambuilder.entities.Item;
 
 import com.poketeambuilder.dtos.front.item.ItemReadDto;
@@ -15,9 +12,13 @@ import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.SummaryMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
+import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
 import com.poketeambuilder.mappers.helpers.resource.ItemIngestionHelper;
 
-@Mapper(config = MapperConfiguration.class, uses = { ItemIngestionHelper.class })
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(config = MapperConfiguration.class, uses = { ItemIngestionHelper.class, TextExtractor.class })
 public interface ItemMapper extends ReadMapper<Item, ItemReadDto>, ApiMapper<Item, ItemApiDto>, SummaryMapper<Item, ItemSummaryDto> {
     
     @Override
@@ -27,9 +28,10 @@ public interface ItemMapper extends ReadMapper<Item, ItemReadDto>, ApiMapper<Ite
     ItemSummaryDto toSummaryDto(Item entity);
 
     @Override
+    @Mapping(target = "effect", source = "effectEntries", qualifiedByName = "extractEffect")
     @Mapping(target = "category", source = "category", qualifiedByName = "extractItemCategory")
     @Mapping(target = "spriteUrl", source = "sprites", qualifiedByName = "extractItemSpriteUrl")
-    @Mapping(target = "effect", source = "effectEntries", qualifiedByName = "extractItemEffect")
-    @Mapping(target = "description", source = "flavorTextEntries", qualifiedByName = "extractItemDescription")
+    @Mapping(target = "shortEffect", source = "effectEntries", qualifiedByName = "extractShortEffect")
+    @Mapping(target = "flavorText", source = "flavorTextEntries", qualifiedByName = "extractItemFlavorText")
     Item toEntity(ItemApiDto apiDto);
 }

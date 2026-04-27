@@ -4,7 +4,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class FlavorTextSanitizer {
+public final class TextSanitizer {
 
     public static String clean(String text) {
         if (text == null) return null;

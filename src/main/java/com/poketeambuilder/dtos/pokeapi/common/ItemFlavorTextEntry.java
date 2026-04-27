@@ -10,4 +10,6 @@ public record ItemFlavorTextEntry(
     String text,
     PokeApiResource language,
     @JsonProperty("version_group") PokeApiResource versionGroup 
-) implements LocalizedEntry {}
+) implements LocalizedEntry {
+    
+}

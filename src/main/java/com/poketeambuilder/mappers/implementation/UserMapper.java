@@ -16,10 +16,11 @@ import com.poketeambuilder.dtos.front.admin.user.AdminUserUpdateDto;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.SummaryMapper;
+import com.poketeambuilder.mappers.common.WriteMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 @Mapper(config = MapperConfiguration.class)
-public interface UserMapper extends ReadMapper<AppUser, UserReadDto>, SummaryMapper<AppUser, UserSummaryDto> {
+public interface UserMapper extends ReadMapper<AppUser, UserReadDto>, SummaryMapper<AppUser, UserSummaryDto>, WriteMapper<AppUser, RegisterDto> {
 
     @Override
     UserReadDto toReadDto(AppUser entity);
@@ -27,6 +28,7 @@ public interface UserMapper extends ReadMapper<AppUser, UserReadDto>, SummaryMap
     @Override
     UserSummaryDto toSummaryDto(AppUser entity);
 
+    @Override
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "enabled", ignore = true)

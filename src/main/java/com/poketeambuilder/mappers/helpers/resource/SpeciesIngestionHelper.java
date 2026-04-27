@@ -2,17 +2,14 @@ package com.poketeambuilder.mappers.helpers.resource;
 
 import com.poketeambuilder.dtos.pokeapi.common.GenusEntry;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
-import com.poketeambuilder.dtos.pokeapi.common.FlavorTextEntry;
 import com.poketeambuilder.dtos.pokeapi.common.LocalizedEntries;
-import com.poketeambuilder.dtos.pokeapi.common.FlavorTextFallback;
 
 import com.poketeambuilder.dtos.pokeapi.species.PokedexNumber;
-
-import com.poketeambuilder.mappers.helpers.shared.FlavorTextSanitizer;
 
 import java.util.List;
 
 import org.mapstruct.Named;
+
 import org.springframework.stereotype.Component;
 
 @Component
@@ -45,14 +42,6 @@ public class SpeciesIngestionHelper {
     public String extractGenus(List<GenusEntry> genera) {
         return LocalizedEntries.english(genera)
                 .map(GenusEntry::genus)
-                .orElse(null);
-    }
-
-    @Named("extractFlavorText")
-    public String extractFlavorText(List<FlavorTextEntry> flavorTextEntries) {
-        return FlavorTextFallback.pickBestForSpecies(flavorTextEntries)
-                .map(FlavorTextEntry::flavorText)
-                .map(FlavorTextSanitizer::clean)
                 .orElse(null);
     }
 

@@ -16,8 +16,9 @@ import com.poketeambuilder.mappers.common.SummaryMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 import com.poketeambuilder.mappers.helpers.resource.MoveIngestionHelper;
+import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
 
-@Mapper(config = MapperConfiguration.class, uses = { MoveIngestionHelper.class, TypeMapper.class })
+@Mapper(config = MapperConfiguration.class, uses = { MoveIngestionHelper.class, TypeMapper.class, TextExtractor.class })
 public interface MoveMapper extends ReadMapper<Move, MoveReadDto>, ApiMapper<Move, MoveApiDto>, SummaryMapper<Move, MoveSummaryDto> {
     
     @Override
@@ -28,8 +29,9 @@ public interface MoveMapper extends ReadMapper<Move, MoveReadDto>, ApiMapper<Mov
 
     @Override
     @Mapping(target = "type", ignore = true)
+    @Mapping(target = "effect", source = ".", qualifiedByName = "extractMoveEffect")
     @Mapping(target = "category", source = "damageClass", qualifiedByName = "extractMoveCategory")
-    @Mapping(target = "effectDescription", source = ".", qualifiedByName = "extractEffectDescription")
+    @Mapping(target = "shortEffect", source = "effectEntries", qualifiedByName = "extractShortEffect")
     @Mapping(target = "flavorText", source = "flavorTextEntries", qualifiedByName = "extractMoveFlavorText")
     Move toEntity(MoveApiDto apiDto);
 }
