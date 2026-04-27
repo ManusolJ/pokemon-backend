@@ -30,7 +30,7 @@ public class MoveIngestionHelper {
     @Named("extractMoveEffect")
     public String extractMoveEffect(MoveApiDto dto) {
         return LocalizedEntries.english(dto.effectEntries())
-                .map(EffectEntry::shortEffect)
+                .map(EffectEntry::effect)
                 .map(text -> EffectTextSubstitution.substituteEffectChance(text, dto.effectChance()))
                 .map(TextSanitizer::clean)
                 .orElse(null);
@@ -39,7 +39,7 @@ public class MoveIngestionHelper {
     @Named("extractMoveShortEffect")
     public String extractMoveShortEffect(MoveApiDto dto) {
         return LocalizedEntries.english(dto.effectEntries())
-                .map(EffectEntry::effect)
+                .map(EffectEntry::shortEffect)
                 .map(text -> EffectTextSubstitution.substituteEffectChance(text, dto.effectChance()))
                 .map(TextSanitizer::clean)
                 .orElse(null);
