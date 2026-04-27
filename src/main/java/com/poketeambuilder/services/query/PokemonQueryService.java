@@ -199,11 +199,12 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
                 predicates = cb.and(predicates, cb.equal(species.get(SPECIES_IS_LEGENDARY), filter.getIsLegendary()));
             }
 
-            if (Boolean.TRUE.equals(filter.getIsGenderless())) {
+            if (filter.getIsGenderless() != null && filter.getIsGenderless()) {
                 predicates = cb.and(predicates, cb.equal(species.get(SPECIES_GENDER_RATE), GENDERLESS_RATE));
-            } else if (Boolean.FALSE.equals(filter.getIsGenderless())) {
+            } else if (filter.getIsGenderless() != null && !filter.getIsGenderless()) {
                 predicates = cb.and(predicates, cb.notEqual(species.get(SPECIES_GENDER_RATE), GENDERLESS_RATE));
             }
+
             if (filter.getMinGenderRate() != null) {
                 predicates = cb.and(predicates, cb.greaterThanOrEqualTo(species.get(SPECIES_GENDER_RATE), filter.getMinGenderRate()));
             }
@@ -211,9 +212,6 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
                 predicates = cb.and(predicates, cb.lessThanOrEqualTo(species.get(SPECIES_GENDER_RATE), filter.getMaxGenderRate()));
             }
 
-            if (filter.getGrowthRate() != null && !filter.getGrowthRate().isBlank()) {
-                predicates = cb.and(predicates, cb.equal(species.get(SPECIES_GROWTH_RATE), filter.getGrowthRate()));
-            }
             if (filter.getMinBaseHappiness() != null) {
                 predicates = cb.and(predicates, cb.greaterThanOrEqualTo(species.get(SPECIES_BASE_HAPPINESS), filter.getMinBaseHappiness()));
             }
@@ -221,19 +219,22 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
                 predicates = cb.and(predicates, cb.lessThanOrEqualTo(species.get(SPECIES_BASE_HAPPINESS), filter.getMaxBaseHappiness()));
             }
 
-            List<String> eggGroups = filter.getEggGroups();
-
-            if (eggGroups != null && !eggGroups.isEmpty()) {
-                predicates = cb.and(predicates, cb.or(
-                        species.get(SPECIES_EGG_GROUP_1).in(eggGroups),
-                        species.get(SPECIES_EGG_GROUP_2).in(eggGroups)
-                ));
+            if (filter.getGrowthRate() != null && !filter.getGrowthRate().isBlank()) {
+                predicates = cb.and(predicates, cb.equal(species.get(SPECIES_GROWTH_RATE), filter.getGrowthRate()));
             }
 
             if (filter.getHasPreviousEvolution() != null && filter.getHasPreviousEvolution()) {
                 predicates = cb.and(predicates, cb.isNotNull(species.get(SPECIES_PREVIOUS_EVOLUTION)));
             } else if (filter.getHasPreviousEvolution() != null && !filter.getHasPreviousEvolution()) {
                 predicates = cb.and(predicates, cb.isNull(species.get(SPECIES_PREVIOUS_EVOLUTION)));
+            }
+
+            List<String> eggGroups = filter.getEggGroups();
+            if (eggGroups != null && !eggGroups.isEmpty()) {
+                predicates = cb.and(predicates, cb.or(
+                        species.get(SPECIES_EGG_GROUP_1).in(eggGroups),
+                        species.get(SPECIES_EGG_GROUP_2).in(eggGroups)
+                ));
             }
 
             if (filter.getEvolutionTrigger() != null && !filter.getEvolutionTrigger().isBlank()) {
