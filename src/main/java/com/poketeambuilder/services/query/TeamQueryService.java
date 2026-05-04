@@ -58,7 +58,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
 
     @Override
     protected String getCacheName() {
-        return "teams";
+        return null;
     }
 
     @Override

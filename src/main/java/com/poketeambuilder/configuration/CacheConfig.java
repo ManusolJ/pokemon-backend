@@ -23,7 +23,6 @@ public class CacheConfig {
             buildCache("types", 20, 24, TimeUnit.HOURS),
             buildCache("items", 500, 12, TimeUnit.HOURS),
             buildCache("natures", 30, 24, TimeUnit.HOURS),
-            buildCache("teams", 0, 0, null),
             buildCache("moves", 1_000, 12, TimeUnit.HOURS),
             buildCache("pokemon", 1_500, 6, TimeUnit.HOURS),
             buildCache("species", 1_200, 6, TimeUnit.HOURS),
