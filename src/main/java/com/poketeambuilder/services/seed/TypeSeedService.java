@@ -62,14 +62,14 @@ public class TypeSeedService {
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT);
 
-        List<TypeApiDto> typeDtos = new ArrayList<>();
+        List<TypeApiDto> apiDtos = new ArrayList<>();
 
         for (PokeApiResource resource : resources) {
             try {
                 TypeApiDto dto = pokeApiClient.fetchResource(resource.url(), TypeApiDto.class);
 
                 if (dto.id() <= MAX_CANON_TYPE_ID) {
-                    typeDtos.add(dto);
+                    apiDtos.add(dto);
                 }
             } catch (Exception e) {
                 errors++;
@@ -77,32 +77,29 @@ public class TypeSeedService {
             }
         }
 
-        List<Type> types = typeDtos.stream()
+        List<Type> entities = apiDtos.stream()
             .map(typeMapper::toEntity)
             .toList();
 
-        typeEffectivenessRepository.deleteAll();
-        typeRepository.deleteAll();
+        typeRepository.saveAllAndFlush(entities);
 
-        typeRepository.saveAll(types);
+        log.info("Seeded {} types ({} fetch errors)", entities.size(), errors);
 
-        log.info("Seeded {} types ({} fetch errors)", types.size(), errors);
-
-        int effectivenessCount = seedTypeEffectiveness(typeDtos);
+        int effectivenessCount = seedTypeEffectiveness(apiDtos);
 
         log.info("Seeded {} type effectiveness entries", effectivenessCount);
 
-        return SeedResult.of(types.size() + effectivenessCount, errors);
+        return SeedResult.of(entities.size() + effectivenessCount, errors);
     }
 
-    private int seedTypeEffectiveness(List<TypeApiDto> typeDtos) {
-        Set<Integer> allTypeIds = typeDtos.stream()
+    private int seedTypeEffectiveness(List<TypeApiDto> apiDtos) {
+        Set<Integer> allTypeIds = apiDtos.stream()
             .map(TypeApiDto::id)
             .collect(Collectors.toSet());
 
         List<TypeEffectiveness> entries = new ArrayList<>();
 
-        for (TypeApiDto dto : typeDtos) {
+        for (TypeApiDto dto : apiDtos) {
             Type attacker = typeRepository.getReferenceById(dto.id());
 
             Map<Integer, BigDecimal> multipliers = buildMultiplierMap(dto, allTypeIds);

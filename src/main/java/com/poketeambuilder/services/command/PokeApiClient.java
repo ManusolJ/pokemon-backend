@@ -23,7 +23,7 @@ public class PokeApiClient {
     private final RestClient restClient;
 
     private static final int DEFAULT_OFFSET = 0;
-    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int DEFAULT_PAGE_SIZE = 100;
 
     public PokeApiClient(@Qualifier("pokeApiRestClient") RestClient restClient) {
         this.restClient = restClient;

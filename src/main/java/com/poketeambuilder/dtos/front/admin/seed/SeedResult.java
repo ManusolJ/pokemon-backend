@@ -8,8 +8,8 @@ public record SeedResult(int entriesAdded, int errors) {
 
     public SeedResult add(SeedResult other) {
         return new SeedResult(
-            this.errors + other.errors,
-            this.entriesAdded + other.entriesAdded
+            this.entriesAdded + other.entriesAdded,
+            this.errors + other.errors
         );
     }
 }
