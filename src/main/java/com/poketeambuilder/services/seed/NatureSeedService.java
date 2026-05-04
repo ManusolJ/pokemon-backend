@@ -67,4 +67,9 @@ public class NatureSeedService {
 
         return SeedResult.of(entities.size(), errors);
     }
+
+    @Transactional
+    public void clearSeedData() {
+        natureRepository.deleteAllInBatch();
+    }
 }

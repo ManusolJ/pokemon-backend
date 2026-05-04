@@ -66,4 +66,9 @@ public class AbilitySeedService {
 
         return SeedResult.of(entities.size(), errors);
     }
+
+    @Transactional
+    public void clearSeedData() {
+        abilityRepository.deleteAllInBatch();
+    }
 }

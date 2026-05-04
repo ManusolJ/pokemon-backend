@@ -82,4 +82,9 @@ public class MoveSeedService {
 
         return new SeedResult(entities.size(), errors);
     }
+
+    @Transactional
+    public void clearSeedData() {
+        moveRepository.deleteAllInBatch();
+    }
 }

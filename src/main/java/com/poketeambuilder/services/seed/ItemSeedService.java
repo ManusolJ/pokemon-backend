@@ -66,4 +66,9 @@ public class ItemSeedService {
 
         return SeedResult.of(entities.size(), errors);
     }
+
+    @Transactional
+    public void clearSeedData() {
+        itemRepository.deleteAllInBatch();
+    }
 }

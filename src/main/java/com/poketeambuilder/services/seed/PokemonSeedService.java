@@ -120,6 +120,11 @@ public class PokemonSeedService {
         return new SeedResult(entities.size() + abilitiesSeeded + movesSeeded, errors);
     }
 
+    public void clearSeedData() {
+        pokemonMoveRepository.deleteAllInBatch();
+        pokemonAbilityRepository.deleteAllInBatch();
+        pokemonRepository.deleteAllInBatch();
+    }
 
     private void setSpecies(Pokemon pokemon, PokemonApiDto dto) {
         Integer speciesId = dto.species().extractId();

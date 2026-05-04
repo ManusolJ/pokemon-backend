@@ -92,6 +92,12 @@ public class TypeSeedService {
         return SeedResult.of(entities.size() + effectivenessCount, errors);
     }
 
+    @Transactional
+    public void clearSeedData() {
+        typeEffectivenessRepository.deleteAllInBatch();
+        typeRepository.deleteAllInBatch();
+    }
+
     private int seedTypeEffectiveness(List<TypeApiDto> apiDtos) {
         Set<Integer> allTypeIds = apiDtos.stream()
             .map(TypeApiDto::id)

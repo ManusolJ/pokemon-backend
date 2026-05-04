@@ -85,6 +85,12 @@ public class SpeciesSeedService {
         return new SeedResult(entities.size(), errors);
     }
 
+    @Transactional
+    public void clearSeedData() {
+        speciesRepository.clearPreviousEvolutions();
+        speciesRepository.deleteAllInBatch();
+    }
+
     private Map<Integer, Integer> buildEvolutionLinks(List<PokemonSpeciesApiDto> speciesDtos) {
         Map<Integer, Integer> links = new HashMap<>();
 
@@ -111,7 +117,6 @@ public class SpeciesSeedService {
 
         speciesRepository.flush();
     }
-
 
     private int seedEvolutionDetails(List<PokemonSpeciesApiDto> speciesDtos) {
         Set<String> chainUrls = collectUniqueChainUrls(speciesDtos);
