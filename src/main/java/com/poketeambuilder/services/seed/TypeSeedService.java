@@ -3,6 +3,8 @@ package com.poketeambuilder.services.seed;
 import com.poketeambuilder.entities.Type;
 import com.poketeambuilder.entities.TypeEffectiveness;
 
+import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+
 import com.poketeambuilder.dtos.pokeapi.type.TypeApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 
@@ -18,10 +20,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 import java.math.BigDecimal;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,36 +57,48 @@ public class TypeSeedService {
     private static final BigDecimal MULTIPLIER_DOUBLE = new BigDecimal("2.00");
 
     @Transactional
-    public int seed() {
+    public SeedResult seed() {
+        int errors = 0;
+
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT);
 
-        List<TypeApiDto> typeDtos = resources.stream()
-            .map(resource -> pokeApiClient.fetchResource(resource.url(), TypeApiDto.class))
-            .filter(dto -> dto.id() <= MAX_CANON_TYPE_ID)
-            .toList();
+        List<TypeApiDto> typeDtos = new ArrayList<>();
+
+        for (PokeApiResource resource : resources) {
+            try {
+                TypeApiDto dto = pokeApiClient.fetchResource(resource.url(), TypeApiDto.class);
+
+                if (dto.id() <= MAX_CANON_TYPE_ID) {
+                    typeDtos.add(dto);
+                }
+            } catch (Exception e) {
+                errors++;
+                log.error("Failed to fetch type resource: {}", resource.url(), e);
+            }
+        }
 
         List<Type> types = typeDtos.stream()
             .map(typeMapper::toEntity)
             .toList();
 
-        typeRepository.deleteAll();
         typeEffectivenessRepository.deleteAll();
+        typeRepository.deleteAll();
 
         typeRepository.saveAll(types);
 
-        log.info("Seeded {} types", types.size());
+        log.info("Seeded {} types ({} fetch errors)", types.size(), errors);
 
         int effectivenessCount = seedTypeEffectiveness(typeDtos);
 
         log.info("Seeded {} type effectiveness entries", effectivenessCount);
 
-        return types.size() + effectivenessCount;
+        return SeedResult.of(types.size() + effectivenessCount, errors);
     }
 
     private int seedTypeEffectiveness(List<TypeApiDto> typeDtos) {
         Set<Integer> allTypeIds = typeDtos.stream()
             .map(TypeApiDto::id)
-            .collect(HashSet::new, HashSet::add, HashSet::addAll);
+            .collect(Collectors.toSet());
 
         List<TypeEffectiveness> entries = new ArrayList<>();
 
