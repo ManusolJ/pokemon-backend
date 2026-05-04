@@ -17,10 +17,10 @@ import com.poketeambuilder.services.auth.AuthService;
 
 import jakarta.validation.Valid;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @RestController
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
 
