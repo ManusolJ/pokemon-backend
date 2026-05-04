@@ -1,34 +1,46 @@
 package com.poketeambuilder.services.query;
 
+import com.poketeambuilder.entities.AppUser;
+
+import com.poketeambuilder.dtos.front.user.UserReadDto;
+import com.poketeambuilder.dtos.front.user.UserFilterDto;
+import com.poketeambuilder.dtos.front.user.UserSummaryDto;
+
+import com.poketeambuilder.mappers.common.ReadMapper;
+import com.poketeambuilder.mappers.implementation.UserMapper;
+
+import com.poketeambuilder.repositories.BaseRepository;
+import com.poketeambuilder.repositories.AppUserRepository;
+
+import com.poketeambuilder.utils.enums.UserRole;
+import com.poketeambuilder.utils.enums.SearchOperation;
+import com.poketeambuilder.utils.specification.SpecificationBuilder;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
 
-import com.poketeambuilder.entities.AppUser;
-import com.poketeambuilder.dtos.front.user.UserFilterDto;
-import com.poketeambuilder.dtos.front.user.UserReadDto;
-import com.poketeambuilder.dtos.front.user.UserSummaryDto;
-import com.poketeambuilder.mappers.common.ReadMapper;
-import com.poketeambuilder.mappers.implementation.UserMapper;
-import com.poketeambuilder.repositories.AppUserRepository;
-import com.poketeambuilder.repositories.BaseRepository;
-import com.poketeambuilder.utils.enums.SearchOperation;
-import com.poketeambuilder.utils.enums.UserRole;
-import com.poketeambuilder.utils.specification.SpecificationBuilder;
+import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 
 @Service
 @Validated
-@RequiredArgsConstructor
 public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFilterDto, UserReadDto> {
 
     private final UserMapper userMapper;
     private final AppUserRepository userRepository;
+
+    public UserQueryService(CacheManager cacheManager, UserMapper userMapper, AppUserRepository userRepository) {
+        super(cacheManager);
+        this.userMapper = userMapper;
+        this.userRepository = userRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_ROLE = "role";
@@ -39,6 +51,11 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     @Override
     protected String getEntityName() {
         return "User";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return null;
     }
 
     @Override

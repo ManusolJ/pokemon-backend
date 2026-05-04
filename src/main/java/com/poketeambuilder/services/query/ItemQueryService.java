@@ -1,18 +1,10 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.stereotype.Service;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.validation.annotation.Validated;
+import com.poketeambuilder.entities.Item;
 
 import com.poketeambuilder.dtos.front.item.ItemReadDto;
 import com.poketeambuilder.dtos.front.item.ItemFilterDto;
 import com.poketeambuilder.dtos.front.item.ItemSummaryDto;
-
-import com.poketeambuilder.entities.Item;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.ItemMapper;
@@ -23,18 +15,31 @@ import com.poketeambuilder.repositories.ItemRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
 @Validated
-@RequiredArgsConstructor
 public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFilterDto, ItemReadDto> {
 
     private ItemMapper itemMapper;
     private ItemRepository itemRepository;
+
+    public ItemQueryService(CacheManager cacheManager, ItemMapper itemMapper, ItemRepository itemRepository) {
+        super(cacheManager);
+        this.itemMapper = itemMapper;
+        this.itemRepository = itemRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -42,6 +47,11 @@ public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFi
     @Override
     protected String getEntityName() {
         return "Item";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "items";
     }
 
     @Override

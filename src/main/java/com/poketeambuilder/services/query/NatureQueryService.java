@@ -1,15 +1,9 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.stereotype.Service;
-
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.validation.annotation.Validated;
+import com.poketeambuilder.entities.Nature;
 
 import com.poketeambuilder.dtos.front.nature.NatureReadDto;
 import com.poketeambuilder.dtos.front.nature.NatureFilterDto;
-
-import com.poketeambuilder.entities.Nature;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.NatureMapper;
@@ -20,15 +14,28 @@ import com.poketeambuilder.repositories.NatureRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
+import jakarta.validation.constraints.NotNull;
 
 @Service
 @Validated
-@RequiredArgsConstructor
 public class NatureQueryService extends AbstractQueryService<Nature, Integer, NatureFilterDto, NatureReadDto> {
 
     private final NatureMapper natureMapper;
     private final NatureRepository natureRepository;
+
+    public NatureQueryService(CacheManager cacheManager, NatureMapper natureMapper, NatureRepository natureRepository) {
+        super(cacheManager);
+        this.natureMapper = natureMapper;
+        this.natureRepository = natureRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -36,6 +43,11 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
     @Override
     protected String getEntityName() {
         return "Nature";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "natures";
     }
 
     @Override
@@ -49,7 +61,7 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
     }
 
     @Override
-    protected Specification<Nature> buildSpecification(NatureFilterDto filter) {
+    protected Specification<Nature> buildSpecification(@NotNull NatureFilterDto filter) {
         SpecificationBuilder<Nature> builder = new SpecificationBuilder<>();
 
         if (!filter.hasAnyCriteria()) {

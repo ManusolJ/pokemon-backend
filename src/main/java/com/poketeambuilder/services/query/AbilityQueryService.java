@@ -1,18 +1,10 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.stereotype.Service;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.validation.annotation.Validated;
+import com.poketeambuilder.entities.Ability;
 
 import com.poketeambuilder.dtos.front.ability.AbilityReadDto;
 import com.poketeambuilder.dtos.front.ability.AbilityFilterDto;
 import com.poketeambuilder.dtos.front.ability.AbilitySummaryDto;
-
-import com.poketeambuilder.entities.Ability;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.AbilityMapper;
@@ -23,18 +15,31 @@ import com.poketeambuilder.repositories.AbilityRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
 @Validated
-@RequiredArgsConstructor
 public class AbilityQueryService extends AbstractQueryService<Ability, Integer, AbilityFilterDto, AbilityReadDto> {
 
     private AbilityMapper abilityMapper;
     private AbilityRepository abilityRepository;
+
+    public AbilityQueryService(CacheManager cacheManager, AbilityMapper abilityMapper, AbilityRepository abilityRepository) {
+        super(cacheManager);
+        this.abilityMapper = abilityMapper;
+        this.abilityRepository = abilityRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -42,6 +47,11 @@ public class AbilityQueryService extends AbstractQueryService<Ability, Integer, 
     @Override
     protected String getEntityName() {
         return "Ability";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "abilities";
     }
 
     @Override

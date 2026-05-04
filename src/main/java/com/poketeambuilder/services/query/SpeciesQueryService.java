@@ -1,15 +1,5 @@
 package com.poketeambuilder.services.query;
 
-import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.stereotype.Service;
-
-import org.springframework.validation.annotation.Validated;
-
 import com.poketeambuilder.entities.PokemonSpecies;
 
 import com.poketeambuilder.dtos.front.pokemon.common.PokemonFilterDto;
@@ -25,6 +15,18 @@ import com.poketeambuilder.repositories.SpeciesRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import java.util.List;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -32,15 +34,18 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
 @Validated
-@RequiredArgsConstructor
 public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, Integer, PokemonFilterDto, PokemonSpeciesReadDto> {
 
     private final SpeciesMapper speciesMapper;
     private final SpeciesRepository speciesRepository;
+
+    public SpeciesQueryService(CacheManager cacheManager, SpeciesMapper speciesMapper, SpeciesRepository speciesRepository) {
+        super(cacheManager);
+        this.speciesMapper = speciesMapper;
+        this.speciesRepository = speciesRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -54,17 +59,22 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     private static final String FIELD_IS_LEGENDARY = "isLegendary";
     private static final String FIELD_EGG_GROUP_1 = "eggGroup1";
     private static final String FIELD_EGG_GROUP_2 = "eggGroup2";
-    private static final String FIELD_PREVIOUS_EVOLUTION = "previousEvolution";
-    private static final String FIELD_EVOLUTION_TRIGGER = "evolutionTrigger";
     private static final String FIELD_EVOLUTION_ITEM = "evolutionItem";
-    private static final String FIELD_EVOLUTION_TIME_OF_DAY = "evolutionTimeOfDay";
+    private static final String FIELD_EVOLUTION_TRIGGER = "evolutionTrigger";
+    private static final String FIELD_PREVIOUS_EVOLUTION = "previousEvolution";
     private static final String FIELD_EVOLUTION_MIN_LEVEL = "evolutionMinLevel";
+    private static final String FIELD_EVOLUTION_TIME_OF_DAY = "evolutionTimeOfDay";
 
     private static final int GENDERLESS_RATE = -1;
 
     @Override
     protected String getEntityName() {
         return "Species";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "species";
     }
 
     @Override

@@ -1,13 +1,5 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.stereotype.Service;
-
-import org.springframework.validation.annotation.Validated;
-
 import com.poketeambuilder.entities.Move;
 
 import com.poketeambuilder.dtos.front.move.MoveReadDto;
@@ -24,20 +16,33 @@ import com.poketeambuilder.utils.enums.MoveCategory;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.CriteriaQuery;
 
 import jakarta.validation.constraints.NotNull;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
 @Validated
-@RequiredArgsConstructor
 public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFilterDto, MoveReadDto> {
 
     private final MoveMapper moveMapper;
     private final MoveRepository moveRepository;
+
+    public MoveQueryService(CacheManager cacheManager, MoveMapper moveMapper, MoveRepository moveRepository) {
+        super(cacheManager);
+        this.moveMapper = moveMapper;
+        this.moveRepository = moveRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -50,6 +55,11 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     @Override
     protected String getEntityName() {
         return "Move";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "moves";
     }
 
     @Override

@@ -1,29 +1,41 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
-
 import com.poketeambuilder.entities.AuditLog;
+
 import com.poketeambuilder.dtos.front.admin.audit.AuditLogFilterDto;
 import com.poketeambuilder.dtos.front.admin.audit.AuditLogReadDto;
+
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.AuditLogMapper;
+
 import com.poketeambuilder.repositories.AuditLogRepository;
 import com.poketeambuilder.repositories.BaseRepository;
+
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 
 @Service
 @Validated
-@RequiredArgsConstructor
 public class AuditLogQueryService extends AbstractQueryService<AuditLog, Long, AuditLogFilterDto, AuditLogReadDto> {
 
     private final AuditLogMapper auditLogMapper;
     private final AuditLogRepository auditLogRepository;
+
+    public AuditLogQueryService(CacheManager cacheManager, AuditLogMapper auditLogMapper, AuditLogRepository auditLogRepository) {
+        super(cacheManager);
+        this.auditLogMapper = auditLogMapper;
+        this.auditLogRepository = auditLogRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_ACTION = "action";
@@ -35,6 +47,11 @@ public class AuditLogQueryService extends AbstractQueryService<AuditLog, Long, A
     @Override
     protected String getEntityName() {
         return "AuditLog";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return null;
     }
 
     @Override

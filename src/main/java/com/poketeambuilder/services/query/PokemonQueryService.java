@@ -1,15 +1,5 @@
 package com.poketeambuilder.services.query;
 
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import org.springframework.validation.annotation.Validated;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-
 import com.poketeambuilder.entities.Pokemon;
 import com.poketeambuilder.entities.PokemonSpecies;
 
@@ -26,6 +16,18 @@ import com.poketeambuilder.repositories.PokemonRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.JoinType;
@@ -34,16 +36,18 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
 @Validated
-@RequiredArgsConstructor
 public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, PokemonFilterDto, PokemonReadDto> {
 
     private final PokemonMapper pokemonMapper;
-
     private final PokemonRepository pokemonRepository;
+
+    public PokemonQueryService(CacheManager cacheManager, PokemonMapper pokemonMapper, PokemonRepository pokemonRepository) {
+        super(cacheManager);
+        this.pokemonMapper = pokemonMapper;
+        this.pokemonRepository = pokemonRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -81,6 +85,11 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
     @Override
     protected String getEntityName() {
         return "Pokemon";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "pokemon";
     }
 
     @Override

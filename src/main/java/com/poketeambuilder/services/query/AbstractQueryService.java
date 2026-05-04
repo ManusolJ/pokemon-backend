@@ -1,6 +1,16 @@
 package com.poketeambuilder.services.query;
 
+import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
+
+import com.poketeambuilder.interfaces.QueryInterface;
+import com.poketeambuilder.interfaces.FilterDtoInterface;
+
+import com.poketeambuilder.repositories.BaseRepository;
+
+import com.poketeambuilder.mappers.common.ReadMapper;
+
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,14 +18,8 @@ import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.transaction.annotation.Transactional;
 
-import com.poketeambuilder.interfaces.QueryInterface;
-import com.poketeambuilder.interfaces.FilterDtoInterface;
-
-import com.poketeambuilder.mappers.common.ReadMapper;
-
-import com.poketeambuilder.repositories.BaseRepository;
-
-import com.poketeambuilder.utils.exceptions.ResourceNotFoundException;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -23,8 +27,15 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, R> implements QueryInterface<R, ID, F> {
+
+    private final CacheManager cacheManager;
+
+    protected abstract String getCacheName();
 
     protected abstract String getEntityName();
 
@@ -36,11 +47,12 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
 
     @Override
     public R findById(@NotNull ID id) {
-        return getRepository()
+        return cached(getCacheName(), id, () -> 
+            getRepository()
                 .findById(id)
                 .map(getMapper()::toReadDto)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("%s with id '%s' not found", getEntityName(), id)));
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("%s with id '%s' not found", getEntityName(), id)))
+        );
     }
 
     @Override
@@ -64,7 +76,6 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
                 .map(mapper::apply);
     }
 
-
     @Override
     public long countFilteredEntities(@Valid @NotNull F filter) {
         return getRepository().count(buildSpecification(filter));
@@ -80,12 +91,28 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
 
     private Specification<E> withFetches(Specification<E> base) {
         Specification<E> fetchSpec = (root, query, cb) -> {
-            if (query != null && !Long.class.equals(query.getResultType())) {
+            if (query != null && query.getResultType() != Long.class) {
                 applyFetches(root, query);
             }
             return cb.conjunction();
         };
 
         return base == null ? fetchSpec : base.and(fetchSpec);
+    }
+
+    protected <T> T cached(String cacheName, Object key, Supplier<T> loader){
+        if (cacheName == null || cacheName.isBlank()) {
+            return loader.get();
+        }
+
+        Cache cache = cacheManager.getCache(cacheName);
+
+        if (cache == null) {
+            return loader.get();
+        }
+
+        T value = (T) cache.get(key, loader::get);
+
+        return value;
     }
 }

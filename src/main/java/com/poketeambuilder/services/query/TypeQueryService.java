@@ -1,11 +1,5 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.stereotype.Service;
-
-import org.springframework.data.jpa.domain.Specification;
-
-import org.springframework.validation.annotation.Validated;
-
 import com.poketeambuilder.entities.Type;
 
 import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
@@ -20,17 +14,28 @@ import com.poketeambuilder.repositories.TypeRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import jakarta.validation.constraints.NotNull;
+import org.springframework.stereotype.Service;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
+import jakarta.validation.constraints.NotNull;
 
 @Service
 @Validated
-@RequiredArgsConstructor
 public class TypeQueryService extends AbstractQueryService<Type, Integer, TypeFilterDto, TypeReadDto> {
 
     private final TypeMapper typeMapper;
     private final TypeRepository typeRepository;
+
+    public TypeQueryService(CacheManager cacheManager, TypeMapper typeMapper, TypeRepository typeRepository) {
+        super(cacheManager);
+        this.typeMapper = typeMapper;
+        this.typeRepository = typeRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -38,6 +43,11 @@ public class TypeQueryService extends AbstractQueryService<Type, Integer, TypeFi
     @Override
     protected String getEntityName() {
         return "Type";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "types";
     }
 
     @Override

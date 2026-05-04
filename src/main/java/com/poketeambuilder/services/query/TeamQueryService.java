@@ -1,36 +1,49 @@
 package com.poketeambuilder.services.query;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
-
 import com.poketeambuilder.entities.Team;
-import com.poketeambuilder.dtos.front.team.team.TeamFilterDto;
+
 import com.poketeambuilder.dtos.front.team.team.TeamReadDto;
+import com.poketeambuilder.dtos.front.team.team.TeamFilterDto;
 import com.poketeambuilder.dtos.front.team.team.TeamSummaryDto;
+
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.TeamMapper;
+
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.TeamRepository;
+
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import jakarta.persistence.criteria.CriteriaQuery;
+import org.springframework.stereotype.Service;
+
+import org.springframework.cache.CacheManager;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import org.springframework.validation.annotation.Validated;
+
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaQuery;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 
 // TODO: Implement slug-based retrieval
 @Service
 @Validated
-@RequiredArgsConstructor
 public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilterDto, TeamReadDto> {
 
     private final TeamMapper teamMapper;
     private final TeamRepository teamRepository;
+
+    public TeamQueryService(CacheManager cacheManager, TeamMapper teamMapper, TeamRepository teamRepository) {
+        super(cacheManager);
+        this.teamMapper = teamMapper;
+        this.teamRepository = teamRepository;
+    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -41,6 +54,11 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     @Override
     protected String getEntityName() {
         return "Team";
+    }
+
+    @Override
+    protected String getCacheName() {
+        return "teams";
     }
 
     @Override
