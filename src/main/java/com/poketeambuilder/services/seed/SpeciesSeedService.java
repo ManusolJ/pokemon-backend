@@ -2,7 +2,7 @@ package com.poketeambuilder.services.seed;
 
 import com.poketeambuilder.entities.PokemonSpecies;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 import com.poketeambuilder.dtos.pokeapi.evolution.ChainLinkApiDto;
@@ -47,7 +47,7 @@ public class SpeciesSeedService {
     private static final String SPECIES_ENDPOINT = "/pokemon-species";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(SPECIES_ENDPOINT);
@@ -82,7 +82,7 @@ public class SpeciesSeedService {
 
         log.info("Applied evolution details to {} species", detailsApplied);
 
-        return new SeedResult(entities.size(), errors);
+        return new SeedResultDto(entities.size(), errors);
     }
 
     @Transactional

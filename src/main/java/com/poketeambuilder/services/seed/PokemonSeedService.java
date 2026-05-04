@@ -10,7 +10,7 @@ import com.poketeambuilder.entities.PokemonSpecies;
 
 import com.poketeambuilder.entities.compositeIDs.PokemonMoveId;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 import com.poketeambuilder.dtos.pokeapi.pokemon.PokemonApiDto;
@@ -69,7 +69,7 @@ public class PokemonSeedService {
     private static final String POKEMON_ENDPOINT = "/pokemon";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(POKEMON_ENDPOINT);
@@ -117,7 +117,7 @@ public class PokemonSeedService {
 
         log.info("Seeded {} pokemon-move entries", movesSeeded);
 
-        return new SeedResult(entities.size() + abilitiesSeeded + movesSeeded, errors);
+        return new SeedResultDto(entities.size() + abilitiesSeeded + movesSeeded, errors);
     }
 
     public void clearSeedData() {

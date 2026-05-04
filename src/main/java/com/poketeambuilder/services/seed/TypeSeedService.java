@@ -3,7 +3,7 @@ package com.poketeambuilder.services.seed;
 import com.poketeambuilder.entities.Type;
 import com.poketeambuilder.entities.TypeEffectiveness;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.type.TypeApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
@@ -57,7 +57,7 @@ public class TypeSeedService {
     private static final BigDecimal MULTIPLIER_DOUBLE = new BigDecimal("2.00");
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT);
@@ -89,7 +89,7 @@ public class TypeSeedService {
 
         log.info("Seeded {} type effectiveness entries", effectivenessCount);
 
-        return SeedResult.of(entities.size() + effectivenessCount, errors);
+        return SeedResultDto.of(entities.size() + effectivenessCount, errors);
     }
 
     @Transactional

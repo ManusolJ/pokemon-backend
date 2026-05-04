@@ -2,7 +2,7 @@ package com.poketeambuilder.services.seed;
 
 import com.poketeambuilder.entities.Item;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.item.ItemApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
@@ -38,7 +38,7 @@ public class ItemSeedService {
     private static final String ITEM_ENDPOINT = "/item";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(ITEM_ENDPOINT);
@@ -64,7 +64,7 @@ public class ItemSeedService {
 
         log.info("Seeded {} items ({} fetch errors)", entities.size(), errors);
 
-        return SeedResult.of(entities.size(), errors);
+        return SeedResultDto.of(entities.size(), errors);
     }
 
     @Transactional

@@ -3,7 +3,7 @@ package com.poketeambuilder.services.seed;
 import com.poketeambuilder.entities.Move;
 import com.poketeambuilder.entities.Type;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 import com.poketeambuilder.dtos.pokeapi.move.MoveApiDto;
@@ -42,7 +42,7 @@ public class MoveSeedService {
     private final static String MOVE_ENDPOINT = "/move";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(MOVE_ENDPOINT);
@@ -80,7 +80,7 @@ public class MoveSeedService {
 
         log.info("Seeded {} moves ({} fetch errors)", entities.size(), errors);
 
-        return new SeedResult(entities.size(), errors);
+        return new SeedResultDto(entities.size(), errors);
     }
 
     @Transactional

@@ -1,18 +1,20 @@
 package com.poketeambuilder.services.command;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
-import com.poketeambuilder.services.seed.AbilitySeedService;
+import com.poketeambuilder.services.seed.TypeSeedService;
 import com.poketeambuilder.services.seed.ItemSeedService;
 import com.poketeambuilder.services.seed.MoveSeedService;
 import com.poketeambuilder.services.seed.NatureSeedService;
+import com.poketeambuilder.services.seed.AbilitySeedService;
 import com.poketeambuilder.services.seed.PokemonSeedService;
 import com.poketeambuilder.services.seed.SpeciesSeedService;
-import com.poketeambuilder.services.seed.TypeSeedService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,10 +33,10 @@ public class SeedOrchestratorCommandService {
     private final PokemonSeedService pokemonSeedService;
 
     @Transactional
-    public SeedResult seed() {
-    clearSeedData();
+    public SeedResultDto seed() {
+        clearSeedData();
 
-        SeedResult result = typeSeedService.seed()
+        SeedResultDto result = typeSeedService.seed()
             .add(natureSeedService.seed())
             .add(abilitySeedService.seed())
             .add(itemSeedService.seed())
@@ -47,7 +49,6 @@ public class SeedOrchestratorCommandService {
         return result;
     }
 
-    @Transactional
     private void clearSeedData() {
         pokemonSeedService.clearSeedData();
         speciesSeedService.clearSeedData();

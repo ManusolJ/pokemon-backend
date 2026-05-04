@@ -2,7 +2,7 @@ package com.poketeambuilder.services.seed;
 
 import com.poketeambuilder.entities.Nature;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.nature.NatureApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
@@ -39,7 +39,7 @@ public class NatureSeedService {
     private static final String NATURE_ENDPOINT = "/nature";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(NATURE_ENDPOINT);
@@ -65,7 +65,7 @@ public class NatureSeedService {
 
         log.info("Seeded {} natures ({} fetch errors)", entities.size(), errors);
 
-        return SeedResult.of(entities.size(), errors);
+        return SeedResultDto.of(entities.size(), errors);
     }
 
     @Transactional

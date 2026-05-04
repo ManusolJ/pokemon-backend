@@ -2,7 +2,7 @@ package com.poketeambuilder.services.seed;
 
 import com.poketeambuilder.entities.Ability;
 
-import com.poketeambuilder.dtos.front.admin.seed.SeedResult;
+import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.ability.AbilityApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
@@ -38,7 +38,7 @@ public class AbilitySeedService {
     private static final String ABILITY_ENDPOINT = "/ability";
 
     @Transactional
-    public SeedResult seed() {
+    public SeedResultDto seed() {
         int errors = 0;
 
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(ABILITY_ENDPOINT);
@@ -64,7 +64,7 @@ public class AbilitySeedService {
 
         log.info("Seeded {} abilities ({} fetch errors)", entities.size(), errors);
 
-        return SeedResult.of(entities.size(), errors);
+        return SeedResultDto.of(entities.size(), errors);
     }
 
     @Transactional
