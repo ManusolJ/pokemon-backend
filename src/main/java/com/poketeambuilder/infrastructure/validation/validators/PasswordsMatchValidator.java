@@ -1,7 +1,7 @@
-package com.poketeambuilder.utils.validation.validators;
+package com.poketeambuilder.infrastructure.validation.validators;
 
 import com.poketeambuilder.dtos.auth.RegisterDto;
-import com.poketeambuilder.utils.validation.annotations.PasswordMatch;
+import com.poketeambuilder.infrastructure.validation.annotations.PasswordMatch;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

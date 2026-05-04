@@ -1,4 +1,4 @@
-package com.poketeambuilder.security;
+package com.poketeambuilder.services.auth;
 
 import java.util.Map;
 import java.util.Date;
@@ -8,9 +8,9 @@ import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Service;
 
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.beans.factory.annotation.Value;
 
-import com.poketeambuilder.configuration.JwtProperties;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Claims;
@@ -22,21 +22,19 @@ public class JwtService {
 
     private final SecretKey signingKey;
 
-    private final JwtProperties jwtProperties;
-
-    public JwtService(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
-        this.signingKey = Keys.hmacShaKeyFor(
-            Decoders.BASE64.decode(jwtProperties.secret())
-        );
+    private static final long ACCESS_TOKEN_EXPIRATION_MS = 15 * 60 * 1000;
+    private static final long REFRESH_TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
+    
+    public JwtService(@Value("${app.jwt.secret}") String secret) {
+        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
     public String generateAccessToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, jwtProperties.accessTokenExpirationMs());
+        return buildToken(Map.of(), userDetails, ACCESS_TOKEN_EXPIRATION_MS);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, jwtProperties.refreshTokenExpirationMs());
+        return buildToken(Map.of(), userDetails, REFRESH_TOKEN_EXPIRATION_MS);
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationMs) {

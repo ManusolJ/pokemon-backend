@@ -1,8 +1,8 @@
 package com.poketeambuilder.dtos.front.team.pokemon;
 
-import com.poketeambuilder.utils.validation.annotations.ValidEvSpread;
-
 import java.util.List;
+
+import com.poketeambuilder.infrastructure.validation.annotations.ValidEvSpread;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

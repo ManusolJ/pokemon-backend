@@ -1,7 +1,7 @@
-package com.poketeambuilder.utils.validation.validators;
+package com.poketeambuilder.infrastructure.validation.validators;
 
 import com.poketeambuilder.dtos.front.team.pokemon.TeamPokemonCreateDto;
-import com.poketeambuilder.utils.validation.annotations.ValidEvSpread;
+import com.poketeambuilder.infrastructure.validation.annotations.ValidEvSpread;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

@@ -1,8 +1,8 @@
 package com.poketeambuilder.dtos.auth;
 
-import com.poketeambuilder.utils.validation.annotations.PasswordMatch;
-
 import jakarta.validation.constraints.Size;
+
+import com.poketeambuilder.infrastructure.validation.annotations.PasswordMatch;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

@@ -1,18 +1,7 @@
 package com.poketeambuilder.services.auth;
 
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.poketeambuilder.configuration.JwtProperties;
-
-import com.poketeambuilder.security.JwtService;
-import com.poketeambuilder.security.CustomUserDetailsService;
-
+import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
+import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
 import com.poketeambuilder.dtos.auth.LoginDto;
 import com.poketeambuilder.dtos.auth.RegisterDto;
@@ -25,23 +14,29 @@ import com.poketeambuilder.repositories.AppUserRepository;
 
 import com.poketeambuilder.mappers.implementation.UserMapper;
 
-import com.poketeambuilder.utils.enums.UserRole;
-import com.poketeambuilder.utils.exceptions.InvalidTokenException;
-import com.poketeambuilder.utils.exceptions.ResourceAlreadyExistsException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
-import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AuthService {
 
     private final JwtService jwtService;
     private final UserMapper userMapper;
-    private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
     private final AppUserRepository appUserRepository;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService customUserDetailsService;
+
+    private static final int ACCESS_TOKEN_EXPIRATION_MS = 15 * 60 * 1000;
 
     @Transactional
     public TokenResponseDto register(RegisterDto registerDto) {
@@ -55,8 +50,6 @@ public class AuthService {
 
         AppUser newUser = userMapper.toEntity(registerDto);
 
-        newUser.setRole(UserRole.USER);
-        newUser.setEnabled(true);
         newUser.setPassword(passwordEncoder.encode(registerDto.getPassword()));
 
         appUserRepository.save(newUser);
@@ -69,9 +62,7 @@ public class AuthService {
     public TokenResponseDto login(LoginDto loginDto) {
         String username = resolveUsername(loginDto.getIdentifier());
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, loginDto.getPassword())
-        );
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, loginDto.getPassword()));
 
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
@@ -97,11 +88,7 @@ public class AuthService {
 
         String newAccessToken = jwtService.generateAccessToken(userDetails);
 
-        return new TokenResponseDto(
-                newAccessToken,
-                refreshToken,
-                jwtProperties.accessTokenExpirationMs()
-        );
+        return new TokenResponseDto(newAccessToken, refreshToken, ACCESS_TOKEN_EXPIRATION_MS);
     }
 
     private String resolveUsername(String identifier) {
@@ -118,7 +105,7 @@ public class AuthService {
         return new TokenResponseDto(
                 jwtService.generateAccessToken(userDetails),
                 jwtService.generateRefreshToken(userDetails),
-                jwtProperties.accessTokenExpirationMs()
+                ACCESS_TOKEN_EXPIRATION_MS
         );
     }
 }

@@ -1,11 +1,12 @@
-package com.poketeambuilder.utils.validation.annotations;
-
-import com.poketeambuilder.utils.validation.validators.PasswordsMatchValidator;
+package com.poketeambuilder.infrastructure.validation.annotations;
 
 import jakarta.validation.Payload;
 import jakarta.validation.Constraint;
 
 import java.lang.annotation.Target;
+
+import com.poketeambuilder.infrastructure.validation.validators.PasswordsMatchValidator;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;

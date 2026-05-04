@@ -1,4 +1,4 @@
-package com.poketeambuilder.utils.exceptions;
+package com.poketeambuilder.infrastructure.exceptions;
 
 public class ResourceAlreadyExistsException extends RuntimeException {
     
