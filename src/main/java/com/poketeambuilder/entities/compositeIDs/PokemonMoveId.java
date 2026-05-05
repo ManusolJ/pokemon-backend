@@ -30,7 +30,7 @@ public class PokemonMoveId implements Serializable {
     @Column(name = "pokemon_id", nullable = false)
     private Integer pokemonId;
 
-    @Size(max = 20)
-    @Column(name = "learn_method", nullable = false, length = 20)
+    @Size(max = 50)
+    @Column(name = "learn_method", nullable = false, length = 50)
     private String learnMethod;
 }
