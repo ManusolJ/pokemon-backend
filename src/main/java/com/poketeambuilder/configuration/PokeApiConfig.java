@@ -28,7 +28,7 @@ public class PokeApiConfig {
 
     private static final int READ_TIMEOUT_MS = 10000;
     private static final int CONNECTION_TIMEOUT_MS = 5000;
-    private static final int DEFAULT_REQUEST_DELAY_MS = 1000;
+    private static final int DEFAULT_REQUEST_DELAY_MS = 200;
     private static final String POKEAPI_BASE_URL = "https://pokeapi.co/api/v2";
 
     @Bean
