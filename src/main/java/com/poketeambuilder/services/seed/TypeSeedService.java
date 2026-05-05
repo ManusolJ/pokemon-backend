@@ -47,20 +47,26 @@ public class TypeSeedService {
 
     private final PokeApiClient pokeApiClient;
 
-    private static final int MAX_CANON_TYPE_ID = 18;
+    private static final int NON_CANNON_TYPE_ID_THRESHOLD = 18;
     
     private static final String TYPE_ENDPOINT = "/type";
 
     private static final BigDecimal MULTIPLIER_IMMUNE = BigDecimal.ZERO;
     private static final BigDecimal MULTIPLIER_HALF = new BigDecimal("0.50");
-    private static final BigDecimal MULTIPLIER_NEUTRAL = new BigDecimal("1.00");
     private static final BigDecimal MULTIPLIER_DOUBLE = new BigDecimal("2.00");
+    private static final BigDecimal MULTIPLIER_NEUTRAL = new BigDecimal("1.00");
 
     @Transactional
     public SeedResultDto seed() {
         int errors = 0;
 
-        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT);
+        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT)
+            .stream()
+            .filter(resource -> {
+                Integer id = resource.extractId();
+                return id != null && id <= NON_CANNON_TYPE_ID_THRESHOLD;
+            })
+            .toList();
 
         List<TypeApiDto> apiDtos = new ArrayList<>();
 
@@ -68,9 +74,7 @@ public class TypeSeedService {
             try {
                 TypeApiDto dto = pokeApiClient.fetchResource(resource.url(), TypeApiDto.class);
 
-                if (dto.id() <= MAX_CANON_TYPE_ID) {
-                    apiDtos.add(dto);
-                }
+                apiDtos.add(dto);
             } catch (Exception e) {
                 errors++;
                 log.error("Failed to fetch type resource: {}", resource.url(), e);

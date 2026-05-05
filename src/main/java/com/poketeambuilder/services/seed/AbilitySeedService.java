@@ -36,12 +36,19 @@ public class AbilitySeedService {
     private final PokeApiClient pokeApiClient;
 
     private static final String ABILITY_ENDPOINT = "/ability";
+    private static final int NON_CANNON_ABILITY_ID_THRESHOLD = 10000;
 
     @Transactional
     public SeedResultDto seed() {
         int errors = 0;
 
-        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(ABILITY_ENDPOINT);
+        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(ABILITY_ENDPOINT)
+            .stream()
+            .filter(resource -> {
+                Integer id = resource.extractId();
+                return id != null && id <= NON_CANNON_ABILITY_ID_THRESHOLD;
+            })
+            .toList();
 
         List<AbilityApiDto> apiDtos = new ArrayList<>();
 

@@ -38,14 +38,20 @@ public class MoveSeedService {
 
     private final PokeApiClient pokeApiClient;
 
-    private static final int MAX_CANON_MOVE_ID = 10000;
+    private static final int NON_CANNON_MOVE_ID_THRESHOLD = 10000;
     private final static String MOVE_ENDPOINT = "/move";
 
     @Transactional
     public SeedResultDto seed() {
         int errors = 0;
 
-        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(MOVE_ENDPOINT);
+        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(MOVE_ENDPOINT)
+            .stream()
+            .filter(resource -> {
+                Integer id = resource.extractId();
+                return id != null && id <= NON_CANNON_MOVE_ID_THRESHOLD;
+            })
+            .toList();
 
         List<MoveApiDto> apiDtos = new ArrayList<>();
 
@@ -55,9 +61,7 @@ public class MoveSeedService {
             try {
                 MoveApiDto apiDto = pokeApiClient.fetchResource(resource.url(), MoveApiDto.class);
 
-                if (apiDto.id() <= MAX_CANON_MOVE_ID) {
-                    apiDtos.add(apiDto);
-                }
+                apiDtos.add(apiDto);
             } catch (Exception e) {
                 errors++;
                 log.error("Failed to fetch move resource: {}", resource.url(), e);
