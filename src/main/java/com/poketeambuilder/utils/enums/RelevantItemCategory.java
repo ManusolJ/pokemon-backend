@@ -23,13 +23,4 @@ public enum RelevantItemCategory {
     public String getApiValue() {
         return apiValue;
     }
-
-    public static boolean isRelevant(String category) {
-        for (RelevantItemCategory c : values()) {
-            if (c.apiValue.equals(category)) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

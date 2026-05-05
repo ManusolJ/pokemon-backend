@@ -6,6 +6,7 @@ import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
 import com.poketeambuilder.dtos.pokeapi.item.ItemApiDto;
 import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
+import com.poketeambuilder.dtos.pokeapi.item.ItemCategoryApiDto;
 
 import com.poketeambuilder.mappers.implementation.ItemMapper;
 
@@ -37,23 +38,31 @@ public class ItemSeedService {
 
     private final PokeApiClient pokeApiClient;
 
-    private static final String ITEM_ENDPOINT = "/item";
+    private static final String ITEM_CATEGORY_ENDPOINT = "/item-category";
 
     @Transactional
     public SeedResultDto seed() {
         int errors = 0;
 
-        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(ITEM_ENDPOINT);
+        List<PokeApiResource> relevantResources = new ArrayList<>();
+
+        for (RelevantItemCategory category : RelevantItemCategory.values()) {
+            try {
+                ItemCategoryApiDto resource = pokeApiClient.fetchResource(ITEM_CATEGORY_ENDPOINT + "/" + category.getApiValue(), ItemCategoryApiDto.class);
+                relevantResources.addAll(resource.items());
+            } catch (Exception e) {
+                errors++;
+                log.error("Failed to fetch item category resource for category: {}", category.getApiValue(), e);
+            }
+        }
 
         List<ItemApiDto> apiDtos = new ArrayList<>();
 
-        for (PokeApiResource resource : resources) {
+        for (PokeApiResource resource : relevantResources) {
             try {
                 ItemApiDto apiDto = pokeApiClient.fetchResource(resource.url(), ItemApiDto.class);
 
-                if (apiDto.category() != null && RelevantItemCategory.isRelevant(apiDto.category().name())) {
-                    apiDtos.add(apiDto);
-                }
+                apiDtos.add(apiDto);
             } catch (Exception e) {
                 errors++;
                 log.error("Failed to fetch item resource: {}", resource.url(), e);
