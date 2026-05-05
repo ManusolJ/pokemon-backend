@@ -54,8 +54,9 @@ public class AppUser {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String password;
 
+    @Builder.Default
     @Column(name = "role", nullable = false)
-    private UserRole role;
+    private UserRole role = UserRole.USER;
 
     @Builder.Default
     @Column(name = "enabled", nullable = false)
