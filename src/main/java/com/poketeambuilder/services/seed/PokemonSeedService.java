@@ -32,6 +32,8 @@ import com.poketeambuilder.repositories.PokemonAbilityRepository;
 import com.poketeambuilder.services.command.PokeApiClient;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -63,8 +65,8 @@ public class PokemonSeedService {
 
     private final PokeApiClient pokeApiClient;
 
-    private static final int MAX_CANON_MOVE_ID = 10000;
-    private static final int MAX_CANON_POKEMON_ID = 10000;
+    private static final int NON_CANNON_MOVE_ID_THRESHOLD = 10000;
+    private static final int NON_CANNON_POKEMON_ID_THRESHOLD = 10000;
 
     private static final String POKEMON_ENDPOINT = "/pokemon";
 
@@ -80,7 +82,7 @@ public class PokemonSeedService {
             try {
                 PokemonApiDto dto = pokeApiClient.fetchResource(resource.url(), PokemonApiDto.class);
 
-                if (dto.id() <= MAX_CANON_POKEMON_ID) {
+                if (dto.id() <= NON_CANNON_POKEMON_ID_THRESHOLD) {
                     pokemonDtos.add(dto);
                 }
             } catch (Exception e) {
@@ -187,6 +189,10 @@ public class PokemonSeedService {
     private int seedPokemonMoves(List<PokemonApiDto> pokemonDtos) {
         List<PokemonMove> entries = new ArrayList<>();
 
+        Set<Integer> seededMoveIds = moveRepository.findAll().stream()
+            .map(Move::getId)
+            .collect(Collectors.toSet());
+
         for (PokemonApiDto dto : pokemonDtos) {
             if (dto.moves() == null) {
                 throw new IllegalArgumentException("Pokemon moves cannot be null: " + dto.name());
@@ -197,7 +203,11 @@ public class PokemonSeedService {
             for (PokemonMoveApiDto moveDto : dto.moves()) {
                 Integer moveId = moveDto.move().extractId();
 
-                if (moveId == null || moveId > MAX_CANON_MOVE_ID) {
+                if (moveId == null || moveId > NON_CANNON_MOVE_ID_THRESHOLD) {
+                    continue;
+                }
+
+                if (!seededMoveIds.contains(moveId)) {
                     continue;
                 }
 

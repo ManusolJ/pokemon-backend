@@ -3,7 +3,8 @@ package com.poketeambuilder.utils.enums;
 public enum RelevantItemCategory {
     PLATES("plates"),
     CHOICE("choice"),
-    BERRIES("berries"),
+    JEWELS("jewels"),
+    MEMORIES("memories"),
     IN_A_PINCH("in-a-pinch"),
     HELD_ITEMS("held-items"),
     Z_CRYSTALS("z-crystals"),
@@ -12,6 +13,7 @@ public enum RelevantItemCategory {
     PICKY_HEALING("picky-healing"),
     BAD_HELD_ITEMS("bad-held-items"),
     TYPE_PROTECTION("type-protection"),
+    SPECIES_SPECIFIC("species-specific"),
     TYPE_ENHANCEMENT("type-enhancement");
 
     private final String apiValue;
