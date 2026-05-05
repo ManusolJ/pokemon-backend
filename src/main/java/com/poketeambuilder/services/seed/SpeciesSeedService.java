@@ -109,7 +109,8 @@ public class SpeciesSeedService {
 
     private void linkPreviousEvolutions(Map<Integer, Integer> evolutionLinks) {
         for (Entry<Integer, Integer> link : evolutionLinks.entrySet()) {
-            PokemonSpecies evolution = speciesRepository.getReferenceById(link.getKey());
+            PokemonSpecies evolution = speciesRepository.findById(link.getKey())
+                .orElseThrow(() -> new IllegalStateException("Species not found: " + link.getKey()));
             PokemonSpecies preevolution = speciesRepository.getReferenceById(link.getValue());
 
             evolution.setPreviousEvolution(preevolution);
@@ -137,7 +138,8 @@ public class SpeciesSeedService {
 
         for (Entry<Integer, EvolutionDetailApiDto> entry : detailsBySpeciesId.entrySet()) {
             try {
-                PokemonSpecies species = speciesRepository.getReferenceById(entry.getKey());
+                PokemonSpecies species = speciesRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new IllegalStateException("Species not found: " + entry.getKey()));
 
                 applyEvolutionDetails(species, entry.getValue());
             } catch (Exception e) {
