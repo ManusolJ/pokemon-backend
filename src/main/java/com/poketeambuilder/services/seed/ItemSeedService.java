@@ -13,6 +13,8 @@ import com.poketeambuilder.repositories.ItemRepository;
 
 import com.poketeambuilder.services.command.PokeApiClient;
 
+import com.poketeambuilder.utils.enums.RelevantItemCategory;
+
 import java.util.List;
 import java.util.ArrayList;
 
@@ -49,7 +51,9 @@ public class ItemSeedService {
             try {
                 ItemApiDto apiDto = pokeApiClient.fetchResource(resource.url(), ItemApiDto.class);
 
-                apiDtos.add(apiDto);
+                if (apiDto.category() != null && RelevantItemCategory.isRelevant(apiDto.category().name())) {
+                    apiDtos.add(apiDto);
+                }
             } catch (Exception e) {
                 errors++;
                 log.error("Failed to fetch item resource: {}", resource.url(), e);
