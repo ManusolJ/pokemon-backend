@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import com.poketeambuilder.entities.AppUser;
 
-public interface AppUserRepository extends BaseRepository<AppUser, Long> {
+public interface UserRepository extends BaseRepository<AppUser, Long> {
 
     Optional<AppUser> findByUsername(String username);
 

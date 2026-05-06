@@ -24,22 +24,32 @@ public class JwtService {
 
     private static final long ACCESS_TOKEN_EXPIRATION_MS = 15 * 60 * 1000;
     private static final long REFRESH_TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+    private final static String CLAIM_TOKEN_TYPE = "type";
+    private final static String TOKEN_TYPE_ACCESS = "access";
+    private final static String TOKEN_TYPE_REFRESH = "refresh";
+
+    private final static String ISSUER = "poketeam-builder";
+    private final static String AUDIENCE = "poketeam-builder-api";
     
     public JwtService(@Value("${app.jwt.secret}") String secret) {
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
     public String generateAccessToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, ACCESS_TOKEN_EXPIRATION_MS);
+        return buildToken(Map.of(), userDetails, ACCESS_TOKEN_EXPIRATION_MS, TOKEN_TYPE_ACCESS);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, REFRESH_TOKEN_EXPIRATION_MS);
+        return buildToken(Map.of(), userDetails, REFRESH_TOKEN_EXPIRATION_MS, TOKEN_TYPE_REFRESH);
     }
 
-    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationMs) {
+    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationMs, String tokenType) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
+                .claim(CLAIM_TOKEN_TYPE, tokenType)
                 .issuedAt(new Date())
                 .signWith(signingKey)
                 .subject(userDetails.getUsername())
@@ -63,6 +73,18 @@ public class JwtService {
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         Claims claims = extractAllClaims(token);
         return resolver.apply(claims);
+    }
+
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get(CLAIM_TOKEN_TYPE, String.class));
+    }
+
+    public boolean isAccessToken(String token) {
+        return TOKEN_TYPE_ACCESS.equals(extractTokenType(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return TOKEN_TYPE_REFRESH.equals(extractTokenType(token));
     }
 
     private boolean isTokenExpired(String token) {

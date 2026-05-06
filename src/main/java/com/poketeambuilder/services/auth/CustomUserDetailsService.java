@@ -2,7 +2,7 @@ package com.poketeambuilder.services.auth;
 
 import com.poketeambuilder.entities.AppUser;
 
-import com.poketeambuilder.repositories.AppUserRepository;
+import com.poketeambuilder.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final AppUserRepository appUserRepository;
+    private final UserRepository appUserRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

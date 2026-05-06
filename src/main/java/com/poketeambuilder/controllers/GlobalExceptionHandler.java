@@ -1,4 +1,4 @@
-package com.poketeambuilder.infrastructure.exceptions;
+package com.poketeambuilder.controllers;
 
 import java.util.Map;
 import java.util.LinkedHashMap;
@@ -16,6 +16,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.poketeambuilder.dtos.error.ErrorResponseDto;
+import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
+import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
