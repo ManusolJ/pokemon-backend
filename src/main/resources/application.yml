@@ -2,9 +2,17 @@ spring:
   application:
     name: poketeam-builder
 
+  profiles:
+    active:
+      - ${SPRING_PROFILES_ACTIVE:dev}
+
+  app:
+    cors:
+      allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:4200}
+
   # DB
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:poketeam}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:pokemon_sql}
     username: ${DB_USER:poketeam}
     password: ${DB_PASSWORD:poketeam}
     hikari:
@@ -23,19 +31,6 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-
-  # Cache
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=3600s
-
-# JWT
-app:
-  jwt:
-    secret: ${JWT_SECRET}
-    access-token-expiration-ms: 900000
-    refresh-token-expiration-ms: 604800000
 
 # Server
 server:
