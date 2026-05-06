@@ -22,8 +22,11 @@ public class JwtService {
 
     private final SecretKey signingKey;
 
-    private static final long ACCESS_TOKEN_EXPIRATION_MS = 15 * 60 * 1000;
-    private static final long REFRESH_TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
+    @Value("${app.jwt.accessTokenExpirationMs}")
+    private int accessTokenExpirationMs;
+
+    @Value("${app.jwt.refreshTokenExpirationMs}")
+    private int refreshTokenExpirationMs;
 
     private final static String CLAIM_TOKEN_TYPE = "type";
     private final static String TOKEN_TYPE_ACCESS = "access";
@@ -37,11 +40,11 @@ public class JwtService {
     }
 
     public String generateAccessToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, ACCESS_TOKEN_EXPIRATION_MS, TOKEN_TYPE_ACCESS);
+        return buildToken(Map.of(), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, REFRESH_TOKEN_EXPIRATION_MS, TOKEN_TYPE_REFRESH);
+        return buildToken(Map.of(), userDetails, refreshTokenExpirationMs, TOKEN_TYPE_REFRESH);
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationMs, String tokenType) {
@@ -94,6 +97,8 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey)
+                .requireIssuer(ISSUER)
+                .requireAudience(AUDIENCE)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

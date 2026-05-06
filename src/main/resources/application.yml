@@ -8,7 +8,12 @@ spring:
 
   app:
     cors:
-      allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:4200}
+      allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:4200}
+
+    jwt:
+      accessTokenExpirationMs: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
+      refreshTokenExpirationMs: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000}
+      secret: ${JWT_SECRET:default_jwt_secret_key_which_should_be_changed_in_production}
 
   # DB
   datasource:

@@ -7,9 +7,10 @@ import java.security.NoSuchAlgorithmException;
 
 import java.util.HexFormat;
 
+import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TokenHashUtil {
 
     public static String sha256(String token) {
