@@ -9,11 +9,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.poketeambuilder.dtos.auth.LoginDto;
+import com.poketeambuilder.dtos.auth.PasswordResetDto;
+import com.poketeambuilder.dtos.auth.PasswordResetRequestDto;
 import com.poketeambuilder.dtos.auth.RegisterDto;
 import com.poketeambuilder.dtos.auth.RefreshTokenDto;
 import com.poketeambuilder.dtos.auth.TokenResponseDto;
 
 import com.poketeambuilder.services.auth.AuthService;
+import com.poketeambuilder.services.auth.PasswordResetService;
 
 import jakarta.validation.Valid;
 
@@ -25,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     public ResponseEntity<TokenResponseDto> register(@Valid @RequestBody RegisterDto registerDto) {
@@ -39,6 +43,18 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenDto refreshTokenDto) {
         authService.logout(refreshTokenDto);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/password-reset-request")
+    public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto requestDto) {
+        passwordResetService.requestReset(requestDto);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/password-reset")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetDto resetDto) {
+        passwordResetService.resetPassword(resetDto);
         return ResponseEntity.noContent().build();
     }
 
