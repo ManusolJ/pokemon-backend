@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
 
+// TODO: Add password strength validation (e.g., require uppercase, lowercase, numbers, special characters)
 @Getter
 @PasswordMatch
 public class RegisterDto {

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 
+// TODO: Add email templates and support for HTML emails
+// TODO: Email verification for new user registration and email change requests
+// TODO: Implement asynchronous email sending to improve performance and user experience
 @Service
 @RequiredArgsConstructor
 public class EmailService {
