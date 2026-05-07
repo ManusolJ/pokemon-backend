@@ -10,7 +10,7 @@ import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.UserMapper;
 
 import com.poketeambuilder.repositories.BaseRepository;
-import com.poketeambuilder.repositories.AppUserRepository;
+import com.poketeambuilder.repositories.UserRepository;
 
 import com.poketeambuilder.utils.enums.UserRole;
 import com.poketeambuilder.utils.enums.SearchOperation;
@@ -34,9 +34,9 @@ import jakarta.validation.constraints.NotNull;
 public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFilterDto, UserReadDto> {
 
     private final UserMapper userMapper;
-    private final AppUserRepository userRepository;
+    private final UserRepository userRepository;
 
-    public UserQueryService(CacheManager cacheManager, UserMapper userMapper, AppUserRepository userRepository) {
+    public UserQueryService(CacheManager cacheManager, UserMapper userMapper, UserRepository userRepository) {
         super(cacheManager);
         this.userMapper = userMapper;
         this.userRepository = userRepository;
