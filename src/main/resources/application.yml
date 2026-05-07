@@ -6,20 +6,6 @@ spring:
     active:
       - ${SPRING_PROFILES_ACTIVE:dev}
 
-  app:
-    cors:
-      allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:4200}
-    mail:
-      from: ${MAIL_FROM:noreply@poketeambuilder.com}
-    password-reset:
-      token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}
-      base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/reset-password}
-
-    jwt:
-      accessTokenExpirationMs: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
-      refreshTokenExpirationMs: ${APP_JWT_REFRESH_TOKEN_EXPIRATION_MS:604800000}
-      secret: ${JWT_SECRET:default_jwt_secret_key_which_should_be_changed_in_production}
-
   # DB
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:pokemon_sql}
@@ -53,6 +39,20 @@ spring:
           auth: true
           starttls:
             enable: true
+
+app:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:4200}
+  mail:
+    from: ${MAIL_FROM:noreply@poketeambuilder.com}
+  password-reset:
+    token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}
+    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/reset-password}
+
+  jwt:
+    secret: ${JWT_SECRET}
+    accessTokenExpirationMs: ${ACCESS_TOKEN_EXPIRATION_MS:900000}
+    refreshTokenExpirationMs: ${REFRESH_TOKEN_EXPIRATION_MS:604800000}
 
 # Server
 server:
