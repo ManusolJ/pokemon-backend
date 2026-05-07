@@ -1,0 +1,25 @@
+package com.poketeambuilder.utils.enums;
+
+public enum AuditAction {
+
+    USER_SELF_DELETE("USER_SELF_DELETE"),
+    USER_PROFILE_UPDATE("USER_PROFILE_UPDATE"),
+    USER_PASSWORD_CHANGE("USER_PASSWORD_CHANGE"),
+
+    ADMIN_USER_UPDATE("ADMIN_USER_UPDATE"),
+    ADMIN_USER_REACTIVATE("ADMIN_USER_REACTIVATE"),
+    ADMIN_USER_HARD_DELETE("ADMIN_USER_HARD_DELETE"),
+    ADMIN_USER_SOFT_DELETE("ADMIN_USER_SOFT_DELETE"),
+
+    ADMIN_SEED_TRIGGERED("ADMIN_SEED_TRIGGERED");
+
+    private final String value;
+
+    AuditAction(String value) {
+        this.value = value;
+    }
+
+    public String getValue() {
+        return value;
+    }
+}
