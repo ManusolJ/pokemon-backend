@@ -35,7 +35,7 @@ public class TypeController {
     private final TypeEffectivenessQueryService typeEffectivenessQueryService;
 
     @PostMapping("/filter")
-    public ResponseEntity<Page<TypeReadDto>> getTypes(@PageableDefault(page = 0, size = 20, direction = Direction.DESC) Pageable pageable, @RequestBody TypeFilterDto filter) {
+    public ResponseEntity<Page<TypeReadDto>> getTypes(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody TypeFilterDto filter) {
         Page<TypeReadDto> types = typeQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(types);
     }
