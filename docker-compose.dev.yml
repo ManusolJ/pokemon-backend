@@ -5,11 +5,11 @@ services:
     env_file:
       - .env.dev
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U poketeam"]
+      test: ["CMD-SHELL", "pg_isready -U poketeam -d pokemon_sql"]
       interval: 5s
       timeout: 5s
       retries: 5

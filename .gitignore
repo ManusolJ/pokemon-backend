@@ -35,4 +35,3 @@ build/
 .env
 .env.dev
 docs/
-flyway.cmd
