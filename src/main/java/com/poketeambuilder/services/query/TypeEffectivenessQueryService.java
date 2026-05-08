@@ -15,6 +15,8 @@ import com.poketeambuilder.repositories.TypeEffectivenessRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import org.springframework.cache.CacheManager;
@@ -63,6 +65,13 @@ public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffe
     @Override
     protected BaseRepository<TypeEffectiveness, TypeEffectivenessId> getRepository() {
         return typeEffectivenessRepository;
+    }
+
+    public List<TypeEffectivenessReadDto> getTypeEffectivenessMatrix() {
+        List<TypeEffectiveness> effectivenessList = typeEffectivenessRepository.findAll();
+        return effectivenessList.stream()
+                .map(typeEffectivenessMapper::toReadDto)
+                .toList();
     }
 
     @Override
