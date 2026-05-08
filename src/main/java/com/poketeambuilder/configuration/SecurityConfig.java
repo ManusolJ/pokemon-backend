@@ -57,11 +57,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/pokemon/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/pokemon/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/species/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/species/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/moves/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/moves/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/abilities/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/abilities/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/types/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/types/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/natures/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/natures/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/teams/public/**").permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
