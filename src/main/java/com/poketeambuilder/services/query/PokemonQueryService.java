@@ -3,7 +3,11 @@ package com.poketeambuilder.services.query;
 import com.poketeambuilder.entities.Pokemon;
 import com.poketeambuilder.entities.PokemonSpecies;
 
+import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
+import com.poketeambuilder.dtos.front.ability.AbilitySummaryDto;
+
 import com.poketeambuilder.dtos.front.pokemon.common.PokemonFilterDto;
+
 import com.poketeambuilder.dtos.front.pokemon.individual.PokemonReadDto;
 import com.poketeambuilder.dtos.front.pokemon.individual.PokemonSummaryDto;
 
@@ -11,18 +15,22 @@ import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.PokemonMapper;
 
 import com.poketeambuilder.repositories.BaseRepository;
+import com.poketeambuilder.repositories.PokemonAbilityRepository;
 import com.poketeambuilder.repositories.PokemonRepository;
 
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
+import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import org.springframework.cache.CacheManager;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -42,11 +50,13 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
 
     private final PokemonMapper pokemonMapper;
     private final PokemonRepository pokemonRepository;
+    private final PokemonAbilityRepository pokemonAbilityRepository;
 
-    public PokemonQueryService(CacheManager cacheManager, PokemonMapper pokemonMapper, PokemonRepository pokemonRepository) {
+    public PokemonQueryService(CacheManager cacheManager, PokemonMapper pokemonMapper, PokemonRepository pokemonRepository, PokemonAbilityRepository pokemonAbilityRepository) {
         super(cacheManager);
         this.pokemonMapper = pokemonMapper;
         this.pokemonRepository = pokemonRepository;
+        this.pokemonAbilityRepository = pokemonAbilityRepository;
     }
 
     private static final String FIELD_ID = "id";
@@ -100,6 +110,31 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
     @Override
     protected BaseRepository<Pokemon, Integer> getRepository() {
         return pokemonRepository;
+    }
+
+    @Override
+    public Page<PokemonReadDto> filterEntities(PokemonFilterDto filter, Pageable pageable) {
+        Page<PokemonReadDto> page = super.filterEntities(filter, pageable);
+
+        List<Integer> ids = page.getContent().stream().map(PokemonReadDto::id).toList();
+
+        if (ids.isEmpty()) {
+            return page;
+        }
+        
+        Map<Integer, List<AbilityEmbedDto>> abilitiesMap = fetchAbilitiesForPokemon(ids);
+
+        List<PokemonReadDto> enriched = page.getContent().stream()
+                .map(dto -> withAbilities(dto, abilitiesMap.getOrDefault(dto.id(), List.of())))
+                .toList();
+
+        return new PageImpl<>(enriched, pageable, page.getTotalElements());
+    }
+
+    @Override
+    public PokemonReadDto findById(Integer id) {
+        PokemonReadDto dto = super.findById(id);
+        return withAbilities(dto, fetchAbilitiesForPokemon(List.of(id)).getOrDefault(id, List.of()));
     }
 
     @Override
@@ -290,5 +325,33 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
         if (max != null) {
             builder.with(field, max, SearchOperation.LESS_THAN_OR_EQUAL);
         }
+    }
+
+    private Map<Integer, List<AbilityEmbedDto>> fetchAbilitiesForPokemon(List<Integer> pokemonIds) {
+        return pokemonAbilityRepository.findAll((root, query, cb) -> {
+            if (query != null && query.getResultType() != Long.class) {
+                root.fetch("ability");
+            }
+
+            return root.get("id").get("pokemonId").in(pokemonIds);
+        }).stream().collect(Collectors.groupingBy(
+            pa -> pa.getId().getPokemonId(),
+            Collectors.mapping(pa -> new AbilityEmbedDto(
+                new AbilitySummaryDto(pa.getAbility().getId(), pa.getAbility().getName()),
+                pa.getIsHidden(),
+                pa.getSlot()
+            ), Collectors.toList())
+        ));
+    }
+
+    private PokemonReadDto withAbilities(PokemonReadDto dto, List<AbilityEmbedDto> abilities) {
+        return new PokemonReadDto(
+            dto.id(), dto.name(), dto.order(), dto.species(), dto.isDefaultForm(),
+            dto.primaryType(), dto.secondaryType(),
+            dto.baseHp(), dto.baseAtk(), dto.baseDef(), dto.baseSpAtk(), dto.baseSpDef(), dto.baseSpeed(),
+            dto.heightInMeters(), dto.weightInKilograms(),
+            abilities,
+            dto.spriteDefault(), dto.spriteShiny(), dto.artworkUrl()
+        );
     }
 }
