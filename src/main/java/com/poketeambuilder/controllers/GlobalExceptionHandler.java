@@ -14,12 +14,19 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.poketeambuilder.dtos.error.ErrorResponseDto;
+
+import com.poketeambuilder.infrastructure.exceptions.PokeApiException;
+import com.poketeambuilder.infrastructure.exceptions.BadPasswordException;
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
+import com.poketeambuilder.infrastructure.exceptions.PokeApiRateLimitException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
+import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -67,6 +74,41 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleAlreadyExists(ResourceAlreadyExistsException ex, HttpServletRequest request) {
 
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleEndpointNotFound(NoResourceFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(BadPasswordException.class)
+    public ResponseEntity<ErrorResponseDto> handleBadPassword(BadPasswordException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponseDto> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PokeApiRateLimitException.class)
+    public ResponseEntity<ErrorResponseDto> handleRateLimitingFromPokeApi(PokeApiRateLimitException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(PokeApiException.class)
+    public ResponseEntity<ErrorResponseDto> handlePokeApi(PokeApiException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(Exception.class)
