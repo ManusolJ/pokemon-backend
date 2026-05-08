@@ -1,7 +1,7 @@
 package com.poketeambuilder.services.query;
 
 import com.poketeambuilder.entities.Team;
-
+import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 import com.poketeambuilder.dtos.front.team.team.TeamReadDto;
 import com.poketeambuilder.dtos.front.team.team.TeamFilterDto;
 import com.poketeambuilder.dtos.front.team.team.TeamSummaryDto;
