@@ -1,6 +1,7 @@
 package com.poketeambuilder.controllers;
 
 import com.poketeambuilder.dtos.front.ability.AbilityReadDto;
+import com.poketeambuilder.dtos.front.ability.AbilitySummaryDto;
 import com.poketeambuilder.dtos.front.ability.AbilityFilterDto;
 
 import com.poketeambuilder.services.query.AbilityQueryService;
@@ -31,6 +32,12 @@ public class AbilityController {
     public ResponseEntity<Page<AbilityReadDto>> getAbilities(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody AbilityFilterDto filter) {
         Page<AbilityReadDto> abilities = abilityQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(abilities);
+    }
+
+    @PostMapping("summaries")
+    public ResponseEntity<Page<AbilitySummaryDto>> getAbilitySummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody AbilityFilterDto filter) {
+        Page<AbilitySummaryDto> summaries = abilityQueryService.filterAbilitySummaries(filter, pageable);
+        return ResponseEntity.ok(summaries);
     }
 
     @PostMapping("/id")

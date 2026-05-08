@@ -1,6 +1,7 @@
 package com.poketeambuilder.controllers;
 
 import com.poketeambuilder.dtos.front.item.ItemReadDto;
+import com.poketeambuilder.dtos.front.item.ItemSummaryDto;
 import com.poketeambuilder.dtos.front.item.ItemFilterDto;
 
 import com.poketeambuilder.services.query.ItemQueryService;
@@ -31,6 +32,12 @@ public class ItemController {
     public ResponseEntity<Page<ItemReadDto>> getItems(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody ItemFilterDto filter) {
         Page<ItemReadDto> items = itemQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(items);
+    }
+
+    @PostMapping("summaries")
+    public ResponseEntity<Page<ItemSummaryDto>> getItemSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody ItemFilterDto filter) {
+        Page<ItemSummaryDto> summaries = itemQueryService.filterItemSummaries(filter, pageable);
+        return ResponseEntity.ok(summaries);
     }
 
     @PostMapping("/id")
