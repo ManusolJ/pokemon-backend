@@ -11,6 +11,6 @@ import com.poketeambuilder.entities.compositeIDs.TeamLikeId;
 public interface TeamLikeRepository extends BaseRepository<TeamLike, TeamLikeId> {
     
     @Modifying
-    @Query("DELETE FROM TeamLike tl WHERE tl.tean = :team")
+    @Query("DELETE FROM TeamLike tl WHERE tl.team = :team")
     void deleteByTeam(@Param("team") Team team);
 }
