@@ -1,5 +1,7 @@
 package com.poketeambuilder.services.query;
 
+import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
+
 import com.poketeambuilder.entities.AppUser;
 
 import com.poketeambuilder.dtos.front.user.UserReadDto;
@@ -66,6 +68,13 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     @Override
     protected BaseRepository<AppUser, Long> getRepository() {
         return userRepository;
+    }
+
+    public UserReadDto findByUsername(@NotNull String username) {
+        return userRepository.findByUsername(username)
+                .map(userMapper::toReadDto)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("User '%s' not found", username)));
     }
 
     public Page<UserSummaryDto> filterSummaries(@Valid @NotNull UserFilterDto filter, @NotNull Pageable pageable) {
