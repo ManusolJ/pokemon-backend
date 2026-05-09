@@ -49,7 +49,7 @@ public class AuthController {
     @PostMapping("/password-reset-request")
     public ResponseEntity<Void> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto requestDto) {
         passwordResetService.requestReset(requestDto);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/password-reset")

@@ -8,8 +8,6 @@ import com.poketeambuilder.dtos.front.type.effectiveness.TypeEffectivenessReadDt
 import com.poketeambuilder.services.query.TypeQueryService;
 import com.poketeambuilder.services.query.TypeEffectivenessQueryService;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
@@ -18,7 +16,6 @@ import org.springframework.data.web.PageableDefault;
 
 import org.springframework.http.ResponseEntity;
 
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("api/types")
+@RequestMapping("/api/types")
 @RequiredArgsConstructor
 public class TypeController {
     
@@ -53,14 +50,8 @@ public class TypeController {
     }
 
     @PostMapping("/effectiveness")
-    public ResponseEntity<Page<TypeEffectivenessReadDto>> getTypeEffectiveness(@PageableDefault(page = 0, size = 20, direction = Direction.DESC) Pageable pageable, @RequestBody TypeEffectivenessFilterDto filter) {
+    public ResponseEntity<Page<TypeEffectivenessReadDto>> getTypeEffectiveness(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody TypeEffectivenessFilterDto filter) {
         Page<TypeEffectivenessReadDto> effectiveness = typeEffectivenessQueryService.filterEntities(filter, pageable);
-        return ResponseEntity.ok(effectiveness);
-    }
-
-    @GetMapping("/effectiveness-matrix")
-    public ResponseEntity<List<TypeEffectivenessReadDto>> getTypeEffectiveness() {
-        List<TypeEffectivenessReadDto> effectiveness = typeEffectivenessQueryService.getTypeEffectivenessMatrix();
         return ResponseEntity.ok(effectiveness);
     }
 

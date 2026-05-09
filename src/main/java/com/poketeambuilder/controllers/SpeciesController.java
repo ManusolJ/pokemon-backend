@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/species")
+@RequestMapping("/api/species")
 public class SpeciesController {
     
     private final SpeciesQueryService speciesQueryService;

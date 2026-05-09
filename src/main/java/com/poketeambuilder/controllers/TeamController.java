@@ -37,7 +37,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/teams")
+@RequestMapping("/api/teams")
 public class TeamController {
 
     private final TeamQueryService teamQueryService;
@@ -81,15 +81,16 @@ public class TeamController {
 
     @PostMapping
     public ResponseEntity<TeamReadDto> createTeam(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody TeamCreateDto dto) {
-        Long teamId = teamCommandService.createTeam(user.getUsername(), dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(teamQueryService.findById(teamId));
+        Long createdTeamId = teamCommandService.createTeam(user.getUsername(), dto);
+        TeamReadDto createdTeam = teamQueryService.findById(createdTeamId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTeam);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<TeamReadDto> updateTeam(@AuthenticationPrincipal UserDetails user, @PathVariable Long id, @Valid @RequestBody TeamUpdateDto dto) {
-        Long teamId = teamCommandService.updateTeam(user.getUsername(), id, dto);
-        TeamReadDto createdTeam = teamQueryService.findById(teamId);
-        return ResponseEntity.ok(createdTeam);
+        Long updatedTeamId = teamCommandService.updateTeam(user.getUsername(), id, dto);
+        TeamReadDto updatedTeam = teamQueryService.findById(updatedTeamId);
+        return ResponseEntity.ok(updatedTeam);
     }
 
     @DeleteMapping("/{id}")

@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/natures")
+@RequestMapping("/api/natures")
 public class NatureController {
 
     private final NatureQueryService natureQueryService;

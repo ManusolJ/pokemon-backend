@@ -15,8 +15,6 @@ import com.poketeambuilder.repositories.TypeEffectivenessRepository;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import java.util.List;
-
 import org.springframework.stereotype.Service;
 
 import org.springframework.cache.CacheManager;

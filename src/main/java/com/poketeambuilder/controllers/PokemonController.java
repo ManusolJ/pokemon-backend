@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/pokemon")
+@RequestMapping("/api/pokemon")
 public class PokemonController {
     
     private final PokemonQueryService pokemonQueryService;

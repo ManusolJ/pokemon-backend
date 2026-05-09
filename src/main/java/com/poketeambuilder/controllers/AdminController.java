@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,7 @@ public class AdminController {
     private final SeedLogQueryService seedLogQueryService;
 
     @PostMapping("/seed")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SeedLogReadDto> triggerSeed(@AuthenticationPrincipal UserDetails user) {
         SeedLog seedLog = seedService.executeSeed(user.getUsername());
         SeedLogReadDto seedLogReadDto = seedLogQueryService.findById(seedLog.getId());

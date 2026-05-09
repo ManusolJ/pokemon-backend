@@ -36,8 +36,9 @@ import com.poketeambuilder.repositories.PokemonRepository;
 import com.poketeambuilder.repositories.TeamLikeRepository;
 import com.poketeambuilder.repositories.TeamPokemonRepository;
 import com.poketeambuilder.repositories.TeamPokemonMoveRepository;
-
+import com.poketeambuilder.utils.enums.AuditAction;
 import com.poketeambuilder.utils.enums.PokemonGender;
+import com.poketeambuilder.utils.enums.UserRole;
 
 import java.util.List;
 import java.util.UUID;
@@ -73,6 +74,10 @@ public class TeamCommandService {
     private final NatureRepository natureRepository;
     private final AbilityRepository abilityRepository;
     private final PokemonRepository pokemonRepository;
+
+    private final AuditLogCommandService auditLogCommandService;
+
+    private final static String ENTITY_NAME = "Team";
 
     @Transactional
     public Long createTeam(@NotNull String username, @Valid @NotNull TeamCreateDto dto) {
@@ -118,9 +123,20 @@ public class TeamCommandService {
     public void adminDeleteTeam(@NotNull String adminUsername, @NotNull Long teamId) {
         Team team = findTeamOrThrow(teamId);
 
+        AppUser adminUser = findUserOrThrow(adminUsername);
+
+        if (!isUserAdmin(adminUser)) {
+            throw new ResourceNotFoundException(
+                    String.format("Team with id '%s' not found for user '%s'", team.getId(), adminUsername));
+        }
+
         deleteTeamPokemon(team);
         deleteTeamLikes(team);
         teamRepository.delete(team);
+
+        String entityName = String.format(ENTITY_NAME + " (id: %s, name: %s, owner: %s)", team.getId(), team.getName(), team.getOwner().getUsername());
+
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, entityName, team.getId().toString());
     }
 
     @Transactional
@@ -211,6 +227,10 @@ public class TeamCommandService {
             throw new ResourceNotFoundException(
                     String.format("Team with id '%s' not found for user '%s'", team.getId(), username));
         }
+    }
+
+    private boolean isUserAdmin(AppUser user) {
+        return UserRole.ADMIN.equals(user.getRole());
     }
 
     private AppUser findUserOrThrow(String username) {
