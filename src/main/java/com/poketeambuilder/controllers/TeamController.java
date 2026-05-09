@@ -51,7 +51,7 @@ public class TeamController {
 
     @PostMapping("/public/id")
     public ResponseEntity<TeamReadDto> getPublicTeamById(@RequestBody TeamFilterDto filter) {
-        TeamReadDto team = teamQueryService.findById(filter.getId());
+        TeamReadDto team = teamQueryService.findPublicTeamById(filter.getId());
         return ResponseEntity.ok(team);
     }
 
