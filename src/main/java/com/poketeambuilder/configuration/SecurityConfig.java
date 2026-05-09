@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/natures/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/natures/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/teams/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/teams/public/**").permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
                                 "/swagger-ui/**",
