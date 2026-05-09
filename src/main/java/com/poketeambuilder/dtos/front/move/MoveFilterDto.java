@@ -8,7 +8,9 @@ import lombok.Getter;
 public class MoveFilterDto implements FilterDtoInterface {
     
     private Integer id;
-
+    
+    private Integer pokemonId;
+    
     private String name;
 
     private String nameExact;
@@ -26,4 +28,5 @@ public class MoveFilterDto implements FilterDtoInterface {
     private Integer minAccuracy;
 
     private Integer maxAccuracy;
+
 }

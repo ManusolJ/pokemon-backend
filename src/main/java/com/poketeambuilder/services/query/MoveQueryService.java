@@ -1,20 +1,30 @@
 package com.poketeambuilder.services.query;
 
 import com.poketeambuilder.entities.Move;
+import com.poketeambuilder.entities.PokemonMove;
 
+import com.poketeambuilder.dtos.front.move.MoveEmbedDto;
 import com.poketeambuilder.dtos.front.move.MoveReadDto;
 import com.poketeambuilder.dtos.front.move.MoveFilterDto;
 import com.poketeambuilder.dtos.front.move.MoveSummaryDto;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.MoveMapper;
+import com.poketeambuilder.mappers.implementation.PokemonMoveMapper;
 
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.MoveRepository;
+import com.poketeambuilder.repositories.PokemonMoveRepository;
 
 import com.poketeambuilder.utils.enums.MoveCategory;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
+
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Subquery;
+
+import jakarta.validation.constraints.NotNull;
 
 import org.springframework.cache.CacheManager;
 
@@ -23,13 +33,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import org.springframework.stereotype.Service;
-
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.CriteriaQuery;
-
-import jakarta.validation.constraints.NotNull;
 
 @Service
 @Validated
@@ -37,11 +41,16 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
 
     private final MoveMapper moveMapper;
     private final MoveRepository moveRepository;
+    private final PokemonMoveMapper pokemonMoveMapper;
+    private final PokemonMoveRepository pokemonMoveRepository;
 
-    public MoveQueryService(CacheManager cacheManager, MoveMapper moveMapper, MoveRepository moveRepository) {
+    public MoveQueryService(CacheManager cacheManager, MoveMapper moveMapper, MoveRepository moveRepository,
+                            PokemonMoveMapper pokemonMoveMapper, PokemonMoveRepository pokemonMoveRepository) {
         super(cacheManager);
         this.moveMapper = moveMapper;
         this.moveRepository = moveRepository;
+        this.pokemonMoveMapper = pokemonMoveMapper;
+        this.pokemonMoveRepository = pokemonMoveRepository;
     }
 
     private static final String FIELD_ID = "id";
@@ -79,7 +88,12 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     }
 
     public Page<MoveSummaryDto> filterSummaries(MoveFilterDto filter, Pageable pageable) {
-        return filterAndMap(filter, pageable, moveMapper::toSummaryDto);    
+        return filterAndMap(filter, pageable, moveMapper::toSummaryDto);
+    }
+
+    public Page<MoveEmbedDto> filterEmbeds(@NotNull Integer pokemonId, @NotNull Pageable pageable) {
+        return pokemonMoveRepository.findByIdPokemonId(pokemonId, pageable)
+                .map(pokemonMoveMapper::toEmbedDto);
     }
 
     @Override
@@ -121,6 +135,20 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
             builder.with(FIELD_ACCURACY, filter.getMaxAccuracy(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
 
-        return builder.build();
+        Specification<Move> spec = builder.build();
+
+        if (filter.getPokemonId() != null) {
+            Integer pokemonId = filter.getPokemonId();
+            Specification<Move> pokemonSpec = (root, query, cb) -> {
+                Subquery<Integer> subquery = query.subquery(Integer.class);
+                Root<PokemonMove> pmRoot = subquery.from(PokemonMove.class);
+                subquery.select(pmRoot.get("id").get("moveId"))
+                        .where(cb.equal(pmRoot.get("id").get("pokemonId"), pokemonId));
+                return root.get("id").in(subquery);
+            };
+            spec = spec.and(pokemonSpec);
+        }
+
+        return spec;
     }
 }
