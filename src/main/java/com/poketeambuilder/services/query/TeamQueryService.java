@@ -16,7 +16,6 @@ import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
 import org.springframework.stereotype.Service;
-
 import org.springframework.cache.CacheManager;
 
 import org.springframework.data.domain.Page;
@@ -75,6 +74,21 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     protected void applyFetches(Root<Team> root, CriteriaQuery<?> query) {
         root.fetch("owner");
         query.distinct(true);
+    }
+
+    public TeamReadDto findPublicTeamById(@Valid @NotNull TeamFilterDto filter) {
+        TeamReadDto publicTeam = this.findById(filter.getId());
+
+        if (!publicTeam.isPublic()) {
+            throw new ResourceNotFoundException(String.format("Team with id %s is private.", publicTeam.id()));
+        }
+
+        return publicTeam;
+    }
+
+    public Page<TeamSummaryDto> filterPublicSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable) {
+        filter.setIsPublic(true);
+        return filterAndMap(filter, pageable, teamMapper::toSummaryDto);
     }
 
     public Page<TeamSummaryDto> filterSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable) {

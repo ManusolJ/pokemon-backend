@@ -3,8 +3,10 @@ package com.poketeambuilder.dtos.front.team.team;
 import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class TeamFilterDto implements FilterDtoInterface {
 
     private Long id;
