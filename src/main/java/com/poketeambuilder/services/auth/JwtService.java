@@ -23,10 +23,10 @@ public class JwtService {
     private final SecretKey signingKey;
 
     @Value("${app.jwt.accessTokenExpirationMs}")
-    private int accessTokenExpirationMs;
+    private long accessTokenExpirationMs;
 
     @Value("${app.jwt.refreshTokenExpirationMs}")
-    private int refreshTokenExpirationMs;
+    private long refreshTokenExpirationMs;
 
     private final static String CLAIM_TOKEN_TYPE = "type";
     private final static String TOKEN_TYPE_ACCESS = "access";

@@ -29,6 +29,7 @@ public class RefreshTokenService {
                 .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
     }
 
+    @Transactional
     public RefreshToken create(AppUser user, String rawToken, UUID familyId, Instant expiresAt) {
         RefreshToken token = RefreshToken.builder()
                 .tokenHash(TokenHashUtil.sha256(rawToken))
@@ -41,17 +42,20 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(token);
     }
 
+    @Transactional
     public void revoke(RefreshToken token) {
         token.setRevoked(true);
         refreshTokenRepository.save(token);
     }
 
+    @Transactional
     public void revokeFamily(UUID familyId) {
         List<RefreshToken> tokens = refreshTokenRepository.findByFamilyId(familyId);
         tokens.forEach(t -> t.setRevoked(true));
         refreshTokenRepository.saveAll(tokens);
     }
 
+    @Transactional
     public void revokeAllForUser(Long userId) {
         List<RefreshToken> tokens = refreshTokenRepository.findByUserId(userId);
         tokens.forEach(t -> t.setRevoked(true));
