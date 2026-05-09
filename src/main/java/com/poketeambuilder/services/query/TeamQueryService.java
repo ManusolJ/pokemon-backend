@@ -76,8 +76,8 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         query.distinct(true);
     }
 
-    public TeamReadDto findPublicTeamById(@Valid @NotNull TeamFilterDto filter) {
-        TeamReadDto publicTeam = this.findById(filter.getId());
+    public TeamReadDto findPublicTeamById(@NotNull Long id) {
+        TeamReadDto publicTeam = this.findById(id);
 
         if (!publicTeam.isPublic()) {
             throw new ResourceNotFoundException(String.format("Team with id %s is private.", publicTeam.id()));

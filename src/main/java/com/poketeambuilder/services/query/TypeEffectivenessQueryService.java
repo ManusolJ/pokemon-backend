@@ -67,13 +67,6 @@ public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffe
         return typeEffectivenessRepository;
     }
 
-    public List<TypeEffectivenessReadDto> getTypeEffectivenessMatrix() {
-        List<TypeEffectiveness> effectivenessList = typeEffectivenessRepository.findAll();
-        return effectivenessList.stream()
-                .map(typeEffectivenessMapper::toReadDto)
-                .toList();
-    }
-
     @Override
     protected void applyFetches(Root<TypeEffectiveness> root, CriteriaQuery<?> query) {
         root.fetch("attackingType");
