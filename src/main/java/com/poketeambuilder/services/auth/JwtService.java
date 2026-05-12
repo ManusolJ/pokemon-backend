@@ -2,6 +2,7 @@ package com.poketeambuilder.services.auth;
 
 import java.util.Map;
 import java.util.Date;
+import java.util.List;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -40,7 +41,10 @@ public class JwtService {
     }
 
     public String generateAccessToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(auth -> auth.getAuthority())
+                .toList();
+        return buildToken(Map.of("authorities", roles), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
