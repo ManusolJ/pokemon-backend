@@ -35,6 +35,7 @@ public interface PokemonMapper extends ReadMapper<Pokemon, PokemonReadDto>, ApiM
     @Mapping(target = "primaryType", ignore = true)
     @Mapping(target = "secondaryType", ignore = true)
     @Mapping(target = "isDefaultForm", source = "isDefault")
+    @Mapping(target = "order", source = "order", qualifiedByName = "normalizePokemonOrder")
     @Mapping(target = "baseHp", source = "stats", qualifiedByName = "extractBaseHp")
     @Mapping(target = "baseAtk", source = "stats", qualifiedByName = "extractBaseAtk")
     @Mapping(target = "baseDef", source = "stats", qualifiedByName = "extractBaseDef")

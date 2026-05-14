@@ -62,4 +62,9 @@ public class SpeciesIngestionHelper {
 
         return eggGroups.get(1).name();
     }
+
+    @Named("normalizePokemonOrder")
+    public Integer normalizePokemonOrder(Integer order) {
+        return order == null || order < 0 ? null : order;
+    }
 }

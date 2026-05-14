@@ -40,8 +40,7 @@ public class PokemonSpecies {
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;
 
-    @NotNull
-    @Column(name = "sort_order", nullable = false)
+    @Column(name = "sort_order")
     private Integer order;
 
     @NotBlank

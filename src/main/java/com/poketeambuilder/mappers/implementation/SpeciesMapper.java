@@ -35,6 +35,7 @@ public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpecies
     @Override
     @Mapping(target = "catchRate", source = "captureRate")
     @Mapping(target = "genus", source = "genera", qualifiedByName = "extractGenus")
+    @Mapping(target = "order", source = "order", qualifiedByName = "normalizePokemonOrder")
     @Mapping(target = "eggGroup1", source = "eggGroups", qualifiedByName = "extractEggGroup1")
     @Mapping(target = "eggGroup2", source = "eggGroups", qualifiedByName = "extractEggGroup2")
     @Mapping(target = "generation", source = "generation", qualifiedByName = "extractGeneration")

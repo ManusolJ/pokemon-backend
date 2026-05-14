@@ -85,4 +85,9 @@ public class PokemonIngestionHelper {
 
         return SpriteUrlRewriter.rewrite(sprites.other().officialArtwork().frontDefault());
     }
+
+    @Named("normalizePokemonOrder")
+    public Integer normalizePokemonOrder(Integer order) {
+        return order == null || order < 0 ? null : order;
+    }
 }
