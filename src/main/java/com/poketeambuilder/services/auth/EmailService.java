@@ -21,6 +21,9 @@ public class EmailService {
     @Value("${app.mail.from}")
     private String fromAddress;
 
+    @Value("${app.mail.contact-to}")
+    private String contactToAddress;
+
     public void sendPasswordResetEmail(String to, String resetUrl) {
         SimpleMailMessage message = new SimpleMailMessage();
 
@@ -36,5 +39,15 @@ public class EmailService {
         );
 
         mailSender.send(message);
+    }
+
+    public void sendContactEmail(String name, String senderEmail, String subject, String message) {
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(contactToAddress);
+        mail.setFrom(fromAddress);
+        mail.setReplyTo(senderEmail);
+        mail.setSubject("PokéTeam Builder — Contact: " + subject);
+        mail.setText("From: " + name + " <" + senderEmail + ">\n\n" + message);
+        mailSender.send(mail);
     }
 }
