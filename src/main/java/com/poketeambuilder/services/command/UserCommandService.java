@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -137,6 +139,41 @@ public class UserCommandService {
 
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_USER_HARD_DELETE, ENTITY_NAME, userId.toString(),
                 "Hard-deleted user: " + username);
+    }
+
+    @Transactional
+    public void adminBatchSoftDelete(@NotNull String adminUsername, @NotNull List<Long> ids) {
+        for (Long id : ids) {
+            try {
+                AppUser user = findUserOrThrow(id);
+                user.setEnabled(false);
+                UserRepository.save(user);
+            } catch (Exception ignored) { /* skip missing/already-deleted */ }
+        }
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_SOFT_DELETE, ENTITY_NAME, ids.toString());
+    }
+
+    @Transactional
+    public void adminBatchReactivate(@NotNull String adminUsername, @NotNull List<Long> ids) {
+        for (Long id : ids) {
+            try {
+                AppUser user = findUserOrThrow(id);
+                user.setEnabled(true);
+                UserRepository.save(user);
+            } catch (Exception ignored) { /* skip missing */ }
+        }
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_REACTIVATE, ENTITY_NAME, ids.toString());
+    }
+
+    @Transactional
+    public void adminBatchHardDelete(@NotNull String adminUsername, @NotNull List<Long> ids) {
+        for (Long id : ids) {
+            try {
+                AppUser user = findUserOrThrow(id);
+                UserRepository.delete(user);
+            } catch (Exception ignored) { /* skip missing */ }
+        }
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, ids.toString());
     }
 
     private AppUser findUserOrThrow(Long userId) {

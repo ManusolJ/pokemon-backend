@@ -49,6 +49,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     private static final String FIELD_EMAIL = "email";
     private static final String FIELD_ENABLED = "enabled";
     private static final String FIELD_USERNAME = "username";
+    private static final String FIELD_CREATED_AT = "createdAt";
 
     @Override
     protected String getEntityName() {
@@ -106,6 +107,12 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
         }
         if (filter.getEnabled() != null) {
             builder.with(FIELD_ENABLED, filter.getEnabled(), SearchOperation.EQUAL);
+        }
+        if (filter.getCreatedAfter() != null) {
+            builder.with(FIELD_CREATED_AT, filter.getCreatedAfter(), SearchOperation.GREATER_THAN_OR_EQUAL);
+        }
+        if (filter.getCreatedBefore() != null) {
+            builder.with(FIELD_CREATED_AT, filter.getCreatedBefore(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
 
         return builder.build();

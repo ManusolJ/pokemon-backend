@@ -1,6 +1,7 @@
 package com.poketeambuilder.controllers;
 
 import com.poketeambuilder.dtos.front.admin.user.AdminUserUpdateDto;
+import com.poketeambuilder.dtos.front.admin.user.BatchUserActionDto;
 import com.poketeambuilder.dtos.front.user.PasswordChangeDto;
 import com.poketeambuilder.dtos.front.user.UserFilterDto;
 import com.poketeambuilder.dtos.front.user.UserReadDto;
@@ -122,6 +123,27 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> adminHardDeleteUser(@AuthenticationPrincipal UserDetails admin, @PathVariable Long id) {
         userCommandService.adminHardDeleteUser(admin.getUsername(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/admin/batch/disable")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> adminBatchSoftDelete(@AuthenticationPrincipal UserDetails admin, @RequestBody BatchUserActionDto dto) {
+        userCommandService.adminBatchSoftDelete(admin.getUsername(), dto.getIds());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/admin/batch/reactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> adminBatchReactivate(@AuthenticationPrincipal UserDetails admin, @RequestBody BatchUserActionDto dto) {
+        userCommandService.adminBatchReactivate(admin.getUsername(), dto.getIds());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/admin/batch/hard-delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> adminBatchHardDelete(@AuthenticationPrincipal UserDetails admin, @RequestBody BatchUserActionDto dto) {
+        userCommandService.adminBatchHardDelete(admin.getUsername(), dto.getIds());
         return ResponseEntity.noContent().build();
     }
 }
