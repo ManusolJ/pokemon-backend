@@ -107,7 +107,7 @@ public class AuthService {
         refreshTokenService.revoke(storedToken);
 
         UserDetails userDetails = customUserDetailsService
-                .loadUserByUsername(jwtService.extractUsername(rawToken));
+                .loadUserByUsername(storedToken.getUser().getUsername());
 
         String newAccessToken = jwtService.generateAccessToken(userDetails);
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
