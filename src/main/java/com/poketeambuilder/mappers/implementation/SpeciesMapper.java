@@ -24,13 +24,29 @@ import java.util.List;
 
 @Mapper(config = MapperConfiguration.class, uses = { SpeciesIngestionHelper.class, TextExtractor.class })
 public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpeciesReadDto>, ApiMapper<PokemonSpecies, PokemonSpeciesApiDto>, SummaryMapper<PokemonSpecies, PokemonSpeciesSummaryDto> {
-    
+
     @Override
     @Mapping(target = "eggGroups", source = ".", qualifiedByName = "combineEggGroups")
     PokemonSpeciesReadDto toReadDto(PokemonSpecies entity);
 
     @Override
-    PokemonSpeciesSummaryDto toSummaryDto(PokemonSpecies entity);
+    default PokemonSpeciesSummaryDto toSummaryDto(PokemonSpecies entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        return new PokemonSpeciesSummaryDto(
+            entity.getId(),
+            entity.getName(),
+            entity.getGenus(),
+            entity.getNationalDexNumber(),
+            entity.getOrder(),
+            entity.getGenderRate(),
+            null,
+            null,
+            null
+        );
+    }
 
     @Override
     @Mapping(target = "catchRate", source = "captureRate")

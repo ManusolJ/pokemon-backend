@@ -66,7 +66,20 @@ public class PokemonSeedService {
     private final PokeApiClient pokeApiClient;
 
     private static final int NON_CANNON_MOVE_ID_THRESHOLD = 10000;
-    private static final int NON_CANNON_POKEMON_ID_THRESHOLD = 10000;
+    private static final Set<String> COSMETIC_FORM_SUFFIXES = Set.of(
+        "-gmax",
+        "-totem",
+        "-eternamax",
+        "-cap",
+        "-cosplay",
+        "-rock-star",
+        "-belle",
+        "-pop-star",
+        "-phd",
+        "-libre",
+        "-starter"
+    );
+
 
     private static final String POKEMON_ENDPOINT = "/pokemon";
 
@@ -82,7 +95,7 @@ public class PokemonSeedService {
             try {
                 PokemonApiDto dto = pokeApiClient.fetchResource(resource.url(), PokemonApiDto.class);
 
-                if (dto.id() <= NON_CANNON_POKEMON_ID_THRESHOLD) {
+                if (!isCosmeticForm(dto)) {
                     pokemonDtos.add(dto);
                 }
             } catch (Exception e) {
@@ -260,5 +273,13 @@ public class PokemonSeedService {
         }
 
         return latestByMethod;
+    }
+
+    private boolean isCosmeticForm(PokemonApiDto dto) {
+        if (Boolean.TRUE.equals(dto.isDefault())) {
+            return false;
+        }
+        String name = dto.name();
+        return COSMETIC_FORM_SUFFIXES.stream().anyMatch(name::endsWith);
     }
 }

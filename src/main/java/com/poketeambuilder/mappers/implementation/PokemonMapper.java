@@ -43,6 +43,7 @@ public interface PokemonMapper extends ReadMapper<Pokemon, PokemonReadDto>, ApiM
     @Mapping(target = "baseSpDef", source = "stats", qualifiedByName = "extractBaseSpDef")
     @Mapping(target = "baseSpeed", source = "stats", qualifiedByName = "extractBaseSpeed")
     @Mapping(target = "artworkUrl", source = "sprites", qualifiedByName = "extractArtworkUrl")
+    @Mapping(target = "artworkShiny", source = "sprites", qualifiedByName = "extractArtworkShiny")
     @Mapping(target = "spriteShiny", source = "sprites", qualifiedByName = "extractSpriteShiny")
     @Mapping(target = "spriteDefault", source = "sprites", qualifiedByName = "extractSpriteDefault")
     Pokemon toEntity(PokemonApiDto dto);

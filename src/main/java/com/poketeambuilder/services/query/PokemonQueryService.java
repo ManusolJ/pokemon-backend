@@ -351,7 +351,7 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
             dto.baseHp(), dto.baseAtk(), dto.baseDef(), dto.baseSpAtk(), dto.baseSpDef(), dto.baseSpeed(),
             dto.heightInMeters(), dto.weightInKilograms(),
             abilities,
-            dto.spriteDefault(), dto.spriteShiny(), dto.artworkUrl()
+            dto.spriteDefault(), dto.spriteShiny(), dto.artworkUrl(), dto.artworkShiny()
         );
     }
 }

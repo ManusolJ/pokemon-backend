@@ -25,5 +25,6 @@ public record PokemonReadDto(
     List<AbilityEmbedDto> abilities,
     String spriteDefault,
     String spriteShiny,
-    String artworkUrl
+    String artworkUrl,
+    String artworkShiny
 ) {}

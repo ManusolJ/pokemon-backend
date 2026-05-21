@@ -95,7 +95,10 @@ public class Pokemon {
 
     @Column(name = "artwork_url", columnDefinition = "TEXT")
     private String artworkUrl;
-    
+
+    @Column(name = "artwork_shiny", columnDefinition = "TEXT")
+    private String artworkShiny;
+
     @Column(name = "sprite_shiny", columnDefinition = "TEXT")
     private String spriteShiny;
 

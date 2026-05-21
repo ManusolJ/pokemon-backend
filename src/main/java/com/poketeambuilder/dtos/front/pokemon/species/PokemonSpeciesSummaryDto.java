@@ -1,5 +1,17 @@
 package com.poketeambuilder.dtos.front.pokemon.species;
 
-public record PokemonSpeciesSummaryDto(int id, String name, Integer nationalDexNumber, Integer order) {
-    
+import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
+
+public record PokemonSpeciesSummaryDto(
+    int id,
+    String name,
+    String genus,
+    Integer nationalDexNumber,
+    Integer order,
+    Integer genderRate,
+    TypeReadDto primaryType,
+    TypeReadDto secondaryType,
+    String spriteDefault
+) {
+
 }

@@ -86,6 +86,15 @@ public class PokemonIngestionHelper {
         return SpriteUrlRewriter.rewrite(sprites.other().officialArtwork().frontDefault());
     }
 
+    @Named("extractArtworkShiny")
+    public String extractArtworkShiny(PokemonSprites sprites) {
+        if (sprites == null || sprites.other() == null || sprites.other().officialArtwork() == null) {
+            return null;
+        }
+
+        return SpriteUrlRewriter.rewrite(sprites.other().officialArtwork().frontShiny());
+    }
+
     @Named("normalizePokemonOrder")
     public Integer normalizePokemonOrder(Integer order) {
         return order == null || order < 0 ? null : order;
