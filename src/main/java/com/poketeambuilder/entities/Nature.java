@@ -4,11 +4,11 @@ import com.poketeambuilder.utils.enums.StatName;
 
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.PrePersist;
+
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 
@@ -20,6 +20,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Personality trait that biases a Pokémon's stat growth. Either both {@link #increasedStat}
+ * and {@link #decreasedStat} are set (and distinct), or both are {@code null} (neutral
+ * nature). Invariant enforced both at the DB ({@code chk_nature_stats})
+ * and via {@link #validateStats()}.
+ */
 @Entity
 @Getter
 @Setter
@@ -29,7 +35,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Nature {
-    
+
     @Id
     @EqualsAndHashCode.Include
     @Column(name = "id", nullable = false, updatable = false)
@@ -40,14 +46,17 @@ public class Nature {
     @Column(name = "name", nullable = false, unique = true, length = 20)
     private String name;
 
-    @Builder.Default
     @Column(name = "increased_stat", length = 20)
-    private StatName increasedStat = null;
-    
-    @Builder.Default
-    @Column(name = "decreased_stat", length = 20)
-    private StatName decreasedStat = null;
+    private StatName increasedStat;
 
+    @Column(name = "decreased_stat", length = 20)
+    private StatName decreasedStat;
+
+    /**
+     * Check enforced before insert and update. The DB has the same rule as a
+     * CHECK constraint; this exists so misuse from programmatic flows throws a clear domain
+     * exception instead of an opaque JDBC error.
+     */
     @PreUpdate
     @PrePersist
     private void validateStats() {
@@ -63,4 +72,3 @@ public class Nature {
         }
     }
 }
-

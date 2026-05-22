@@ -21,6 +21,10 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Join entity linking a {@link Pokemon} to one of its {@link Ability} options. {@link #slot}
+ * is the in-game slot (typically 1, 2, or hidden) and {@link #isHidden} flags the hidden ability.
+ */
 @Entity
 @Getter
 @Setter
@@ -30,19 +34,19 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PokemonAbility {
-    
+
     @EmbeddedId
     @Builder.Default
     @EqualsAndHashCode.Include
     private PokemonAbilityId id = new PokemonAbilityId();
 
     @MapsId("pokemonId")
-    @JoinColumn(name = "pokemon_id")
+    @JoinColumn(name = "pokemon_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Pokemon pokemon;
 
     @MapsId("abilityId")
-    @JoinColumn(name = "ability_id")
+    @JoinColumn(name = "ability_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Ability ability;
 

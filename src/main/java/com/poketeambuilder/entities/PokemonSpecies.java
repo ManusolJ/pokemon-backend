@@ -20,6 +20,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Pokémon species — the canonical entry that groups all forms of the same creature
+ * (e.g. {@code Charizard} is one species with default, mega-X, mega-Y, and gigantamax forms).
+ * Holds Pokédex metadata, evolution data, and egg-group info shared across every form.
+ */
 @Entity
 @Getter
 @Setter
@@ -41,7 +46,7 @@ public class PokemonSpecies {
     private String name;
 
     @Column(name = "sort_order")
-    private Integer order;
+    private Integer sortOrder;
 
     @NotBlank
     @Size(max = 50)
@@ -86,15 +91,14 @@ public class PokemonSpecies {
     @Column(name = "is_legendary", nullable = false)
     private Boolean isLegendary = false;
 
-    @Builder.Default
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "previous_evolution_id")
-    private PokemonSpecies previousEvolution = null;
+    private PokemonSpecies previousEvolution;
 
     @Size(max = 30)
     @Column(name = "egg_group_1", length = 30)
     private String eggGroup1;
- 
+
     @Size(max = 30)
     @Column(name = "egg_group_2", length = 30)
     private String eggGroup2;

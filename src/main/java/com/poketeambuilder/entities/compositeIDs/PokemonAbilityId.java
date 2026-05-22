@@ -12,13 +12,17 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Composite identifier for {@link com.poketeambuilder.entities.PokemonAbility}. Mirrors the
+ * database primary key {@code (pokemon_id, ability_id)}.
+ */
 @Getter
 @Setter
 @Embeddable
 @EqualsAndHashCode
 @NoArgsConstructor
 @AllArgsConstructor
-public class PokemonAbilityId implements Serializable{
+public class PokemonAbilityId implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;

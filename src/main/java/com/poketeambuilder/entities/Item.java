@@ -16,6 +16,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Held item or consumable referenced by team-building (Leftovers, Choice Scarf, berries, etc).
+ * {@link #effect} / {@link #shortEffect} carry mechanical text. {@link #flavorText} is the
+ * in-game text.
+ */
 @Entity
 @Getter
 @Setter

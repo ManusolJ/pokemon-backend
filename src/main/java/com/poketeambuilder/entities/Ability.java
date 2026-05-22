@@ -16,6 +16,10 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Pokémon ability (Levitate, Intimidate, etc). {@link #effect} is the mechanical rule,
+ * {@link #shortEffect} a one-line summary, and {@link #flavorText} the in-game text.
+ */
 @Entity
 @Getter
 @Setter

@@ -20,6 +20,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Pokémon at form-level (e.g. {@code "venusaur-mega"}, {@code "rotom-wash"}).
+ * Holds form-specific battle attributes: types, base stats, sprites, artwork. Species-level
+ * data (Pokédex info, evolution chain, egg groups) lives on {@link PokemonSpecies} and is
+ * reached via {@link #species}.
+ */
 @Entity
 @Getter
 @Setter
@@ -29,7 +35,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Pokemon {
-    
+
     @Id
     @EqualsAndHashCode.Include
     @Column(name = "id", nullable = false, updatable = false)
@@ -41,7 +47,7 @@ public class Pokemon {
     private String name;
 
     @Column(name = "sort_order")
-    private Integer order;
+    private Integer sortOrder;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
@@ -58,10 +64,9 @@ public class Pokemon {
     @JoinColumn(name = "primary_type_id", nullable = false)
     private Type primaryType;
 
-    @Builder.Default
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "secondary_type_id")
-    private Type secondaryType = null;
+    private Type secondaryType;
 
     @NotNull
     @Column(name = "base_hp", nullable = false)

@@ -12,6 +12,10 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Composite identifier for {@link com.poketeambuilder.entities.TypeEffectiveness}. Mirrors
+ * the database primary key {@code (attacking_type_id, defending_type_id)}.
+ */
 @Getter
 @Setter
 @Embeddable
@@ -19,13 +23,13 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TypeEffectivenessId implements Serializable {
-    
+
     @Serial
     private static final long serialVersionUID = 1L;
 
     @Column(name = "attacking_type_id", nullable = false)
-    private Integer attackingType;
+    private Integer attackingTypeId;
 
     @Column(name = "defending_type_id", nullable = false)
-    private Integer defendingType;   
+    private Integer defendingTypeId;
 }

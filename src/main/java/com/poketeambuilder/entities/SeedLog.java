@@ -13,8 +13,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 
-import jakarta.validation.constraints.NotNull;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Builder;
@@ -23,6 +21,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Operational record of a PokeAPI seed run. One row per invocation of the seed pipeline.
+ * {@link #status} transitions from {@code RUNNING} to {@code COMPLETED} or {@code FAILED};
+ * {@link #completedAt} is stamped automatically when either terminal state is reached.
+ */
 @Entity
 @Getter
 @Setter
@@ -32,13 +35,12 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SeedLog {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
 
-    @NotNull
     @Column(name = "started_at", nullable = false, updatable = false)
     private Instant startedAt;
 
@@ -60,11 +62,16 @@ public class SeedLog {
     @Column(name = "triggered_by")
     private String triggeredBy;
 
+    /** Sets {@link #startedAt} to the current instant before the first insert. */
     @PrePersist
     protected void onCreate() {
         this.startedAt = Instant.now();
     }
 
+    /**
+     * Stamps {@link #completedAt} when the run reaches a terminal state. No-op for non-terminal
+     * status updates so an intermediate save doesn't prematurely close the run.
+     */
     @PreUpdate
     protected void onUpdate() {
         if (this.status == SeedStatus.COMPLETED || this.status == SeedStatus.FAILED) {

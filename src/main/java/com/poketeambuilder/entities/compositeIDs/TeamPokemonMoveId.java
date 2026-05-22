@@ -12,6 +12,10 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Composite identifier for {@link com.poketeambuilder.entities.TeamPokemonMove}. Mirrors the
+ * database primary key {@code (team_pokemon_id, slot_position)}.
+ */
 @Getter
 @Setter
 @Embeddable
@@ -19,7 +23,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TeamPokemonMoveId implements Serializable {
-    
+
     @Serial
     private static final long serialVersionUID = 1L;
 

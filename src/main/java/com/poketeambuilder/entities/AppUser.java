@@ -23,6 +23,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Application user. Authentication uses {@link #password} (bcrypt) — the plain password
+ * never lives on the entity. {@link #role} drives Spring Security authorization checks;
+ * {@link #enabled} is the soft-disable flag used by the admin reactivate / deactivate flow.
+ */
 @Entity
 @Getter
 @Setter
@@ -65,8 +70,9 @@ public class AppUser {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Sets {@link #createdAt} to the current instant before the first insert. */
     @PrePersist
     private void onCreate() {
         this.createdAt = Instant.now();
-    }   
+    }
 }

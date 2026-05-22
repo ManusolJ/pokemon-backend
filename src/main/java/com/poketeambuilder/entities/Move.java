@@ -22,6 +22,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Battle move (Thunderbolt, Recover, etc). Holds power / accuracy / PP / priority along with
+ * the elemental {@link #type} and physical-special-status {@link #category}. Translations of
+ * the move's mechanical text live in {@link #effect} / {@link #shortEffect}, flavor text in
+ * {@link #flavorText}. Reference data from PokeAPI.
+ */
 @Entity
 @Getter
 @Setter
@@ -42,10 +48,12 @@ public class Move {
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private String name;
 
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_id", nullable = false)
     private Type type;
 
+    @NotNull
     @Column(name = "category", nullable = false, length = 10)
     private MoveCategory category;
 

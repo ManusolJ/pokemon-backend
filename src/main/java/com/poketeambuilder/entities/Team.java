@@ -15,7 +15,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
@@ -26,6 +25,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * A user-owned team of up to six {@link TeamPokemon}. May be private or shared via
+ * {@link #slug} when {@link #isPublic} is true; the share slug is the URL fragment used by
+ * the front-end. {@link #likeCount} is denormalised from {@link TeamLike} so listings don't
+ * need an aggregate query.
+ */
 @Entity
 @Getter
 @Setter
@@ -51,7 +56,6 @@ public class Team {
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @NotNull
     @Builder.Default
     @Column(name = "is_public", nullable = false)
     private Boolean isPublic = false;
@@ -70,12 +74,14 @@ public class Team {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** Sets {@link #createdAt} and {@link #updatedAt} to the current instant before the first insert. */
     @PrePersist
     private void onCreate() {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
+    /** Refreshes {@link #updatedAt} before every update. */
     @PreUpdate
     private void onUpdate() {
         this.updatedAt = Instant.now();

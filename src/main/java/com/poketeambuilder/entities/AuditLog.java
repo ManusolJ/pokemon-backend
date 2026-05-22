@@ -21,6 +21,12 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Append-only record of an administrative or security-relevant action performed by a user.
+ * {@link #username} is captured at write time (rather than a FK to {@link AppUser}) so the
+ * log survives user deletion. {@link #entity} / {@link #entityId} identify the target row
+ * when applicable; {@link #details} carries structured context (typically JSON).
+ */
 @Entity
 @Getter
 @Setter
@@ -43,7 +49,7 @@ public class AuditLog {
 
     @NotBlank
     @Size(max = 255)
-    @Column(name = "action", nullable = false)
+    @Column(name = "action", nullable = false, length = 255)
     private String action;
 
     @Column(name = "details", columnDefinition = "TEXT")
@@ -60,6 +66,7 @@ public class AuditLog {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Sets {@link #createdAt} to the current instant before the first insert. */
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();

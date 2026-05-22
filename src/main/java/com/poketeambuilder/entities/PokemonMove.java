@@ -19,6 +19,11 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+/**
+ * Join entity describing how a {@link Pokemon} learns a {@link Move}. The {@code learn_method}
+ * portion of the composite key (e.g. {@code "level-up"}, {@code "machine"}, {@code "egg"}) is
+ * what allows the same pair to appear multiple times in the moves list.
+ */
 @Entity
 @Getter
 @Setter
@@ -28,19 +33,19 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PokemonMove {
-    
+
     @EmbeddedId
     @Builder.Default
     @EqualsAndHashCode.Include
     private PokemonMoveId id = new PokemonMoveId();
 
     @MapsId("pokemonId")
-    @JoinColumn(name = "pokemon_id")
+    @JoinColumn(name = "pokemon_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Pokemon pokemon;
 
     @MapsId("moveId")
-    @JoinColumn(name = "move_id")
+    @JoinColumn(name = "move_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Move move;
 
