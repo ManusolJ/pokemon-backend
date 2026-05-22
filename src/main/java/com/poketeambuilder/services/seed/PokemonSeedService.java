@@ -1,5 +1,12 @@
 package com.poketeambuilder.services.seed;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.List;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
+
 import com.poketeambuilder.entities.Type;
 import com.poketeambuilder.entities.Move;
 import com.poketeambuilder.entities.Ability;
@@ -12,8 +19,8 @@ import com.poketeambuilder.entities.compositeIDs.PokemonMoveId;
 
 import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
 
-import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 import com.poketeambuilder.dtos.pokeapi.pokemon.PokemonApiDto;
+import com.poketeambuilder.dtos.pokeapi.common.PokeApiResource;
 import com.poketeambuilder.dtos.pokeapi.type.PokemonTypeApiDto;
 import com.poketeambuilder.dtos.pokeapi.move.PokemonMoveApiDto;
 import com.poketeambuilder.dtos.pokeapi.move.VersionGroupDetail;
@@ -31,28 +38,37 @@ import com.poketeambuilder.repositories.PokemonAbilityRepository;
 
 import com.poketeambuilder.services.command.PokeApiClient;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.List;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.Comparator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Seeds the {@code pokemon}, {@code pokemon_ability}, and {@code pokemon_move} tables from
+ * PokeAPI. Cosmetic alt-forms (gmax, totem, cap variants, etc) are dropped to keep the table
+ * focused on competitively-relevant forms.
+ */
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class PokemonSeedService {
 
-    private static final Logger log = LoggerFactory.getLogger(PokemonSeedService.class);
+    private static final String POKEMON_ENDPOINT = "/pokemon";
+    private static final int NON_CANON_MOVE_ID_THRESHOLD = 10000;
+
+    private static final Set<String> COSMETIC_FORM_SUFFIXES = Set.of(
+            "-gmax",
+            "-totem",
+            "-eternamax",
+            "-cap",
+            "-cosplay",
+            "-rock-star",
+            "-belle",
+            "-pop-star",
+            "-phd",
+            "-libre",
+            "-starter"
+    );
 
     private final PokemonMapper pokemonMapper;
     private final TypeRepository typeRepository;
@@ -64,37 +80,55 @@ public class PokemonSeedService {
     private final PokemonAbilityRepository pokemonAbilityRepository;
 
     private final PokeApiClient pokeApiClient;
+    private final TransactionTemplate transactionTemplate;
 
-    private static final int NON_CANNON_MOVE_ID_THRESHOLD = 10000;
-    private static final Set<String> COSMETIC_FORM_SUFFIXES = Set.of(
-        "-gmax",
-        "-totem",
-        "-eternamax",
-        "-cap",
-        "-cosplay",
-        "-rock-star",
-        "-belle",
-        "-pop-star",
-        "-phd",
-        "-libre",
-        "-starter"
-    );
+    public PokemonSeedService(PokemonMapper pokemonMapper, TypeRepository typeRepository, MoveRepository moveRepository, AbilityRepository abilityRepository, PokemonRepository pokemonRepository,
+                              SpeciesRepository speciesRepository, PokemonMoveRepository pokemonMoveRepository,
+                              PokemonAbilityRepository pokemonAbilityRepository,
+                              PokeApiClient pokeApiClient, TransactionTemplate transactionTemplate) {
+        this.pokeApiClient = pokeApiClient;
+        this.pokemonMapper = pokemonMapper;
+        this.typeRepository = typeRepository;
+        this.moveRepository = moveRepository;
+        this.abilityRepository = abilityRepository;
+        this.pokemonRepository = pokemonRepository;
+        this.speciesRepository = speciesRepository;
+        this.transactionTemplate = transactionTemplate;
+        this.pokemonMoveRepository = pokemonMoveRepository;
+        this.pokemonAbilityRepository = pokemonAbilityRepository;
+    }
 
+    public SeedResultDto seed() {
+        FetchResult fetched = fetchAll();
 
-    private static final String POKEMON_ENDPOINT = "/pokemon";
+        PersistResult forms = transactionTemplate.execute(status -> persistForms(fetched.apiDtos(), fetched.errors()));
+        log.info("Seeded {} pokemon ({} errors so far)", forms.saved(), forms.errors());
+
+        PersistResult abilities = transactionTemplate.execute(status -> persistAbilities(fetched.apiDtos(), forms.errors()));
+        log.info("Seeded {} pokemon-ability entries ({} errors so far)", abilities.saved(), abilities.errors());
+
+        PersistResult moves = transactionTemplate.execute(status -> persistMoves(fetched.apiDtos(), abilities.errors()));
+        log.info("Seeded {} pokemon-move entries ({} errors total)", moves.saved(), moves.errors());
+
+        return SeedResultDto.of(forms.saved() + abilities.saved() + moves.saved(), moves.errors());
+    }
 
     @Transactional
-    public SeedResultDto seed() {
-        int errors = 0;
+    public void clearSeedData() {
+        pokemonMoveRepository.deleteAllInBatch();
+        pokemonAbilityRepository.deleteAllInBatch();
+        pokemonRepository.deleteAllInBatch();
+    }
 
+    private FetchResult fetchAll() {
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(POKEMON_ENDPOINT);
 
         List<PokemonApiDto> pokemonDtos = new ArrayList<>();
+        int errors = 0;
 
         for (PokeApiResource resource : resources) {
             try {
                 PokemonApiDto dto = pokeApiClient.fetchResource(resource.url(), PokemonApiDto.class);
-
                 if (!isCosmeticForm(dto)) {
                     pokemonDtos.add(dto);
                 }
@@ -104,15 +138,18 @@ public class PokemonSeedService {
             }
         }
 
+        return new FetchResult(pokemonDtos, errors);
+    }
+
+    private PersistResult persistForms(List<PokemonApiDto> pokemonDtos, int initialErrors) {
         List<Pokemon> entities = new ArrayList<>();
+        int errors = initialErrors;
 
         for (PokemonApiDto dto : pokemonDtos) {
             try {
                 Pokemon pokemon = pokemonMapper.toEntity(dto);
-
                 setSpecies(pokemon, dto);
                 setTypes(pokemon, dto);
-
                 entities.add(pokemon);
             } catch (Exception e) {
                 errors++;
@@ -122,29 +159,12 @@ public class PokemonSeedService {
 
         pokemonRepository.saveAllAndFlush(entities);
 
-        log.info("Seeded {} pokemon ({} errors)", entities.size(), errors);
-
-        int abilitiesSeeded = seedPokemonAbilities(pokemonDtos);
-
-        log.info("Seeded {} pokemon-ability entries", abilitiesSeeded);
-
-        int movesSeeded = seedPokemonMoves(pokemonDtos);
-
-        log.info("Seeded {} pokemon-move entries", movesSeeded);
-
-        return new SeedResultDto(entities.size() + abilitiesSeeded + movesSeeded, errors);
-    }
-
-    public void clearSeedData() {
-        pokemonMoveRepository.deleteAllInBatch();
-        pokemonAbilityRepository.deleteAllInBatch();
-        pokemonRepository.deleteAllInBatch();
+        return new PersistResult(entities.size(), errors);
     }
 
     private void setSpecies(Pokemon pokemon, PokemonApiDto dto) {
         Integer speciesId = dto.species().extractId();
         PokemonSpecies species = speciesRepository.getReferenceById(speciesId);
-
         pokemon.setSpecies(species);
     }
 
@@ -154,8 +174,8 @@ public class PokemonSeedService {
         }
 
         List<PokemonTypeApiDto> sorted = dto.types().stream()
-            .sorted(Comparator.comparing(PokemonTypeApiDto::slot))
-            .toList();
+                .sorted(Comparator.comparing(PokemonTypeApiDto::slot))
+                .toList();
 
         Type primaryType = typeRepository.getReferenceById(sorted.getFirst().type().extractId());
         pokemon.setPrimaryType(primaryType);
@@ -166,13 +186,15 @@ public class PokemonSeedService {
         }
     }
 
-
-    private int seedPokemonAbilities(List<PokemonApiDto> pokemonDtos) {
+    private PersistResult persistAbilities(List<PokemonApiDto> pokemonDtos, int initialErrors) {
         List<PokemonAbility> entries = new ArrayList<>();
+        int errors = initialErrors;
 
         for (PokemonApiDto dto : pokemonDtos) {
             if (dto.abilities() == null) {
-                throw new IllegalArgumentException("Pokemon abilities cannot be null: " + dto.name());
+                errors++;
+                log.error("Pokemon '{}' has null abilities list; skipping", dto.name());
+                continue;
             }
 
             Pokemon pokemon = pokemonRepository.getReferenceById(dto.id());
@@ -183,12 +205,13 @@ public class PokemonSeedService {
                     Ability ability = abilityRepository.getReferenceById(abilityId);
 
                     entries.add(PokemonAbility.builder()
-                        .pokemon(pokemon)
-                        .ability(ability)
-                        .slot(abilityDto.slot())
-                        .isHidden(abilityDto.isHidden())
-                        .build());
+                            .pokemon(pokemon)
+                            .ability(ability)
+                            .slot(abilityDto.slot())
+                            .isHidden(abilityDto.isHidden())
+                            .build());
                 } catch (Exception e) {
+                    errors++;
                     log.error("Failed to map ability for pokemon {}: {}", dto.name(), abilityDto, e);
                 }
             }
@@ -196,19 +219,20 @@ public class PokemonSeedService {
 
         pokemonAbilityRepository.saveAll(entries);
 
-        return entries.size();
+        return new PersistResult(entries.size(), errors);
     }
 
-    private int seedPokemonMoves(List<PokemonApiDto> pokemonDtos) {
+    private PersistResult persistMoves(List<PokemonApiDto> pokemonDtos, int initialErrors) {
         List<PokemonMove> entries = new ArrayList<>();
+        int errors = initialErrors;
 
-        Set<Integer> seededMoveIds = moveRepository.findAll().stream()
-            .map(Move::getId)
-            .collect(Collectors.toSet());
+        Set<Integer> seededMoveIds = Set.copyOf(moveRepository.findAllIds());
 
         for (PokemonApiDto dto : pokemonDtos) {
             if (dto.moves() == null) {
-                throw new IllegalArgumentException("Pokemon moves cannot be null: " + dto.name());
+                errors++;
+                log.error("Pokemon '{}' has null moves list; skipping", dto.name());
+                continue;
             }
 
             Pokemon pokemon = pokemonRepository.getReferenceById(dto.id());
@@ -216,11 +240,13 @@ public class PokemonSeedService {
             for (PokemonMoveApiDto moveDto : dto.moves()) {
                 Integer moveId = moveDto.move().extractId();
 
-                if (moveId == null || moveId > NON_CANNON_MOVE_ID_THRESHOLD) {
+                if (moveId == null || moveId > NON_CANON_MOVE_ID_THRESHOLD) {
                     continue;
                 }
 
                 if (!seededMoveIds.contains(moveId)) {
+                    log.debug("Skipping move {} for pokemon {}: not in seeded move set",
+                            moveDto.move().name(), dto.name());
                     continue;
                 }
 
@@ -233,13 +259,14 @@ public class PokemonSeedService {
                         String learnMethod = detail.moveLearnMethod().name();
 
                         entries.add(PokemonMove.builder()
-                            .id(new PokemonMoveId(moveId, dto.id(), learnMethod))
-                            .pokemon(pokemon)
-                            .move(move)
-                            .levelLearnedAt(detail.levelLearnedAt())
-                            .build());
+                                .id(new PokemonMoveId(dto.id(), moveId, learnMethod))
+                                .pokemon(pokemon)
+                                .move(move)
+                                .levelLearnedAt(detail.levelLearnedAt())
+                                .build());
                     }
                 } catch (Exception e) {
+                    errors++;
                     log.error("Failed to map move for pokemon {}: {}", dto.name(), moveDto.move().name(), e);
                 }
             }
@@ -247,7 +274,7 @@ public class PokemonSeedService {
 
         pokemonMoveRepository.saveAll(entries);
 
-        return entries.size();
+        return new PersistResult(entries.size(), errors);
     }
 
     private Map<String, VersionGroupDetail> getLatestByMethod(PokemonMoveApiDto moveDto) {
@@ -267,7 +294,6 @@ public class PokemonSeedService {
             latestByMethod.merge(method, detail, (existing, candidate) -> {
                 int existingOrder = existing.order() != null ? existing.order() : 0;
                 int candidateOrder = candidate.order() != null ? candidate.order() : 0;
-
                 return candidateOrder >= existingOrder ? candidate : existing;
             });
         }
@@ -282,4 +308,8 @@ public class PokemonSeedService {
         String name = dto.name();
         return COSMETIC_FORM_SUFFIXES.stream().anyMatch(name::endsWith);
     }
+
+    private record FetchResult(List<PokemonApiDto> apiDtos, int errors) {}
+
+    private record PersistResult(int saved, int errors) {}
 }

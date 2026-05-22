@@ -1,5 +1,13 @@
 package com.poketeambuilder.services.seed;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Map.Entry;
+
 import com.poketeambuilder.entities.PokemonSpecies;
 
 import com.poketeambuilder.dtos.front.admin.seed.SeedResultDto;
@@ -16,73 +24,52 @@ import com.poketeambuilder.repositories.SpeciesRepository;
 
 import com.poketeambuilder.services.command.PokeApiClient;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.List;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.Map.Entry;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Seeds the {@code pokemon_species} table from PokeAPI. Runs in three steps so HTTP and DB
+ * work never overlap:
+ *
+ * <ol>
+ *   <li>Fetch all species DTOs.</li>
+ *   <li>Persist species rows.</li>
+ *   <li>Fetch every distinct evolution chain, then persist the resolved {@code previous_evolution} links and {@code evolution_*}.</li>
+ * </ol>
+ */
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class SpeciesSeedService {
 
-    private static final Logger log = LoggerFactory.getLogger(SpeciesSeedService.class);
+    private static final String SPECIES_ENDPOINT = "/pokemon-species";
 
     private final SpeciesMapper speciesMapper;
     private final SpeciesRepository speciesRepository;
 
     private final PokeApiClient pokeApiClient;
+    private final TransactionTemplate transactionTemplate;
 
-    private static final String SPECIES_ENDPOINT = "/pokemon-species";
+    public SpeciesSeedService(SpeciesMapper speciesMapper, SpeciesRepository speciesRepository,
+                              PokeApiClient pokeApiClient, TransactionTemplate transactionTemplate) {
+        this.speciesMapper = speciesMapper;
+        this.speciesRepository = speciesRepository;
+        this.pokeApiClient = pokeApiClient;
+        this.transactionTemplate = transactionTemplate;
+    }
 
-    @Transactional
     public SeedResultDto seed() {
-        int errors = 0;
+        FetchResult fetched = fetchAllSpecies();
+        int saved = transactionTemplate.execute(status -> persistSpecies(fetched.apiDtos()));
+        log.info("Seeded {} species ({} fetch errors)", saved, fetched.errors());
 
-        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(SPECIES_ENDPOINT);
+        Map<String, EvolutionChainApiDto> chainsByUrl = fetchEvolutionChains(fetched.apiDtos());
+        int linked = transactionTemplate.execute(status -> linkEvolutions(fetched.apiDtos(), chainsByUrl));
+        log.info("Linked {} evolution references", linked);
 
-        List<PokemonSpeciesApiDto> speciesDtos = new ArrayList<>();
-
-        for (PokeApiResource resource : resources) {
-            try {
-                PokemonSpeciesApiDto dto = pokeApiClient.fetchResource(resource.url(), PokemonSpeciesApiDto.class);
-                speciesDtos.add(dto);
-            } catch (Exception e) {
-                errors++;
-                log.error("Failed to fetch species resource: {}", resource.url(), e);
-            }
-        }
-
-        List<PokemonSpecies> entities = speciesDtos.stream()
-            .map(speciesMapper::toEntity)
-            .toList();
-
-        speciesRepository.saveAllAndFlush(entities);
-
-        log.info("Seeded {} species ({} fetch errors)", entities.size(), errors);
-
-        Map<Integer, Integer> evolutionLinks = buildEvolutionLinks(speciesDtos);
-
-        linkPreviousEvolutions(evolutionLinks);
-
-        log.info("Linked {} evolution references", evolutionLinks.size());
-
-        int detailsApplied = seedEvolutionDetails(speciesDtos);
-
-        log.info("Applied evolution details to {} species", detailsApplied);
-
-        return new SeedResultDto(entities.size(), errors);
+        return SeedResultDto.of(saved, fetched.errors());
     }
 
     @Transactional
@@ -91,83 +78,122 @@ public class SpeciesSeedService {
         speciesRepository.deleteAllInBatch();
     }
 
+    private FetchResult fetchAllSpecies() {
+        List<PokeApiResource> resources = pokeApiClient.fetchAllResources(SPECIES_ENDPOINT);
+
+        List<PokemonSpeciesApiDto> apiDtos = new ArrayList<>();
+        int errors = 0;
+
+        for (PokeApiResource resource : resources) {
+            try {
+                apiDtos.add(pokeApiClient.fetchResource(resource.url(), PokemonSpeciesApiDto.class));
+            } catch (Exception e) {
+                errors++;
+                log.error("Failed to fetch species resource: {}", resource.url(), e);
+            }
+        }
+
+        return new FetchResult(apiDtos, errors);
+    }
+
+    private int persistSpecies(List<PokemonSpeciesApiDto> apiDtos) {
+        List<PokemonSpecies> entities = apiDtos.stream().map(speciesMapper::toEntity).toList();
+        speciesRepository.saveAllAndFlush(entities);
+        return entities.size();
+    }
+
+    /** Fetches every distinct evolution-chain resource referenced by the species. */
+    private Map<String, EvolutionChainApiDto> fetchEvolutionChains(List<PokemonSpeciesApiDto> speciesDtos) {
+        Set<String> chainUrls = new HashSet<>();
+        for (PokemonSpeciesApiDto dto : speciesDtos) {
+            if (dto.evolutionChain() != null && dto.evolutionChain().url() != null) {
+                chainUrls.add(dto.evolutionChain().url());
+            }
+        }
+
+        Map<String, EvolutionChainApiDto> chainsByUrl = new HashMap<>();
+        for (String chainUrl : chainUrls) {
+            try {
+                chainsByUrl.put(chainUrl, pokeApiClient.fetchResource(chainUrl, EvolutionChainApiDto.class));
+            } catch (Exception e) {
+                log.error("Failed to fetch evolution chain: {}", chainUrl, e);
+            }
+        }
+        return chainsByUrl;
+    }
+
+    /**
+     * Applies previous-evolution links and evolution-detail fields.
+     */
+    private int linkEvolutions(List<PokemonSpeciesApiDto> speciesDtos, Map<String, EvolutionChainApiDto> chainsByUrl) {
+        Map<Integer, Integer> previousEvolutionLinks = buildEvolutionLinks(speciesDtos);
+        applyPreviousEvolutions(previousEvolutionLinks);
+
+        Map<Integer, EvolutionDetailApiDto> detailsBySpeciesId = collectEvolutionDetails(chainsByUrl);
+        applyEvolutionDetails(detailsBySpeciesId);
+
+        speciesRepository.flush();
+
+        log.info("Applied evolution details to {} species", detailsBySpeciesId.size());
+
+        return previousEvolutionLinks.size();
+    }
+
     private Map<Integer, Integer> buildEvolutionLinks(List<PokemonSpeciesApiDto> speciesDtos) {
         Map<Integer, Integer> links = new HashMap<>();
 
         for (PokemonSpeciesApiDto dto : speciesDtos) {
-            if (dto.evolvesFromSpecies() != null) {
-                Integer preevolutionId = dto.evolvesFromSpecies().extractId();
+            if (dto.evolvesFromSpecies() == null) {
+                continue;
+            }
 
-                if (preevolutionId != null) {
-                    links.put(dto.id(), preevolutionId);
-                }
+            Integer preevolutionId = dto.evolvesFromSpecies().extractId();
+            if (preevolutionId != null) {
+                links.put(dto.id(), preevolutionId);
             }
         }
 
         return links;
     }
 
-    private void linkPreviousEvolutions(Map<Integer, Integer> evolutionLinks) {
+    private void applyPreviousEvolutions(Map<Integer, Integer> evolutionLinks) {
         for (Entry<Integer, Integer> link : evolutionLinks.entrySet()) {
-            PokemonSpecies evolution = speciesRepository.findById(link.getKey())
-                .orElseThrow(() -> new IllegalStateException("Species not found: " + link.getKey()));
-            PokemonSpecies preevolution = speciesRepository.getReferenceById(link.getValue());
-
-            evolution.setPreviousEvolution(preevolution);
-        }
-
-        speciesRepository.flush();
-    }
-
-    private int seedEvolutionDetails(List<PokemonSpeciesApiDto> speciesDtos) {
-        Set<String> chainUrls = collectUniqueChainUrls(speciesDtos);
-
-        Map<Integer, EvolutionDetailApiDto> detailsBySpeciesId = new HashMap<>();
-
-        for (String chainUrl : chainUrls) {
             try {
-                EvolutionChainApiDto chain = pokeApiClient.fetchResource(chainUrl, EvolutionChainApiDto.class);
-
-                if (chain.chain() != null) {
-                    walkChain(chain.chain(), detailsBySpeciesId);
-                }
+                PokemonSpecies evolution = speciesRepository.findById(link.getKey())
+                        .orElseThrow(() -> new IllegalStateException("Species not found: " + link.getKey()));
+                PokemonSpecies preevolution = speciesRepository.getReferenceById(link.getValue());
+                evolution.setPreviousEvolution(preevolution);
             } catch (Exception e) {
-                log.error("Failed to fetch evolution chain: {}", chainUrl, e);
+                log.error("Failed to link previous evolution {} -> {}", link.getKey(), link.getValue(), e);
             }
         }
+    }
 
+    private Map<Integer, EvolutionDetailApiDto> collectEvolutionDetails(Map<String, EvolutionChainApiDto> chainsByUrl) {
+        Map<Integer, EvolutionDetailApiDto> detailsBySpeciesId = new HashMap<>();
+        for (EvolutionChainApiDto chain : chainsByUrl.values()) {
+            if (chain.chain() != null) {
+                walkChain(chain.chain(), detailsBySpeciesId);
+            }
+        }
+        return detailsBySpeciesId;
+    }
+
+    private void applyEvolutionDetails(Map<Integer, EvolutionDetailApiDto> detailsBySpeciesId) {
         for (Entry<Integer, EvolutionDetailApiDto> entry : detailsBySpeciesId.entrySet()) {
             try {
                 PokemonSpecies species = speciesRepository.findById(entry.getKey())
-                    .orElseThrow(() -> new IllegalStateException("Species not found: " + entry.getKey()));
-
-                applyEvolutionDetails(species, entry.getValue());
+                        .orElseThrow(() -> new IllegalStateException("Species not found: " + entry.getKey()));
+                applyEvolutionDetail(species, entry.getValue());
             } catch (Exception e) {
                 log.error("Failed to apply evolution details for species {}", entry.getKey(), e);
             }
         }
-
-        speciesRepository.flush();
-
-        return detailsBySpeciesId.size();
-    }
-
-    private Set<String> collectUniqueChainUrls(List<PokemonSpeciesApiDto> speciesDtos) {
-        Set<String> urls = new HashSet<>();
-
-        for (PokemonSpeciesApiDto dto : speciesDtos) {
-            if (dto.evolutionChain() != null && dto.evolutionChain().url() != null) {
-                urls.add(dto.evolutionChain().url());
-            }
-        }
-
-        return urls;
     }
 
     private void walkChain(ChainLinkApiDto link, Map<Integer, EvolutionDetailApiDto> detailsBySpeciesId) {
         if (link.evolutionDetails() != null && !link.evolutionDetails().isEmpty() && link.species() != null) {
             Integer speciesId = link.species().extractId();
-
             if (speciesId != null) {
                 detailsBySpeciesId.put(speciesId, link.evolutionDetails().get(0));
             }
@@ -180,7 +206,7 @@ public class SpeciesSeedService {
         }
     }
 
-    private void applyEvolutionDetails(PokemonSpecies species, EvolutionDetailApiDto detail) {
+    private void applyEvolutionDetail(PokemonSpecies species, EvolutionDetailApiDto detail) {
         if (detail.trigger() != null) {
             species.setEvolutionTrigger(detail.trigger().name());
         }
@@ -198,4 +224,6 @@ public class SpeciesSeedService {
             species.setEvolutionTimeOfDay(detail.timeOfDay());
         }
     }
+
+    private record FetchResult(List<PokemonSpeciesApiDto> apiDtos, int errors) {}
 }
