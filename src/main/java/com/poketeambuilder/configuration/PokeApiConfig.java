@@ -46,16 +46,18 @@ public class PokeApiConfig {
                 .requestFactory(requestFactory)
                 .requestInterceptor(new PokeApiThrottlingInterceptor(DEFAULT_REQUEST_DELAY_MS))
                 .defaultStatusHandler(HttpStatusCode::is4xxClientError, (request, response) -> {
-                    if (response.getStatusCode().value() == 429) {
+                    int status = response.getStatusCode().value();
+                    if (status == 429) {
                         String uri = request.getURI().toString();
                         log.warn("PokeAPI rate limit hit on request: {}", uri);
                         throw new PokeApiRateLimitException(String.format("Rate limited by PokeAPI on request: %s", uri));
                     }
 
-                    throw new PokeApiException(String.format("PokeAPI client error %d on request: %s", response.getStatusCode().value(), request.getURI()));
+                    throw new PokeApiException(status, String.format("PokeAPI client error %d on request: %s", status, request.getURI()));
                 })
                 .defaultStatusHandler(HttpStatusCode::is5xxServerError, (request, response) -> {
-                    throw new PokeApiException(String.format("PokeAPI server error %d on request: %s", response.getStatusCode().value(), request.getURI()));
+                    int status = response.getStatusCode().value();
+                    throw new PokeApiException(status, String.format("PokeAPI server error %d on request: %s", status, request.getURI()));
                 })
                 .build();
     }
