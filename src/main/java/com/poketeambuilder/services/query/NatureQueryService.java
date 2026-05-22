@@ -24,9 +24,13 @@ import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link Nature} reference data. Cached on findById. */
 @Service
 @Validated
 public class NatureQueryService extends AbstractQueryService<Nature, Integer, NatureFilterDto, NatureReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
 
     private final NatureMapper natureMapper;
     private final NatureRepository natureRepository;
@@ -36,9 +40,6 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
         this.natureMapper = natureMapper;
         this.natureRepository = natureRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_NAME = "name";
 
     @Override
     protected String getEntityName() {
@@ -82,5 +83,4 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
 
         return builder.build();
     }
-    
 }

@@ -28,21 +28,22 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link Ability} reference data. */
 @Service
 @Validated
 public class AbilityQueryService extends AbstractQueryService<Ability, Integer, AbilityFilterDto, AbilityReadDto> {
 
-    private AbilityMapper abilityMapper;
-    private AbilityRepository abilityRepository;
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
+
+    private final AbilityMapper abilityMapper;
+    private final AbilityRepository abilityRepository;
 
     public AbilityQueryService(CacheManager cacheManager, AbilityMapper abilityMapper, AbilityRepository abilityRepository) {
         super(cacheManager);
         this.abilityMapper = abilityMapper;
         this.abilityRepository = abilityRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_NAME = "name";
 
     @Override
     protected String getEntityName() {
@@ -64,12 +65,13 @@ public class AbilityQueryService extends AbstractQueryService<Ability, Integer, 
         return abilityRepository;
     }
 
+    /** Compact projection for embed / picker use cases. */
     public Page<AbilitySummaryDto> filterAbilitySummaries(@Valid @NotNull AbilityFilterDto filter, @NotNull Pageable pageable) {
         return filterAndMap(filter, pageable, abilityMapper::toSummaryDto);
     }
 
     @Override
-    protected Specification<Ability> buildSpecification(AbilityFilterDto filter) {
+    protected Specification<Ability> buildSpecification(@NotNull AbilityFilterDto filter) {
         SpecificationBuilder<Ability> builder = new SpecificationBuilder<>();
 
         if (!filter.hasAnyCriteria()) {
@@ -80,15 +82,14 @@ public class AbilityQueryService extends AbstractQueryService<Ability, Integer, 
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
 
-        if (filter.getName() != null && !filter.getName().isEmpty()) {
+        if (filter.getName() != null && !filter.getName().isBlank()) {
             builder.with(FIELD_NAME, filter.getName(), SearchOperation.LIKE);
         }
 
-        if (filter.getNameExact() != null && !filter.getNameExact().isEmpty()) {
+        if (filter.getNameExact() != null && !filter.getNameExact().isBlank()) {
             builder.with(FIELD_NAME, filter.getNameExact(), SearchOperation.EQUAL);
         }
 
         return builder.build();
     }
-    
 }

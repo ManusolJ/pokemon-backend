@@ -28,9 +28,16 @@ import jakarta.persistence.criteria.CriteriaQuery;
 
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * Read access to {@link TypeEffectiveness}.
+ */
 @Service
 @Validated
 public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffectiveness, TypeEffectivenessId, TypeEffectivenessFilterDto, TypeEffectivenessReadDto> {
+
+    private static final String FIELD_MULTIPLIER = "multiplier";
+    private static final String FIELD_ATTACKING_TYPE_ID = "attackingType.id";
+    private static final String FIELD_DEFENDING_TYPE_ID = "defendingType.id";
 
     private final TypeEffectivenessMapper typeEffectivenessMapper;
     private final TypeEffectivenessRepository typeEffectivenessRepository;
@@ -40,10 +47,6 @@ public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffe
         this.typeEffectivenessMapper = typeEffectivenessMapper;
         this.typeEffectivenessRepository = typeEffectivenessRepository;
     }
-
-    private static final String FIELD_MULTIPLIER = "multiplier";
-    private static final String FIELD_ATTACKING_TYPE_ID = "attackingType.id";
-    private static final String FIELD_DEFENDING_TYPE_ID = "defendingType.id";
 
     @Override
     protected String getEntityName() {
@@ -82,11 +85,9 @@ public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffe
         if (filter.getAttackingTypeId() != null) {
             builder.with(FIELD_ATTACKING_TYPE_ID, filter.getAttackingTypeId(), SearchOperation.EQUAL);
         }
-
         if (filter.getDefendingTypeId() != null) {
             builder.with(FIELD_DEFENDING_TYPE_ID, filter.getDefendingTypeId(), SearchOperation.EQUAL);
         }
-
         if (filter.getMultiplier() != null) {
             builder.with(FIELD_MULTIPLIER, filter.getMultiplier(), SearchOperation.EQUAL);
         }

@@ -1,13 +1,18 @@
 package com.poketeambuilder.services.query;
 
-import com.poketeambuilder.entities.Pokemon;
-import com.poketeambuilder.entities.Type;
-import com.poketeambuilder.entities.PokemonSpecies;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 
-import com.poketeambuilder.dtos.front.pokemon.common.PokemonFilterDto;
+import com.poketeambuilder.entities.Pokemon;
+import com.poketeambuilder.entities.PokemonSpecies;
+import com.poketeambuilder.entities.Type;
+
+import com.poketeambuilder.dtos.front.type.single.TypeReadDto;
+import com.poketeambuilder.dtos.front.pokemon.form.PokemonFilterDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesReadDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
-import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.SpeciesMapper;
@@ -18,10 +23,6 @@ import com.poketeambuilder.repositories.SpeciesRepository;
 
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.cache.CacheManager;
 
@@ -34,34 +35,23 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.validation.annotation.Validated;
 
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * Read access to {@link PokemonSpecies}.
+ */
 @Service
 @Validated
 public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, Integer, PokemonFilterDto, PokemonSpeciesReadDto> {
-
-    private final SpeciesMapper speciesMapper;
-    private final SpeciesRepository speciesRepository;
-    private final PokemonRepository pokemonRepository;
-
-    public SpeciesQueryService(
-            CacheManager cacheManager,
-            SpeciesMapper speciesMapper,
-            SpeciesRepository speciesRepository,
-            PokemonRepository pokemonRepository) {
-        super(cacheManager);
-        this.speciesMapper = speciesMapper;
-        this.speciesRepository = speciesRepository;
-        this.pokemonRepository = pokemonRepository;
-    }
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
@@ -94,9 +84,24 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     private static final String POKEMON_BASE_SP_DEF = "baseSpDef";
     private static final String POKEMON_BASE_SPEED = "baseSpeed";
 
-    private static final String FIELD_EVOLVES_WITH_HAPPINESS_TRIGGER = "happiness";
+    private static final String EVOLVES_WITH_HAPPINESS_TRIGGER = "happiness";
 
     private static final int GENDERLESS_RATE = -1;
+
+    private final SpeciesMapper speciesMapper;
+    private final SpeciesRepository speciesRepository;
+    private final PokemonRepository pokemonRepository;
+
+    public SpeciesQueryService(
+            CacheManager cacheManager,
+            SpeciesMapper speciesMapper,
+            SpeciesRepository speciesRepository,
+            PokemonRepository pokemonRepository) {
+        super(cacheManager);
+        this.speciesMapper = speciesMapper;
+        this.speciesRepository = speciesRepository;
+        this.pokemonRepository = pokemonRepository;
+    }
 
     @Override
     protected String getEntityName() {
@@ -123,48 +128,35 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
         root.fetch(FIELD_PREVIOUS_EVOLUTION, JoinType.LEFT);
         query.distinct(true);
     }
-    
+
+    /**
+     * Pokédex listing: pages species rows and enriches each with the default form's types
+     * and sprite. One species query + one Pokemon query per page; no n+1.
+     */
     public Page<PokemonSpeciesSummaryDto> filterSummaries(@Valid @NotNull PokemonFilterDto filter, @NotNull Pageable pageable) {
         Specification<PokemonSpecies> spec = buildSpecification(filter);
 
         Page<PokemonSpecies> page = speciesRepository.findAll(spec, pageable);
 
         List<PokemonSpecies> speciesList = page.getContent();
-
         if (speciesList.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, page.getTotalElements());
         }
 
         List<Integer> speciesIds = speciesList.stream().map(PokemonSpecies::getId).toList();
-
-        Map<Integer, Pokemon> defaultFormBySpeciesId = fetchDefaultFormsBySpeciesId(speciesIds);
+        Map<Integer, Pokemon> defaultFormBySpeciesId = pokemonRepository
+                .findDefaultFormsBySpeciesIdIn(speciesIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        pokemon -> pokemon.getSpecies().getId(),
+                        pokemon -> pokemon,
+                        (existing, replacement) -> existing));
 
         List<PokemonSpeciesSummaryDto> dtos = speciesList.stream()
                 .map(species -> toEnrichedSummary(species, defaultFormBySpeciesId.get(species.getId())))
                 .toList();
 
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
-    }
-
-    private Map<Integer, Pokemon> fetchDefaultFormsBySpeciesId(List<Integer> speciesIds) {
-        Specification<Pokemon> spec = (root, query, cb) -> {
-            if (query != null && query.getResultType() != Long.class) {
-                root.fetch(POKEMON_PRIMARY_TYPE);
-                root.fetch(POKEMON_SECONDARY_TYPE, JoinType.LEFT);
-            }
-
-            return cb.and(
-                root.get(POKEMON_SPECIES).get(FIELD_ID).in(speciesIds),
-                cb.isTrue(root.get(POKEMON_IS_DEFAULT_FORM))
-            );
-        };
-
-        return pokemonRepository.findAll(spec).stream()
-                .collect(Collectors.toMap(
-                    pokemon -> pokemon.getSpecies().getId(),
-                    pokemon -> pokemon,
-                    (existing, replacement) -> existing
-                ));
     }
 
     private PokemonSpeciesSummaryDto toEnrichedSummary(PokemonSpecies species, Pokemon defaultForm) {
@@ -183,7 +175,7 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
             species.getName(),
             species.getGenus(),
             species.getNationalDexNumber(),
-            species.getOrder(),
+            species.getSortOrder(),
             species.getGenderRate(),
             primary,
             secondary,
@@ -206,23 +198,18 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
-
         if (filter.getName() != null && !filter.getName().isBlank()) {
             builder.with(FIELD_NAME, filter.getName(), SearchOperation.LIKE);
         }
-
         if (filter.getNameExact() != null && !filter.getNameExact().isBlank()) {
             builder.with(FIELD_NAME, filter.getNameExact(), SearchOperation.EQUAL);
         }
-
         if (filter.getNationalDexNumber() != null) {
             builder.with(FIELD_NATIONAL_DEX, filter.getNationalDexNumber(), SearchOperation.EQUAL);
         }
-
         if (filter.getGeneration() != null) {
             builder.with(FIELD_GENERATION, filter.getGeneration(), SearchOperation.EQUAL);
         }
-
         if (filter.getIsBaby() != null) {
             builder.with(FIELD_IS_BABY, filter.getIsBaby(), SearchOperation.EQUAL);
         }
@@ -232,90 +219,114 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
         if (filter.getIsLegendary() != null) {
             builder.with(FIELD_IS_LEGENDARY, filter.getIsLegendary(), SearchOperation.EQUAL);
         }
-
         if (filter.getGrowthRate() != null && !filter.getGrowthRate().isBlank()) {
             builder.with(FIELD_GROWTH_RATE, filter.getGrowthRate(), SearchOperation.EQUAL);
         }
-
         if (filter.getMinBaseHappiness() != null) {
             builder.with(FIELD_BASE_HAPPINESS, filter.getMinBaseHappiness(), SearchOperation.GREATER_THAN_OR_EQUAL);
         }
-
         if (filter.getMaxBaseHappiness() != null) {
             builder.with(FIELD_BASE_HAPPINESS, filter.getMaxBaseHappiness(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
-
         if (filter.getMinGenderRate() != null) {
             builder.with(FIELD_GENDER_RATE, filter.getMinGenderRate(), SearchOperation.GREATER_THAN_OR_EQUAL);
         }
-
         if (filter.getMaxGenderRate() != null) {
             builder.with(FIELD_GENDER_RATE, filter.getMaxGenderRate(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
-
         if (filter.getEvolutionTrigger() != null && !filter.getEvolutionTrigger().isBlank()) {
             builder.with(FIELD_EVOLUTION_TRIGGER, filter.getEvolutionTrigger(), SearchOperation.EQUAL);
         }
-
         if (filter.getEvolutionItem() != null && !filter.getEvolutionItem().isBlank()) {
             builder.with(FIELD_EVOLUTION_ITEM, filter.getEvolutionItem(), SearchOperation.EQUAL);
         }
-
         if (filter.getEvolutionTimeOfDay() != null && !filter.getEvolutionTimeOfDay().isBlank()) {
             builder.with(FIELD_EVOLUTION_TIME_OF_DAY, filter.getEvolutionTimeOfDay(), SearchOperation.EQUAL);
         }
-
         if (filter.getMinEvolutionLevel() != null) {
             builder.with(FIELD_EVOLUTION_MIN_LEVEL, filter.getMinEvolutionLevel(), SearchOperation.GREATER_THAN_OR_EQUAL);
         }
-
         if (filter.getMaxEvolutionLevel() != null) {
             builder.with(FIELD_EVOLUTION_MIN_LEVEL, filter.getMaxEvolutionLevel(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
 
         Specification<PokemonSpecies> spec = builder.build();
 
-
         if (filter.getIsGenderless() != null && filter.getIsGenderless()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get(FIELD_GENDER_RATE), GENDERLESS_RATE));
-        } else if (filter.getIsGenderless() != null && !filter.getIsGenderless()) {
+        } else if (filter.getIsGenderless() != null) {
             spec = spec.and((root, query, cb) -> cb.notEqual(root.get(FIELD_GENDER_RATE), GENDERLESS_RATE));
         }
 
         if (filter.getHasPreviousEvolution() != null && filter.getHasPreviousEvolution()) {
             spec = spec.and((root, query, cb) -> cb.isNotNull(root.get(FIELD_PREVIOUS_EVOLUTION)));
-        } else if (filter.getHasPreviousEvolution() != null && !filter.getHasPreviousEvolution()) {
+        } else if (filter.getHasPreviousEvolution() != null) {
             spec = spec.and((root, query, cb) -> cb.isNull(root.get(FIELD_PREVIOUS_EVOLUTION)));
         }
 
         List<String> eggGroups = filter.getEggGroups();
-
         if (eggGroups != null && !eggGroups.isEmpty()) {
             spec = spec.and((root, query, cb) -> cb.or(
                     root.get(FIELD_EGG_GROUP_1).in(eggGroups),
-                    root.get(FIELD_EGG_GROUP_2).in(eggGroups)
-            ));
+                    root.get(FIELD_EGG_GROUP_2).in(eggGroups)));
         }
 
-        if (filter.getEvolvesWithItem() != null && filter.getEvolvesWithItem()) {
+        if (Boolean.TRUE.equals(filter.getEvolvesWithItem())) {
             spec = spec.and((root, query, cb) -> cb.isNotNull(root.get(FIELD_EVOLUTION_ITEM)));
         }
-
-        if (filter.getEvolvesWithLevelUp() != null && filter.getEvolvesWithLevelUp()) {
+        if (Boolean.TRUE.equals(filter.getEvolvesWithLevelUp())) {
             spec = spec.and((root, query, cb) -> cb.isNotNull(root.get(FIELD_EVOLUTION_MIN_LEVEL)));
         }
-
-        if (filter.getEvolvesWithHappiness() != null && filter.getEvolvesWithHappiness()) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get(FIELD_EVOLUTION_TRIGGER), FIELD_EVOLVES_WITH_HAPPINESS_TRIGGER));
+        if (Boolean.TRUE.equals(filter.getEvolvesWithHappiness())) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get(FIELD_EVOLUTION_TRIGGER), EVOLVES_WITH_HAPPINESS_TRIGGER));
         }
 
-        spec = addPokemonFilters(spec, filter);
-
-        return spec;
+        return addPokemonFilters(spec, filter);
     }
 
+    /**
+     * Adds an {@code EXISTS (SELECT 1 FROM pokemon p WHERE p.species = root AND p.is_default_form
+     * AND …)} clause to the species spec when the filter carries Pokémon-level criteria.
+     * Backed by {@code idx_pokemon_species_default}.
+     */
     private Specification<PokemonSpecies> addPokemonFilters(Specification<PokemonSpecies> spec, PokemonFilterDto filter) {
-        boolean hasPokemonFilter = filter.getPrimaryTypeId() != null
+        if (!hasPokemonFilter(filter)) {
+            return spec;
+        }
+
+        return spec.and((root, query, cb) -> {
+            Subquery<Integer> sub = query.subquery(Integer.class);
+            Root<Pokemon> pokemon = sub.from(Pokemon.class);
+            sub.select(pokemon.get(FIELD_ID));
+
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(pokemon.get(POKEMON_SPECIES), root));
+            predicates.add(cb.isTrue(pokemon.get(POKEMON_IS_DEFAULT_FORM)));
+
+            if (filter.getPrimaryTypeId() != null) {
+                predicates.add(cb.equal(pokemon.get(POKEMON_PRIMARY_TYPE).get(FIELD_ID), filter.getPrimaryTypeId()));
+            }
+            if (filter.getSecondaryTypeId() != null) {
+                predicates.add(cb.equal(pokemon.get(POKEMON_SECONDARY_TYPE).get(FIELD_ID), filter.getSecondaryTypeId()));
+            }
+
+            addRange(predicates, cb, pokemon.get(POKEMON_HEIGHT), filter.getMinHeight(), filter.getMaxHeight());
+            addRange(predicates, cb, pokemon.get(POKEMON_WEIGHT), filter.getMinWeight(), filter.getMaxWeight());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_HP), filter.getMinBaseHp(), filter.getMaxBaseHp());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_ATK), filter.getMinBaseAtk(), filter.getMaxBaseAtk());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_DEF), filter.getMinBaseDef(), filter.getMaxBaseDef());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SP_ATK), filter.getMinBaseSpAtk(), filter.getMaxBaseSpAtk());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SP_DEF), filter.getMinBaseSpDef(), filter.getMaxBaseSpDef());
+            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SPEED), filter.getMinBaseSpeed(), filter.getMaxBaseSpeed());
+
+            sub.where(predicates.toArray(new Predicate[0]));
+
+            return cb.exists(sub);
+        });
+    }
+
+    private static boolean hasPokemonFilter(PokemonFilterDto filter) {
+        return filter.getPrimaryTypeId() != null
                 || filter.getSecondaryTypeId() != null
                 || filter.getMinHeight() != null
                 || filter.getMaxHeight() != null
@@ -333,52 +344,20 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
                 || filter.getMaxBaseSpDef() != null
                 || filter.getMinBaseSpeed() != null
                 || filter.getMaxBaseSpeed() != null;
-
-        if (!hasPokemonFilter) {
-            return spec;
-        }
-
-        return spec.and((root, query, cb) -> {
-            Subquery<Integer> sub = query.subquery(Integer.class);
-            Root<Pokemon> pokemon = sub.from(Pokemon.class);
-            sub.select(pokemon.get(FIELD_ID));
-
-            List<Predicate> predicates = new java.util.ArrayList<>();
-            predicates.add(cb.equal(pokemon.get(POKEMON_SPECIES), root));
-            predicates.add(cb.isTrue(pokemon.get(POKEMON_IS_DEFAULT_FORM)));
-
-            if (filter.getPrimaryTypeId() != null) {
-                predicates.add(cb.equal(pokemon.get(POKEMON_PRIMARY_TYPE).get(FIELD_ID), filter.getPrimaryTypeId()));
-            }
-            if (filter.getSecondaryTypeId() != null) {
-                predicates.add(cb.equal(pokemon.get(POKEMON_SECONDARY_TYPE).get(FIELD_ID), filter.getSecondaryTypeId()));
-            }
-
-            addRange(predicates, cb, pokemon.get(POKEMON_HEIGHT), filter.getMinHeight(), filter.getMaxHeight());
-            addRange(predicates, cb, pokemon.get(POKEMON_WEIGHT), filter.getMinWeight(), filter.getMaxWeight());
-
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_HP), filter.getMinBaseHp(), filter.getMaxBaseHp());
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_ATK), filter.getMinBaseAtk(), filter.getMaxBaseAtk());
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_DEF), filter.getMinBaseDef(), filter.getMaxBaseDef());
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SP_ATK), filter.getMinBaseSpAtk(), filter.getMaxBaseSpAtk());
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SP_DEF), filter.getMinBaseSpDef(), filter.getMaxBaseSpDef());
-            addRange(predicates, cb, pokemon.get(POKEMON_BASE_SPEED), filter.getMinBaseSpeed(), filter.getMaxBaseSpeed());
-
-            sub.where(predicates.toArray(new Predicate[0]));
-
-            return cb.exists(sub);
-        });
     }
 
-    private static void addRange(List<Predicate> predicates, CriteriaBuilder cb, jakarta.persistence.criteria.Path<? extends Number> path, Integer min, Integer max) {
+    private static void addRange(List<Predicate> predicates, CriteriaBuilder cb, Path<? extends Number> path, Integer min, Integer max) {
+        if (min == null && max == null) {
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        Path<Integer> intPath = (Path<Integer>) path;
+
         if (min != null) {
-            @SuppressWarnings("unchecked")
-            jakarta.persistence.criteria.Path<Integer> intPath = (jakarta.persistence.criteria.Path<Integer>) path;
             predicates.add(cb.greaterThanOrEqualTo(intPath, min));
         }
         if (max != null) {
-            @SuppressWarnings("unchecked")
-            jakarta.persistence.criteria.Path<Integer> intPath = (jakarta.persistence.criteria.Path<Integer>) path;
             predicates.add(cb.lessThanOrEqualTo(intPath, max));
         }
     }

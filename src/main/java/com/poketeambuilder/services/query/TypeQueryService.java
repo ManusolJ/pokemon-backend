@@ -2,8 +2,8 @@ package com.poketeambuilder.services.query;
 
 import com.poketeambuilder.entities.Type;
 
-import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
-import com.poketeambuilder.dtos.front.type.typing.TypeFilterDto;
+import com.poketeambuilder.dtos.front.type.single.TypeReadDto;
+import com.poketeambuilder.dtos.front.type.single.TypeFilterDto;
 
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.implementation.TypeMapper;
@@ -24,9 +24,13 @@ import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link Type} reference data. Cached on findById. */
 @Service
 @Validated
 public class TypeQueryService extends AbstractQueryService<Type, Integer, TypeFilterDto, TypeReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
 
     private final TypeMapper typeMapper;
     private final TypeRepository typeRepository;
@@ -36,9 +40,6 @@ public class TypeQueryService extends AbstractQueryService<Type, Integer, TypeFi
         this.typeMapper = typeMapper;
         this.typeRepository = typeRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_NAME = "name";
 
     @Override
     protected String getEntityName() {

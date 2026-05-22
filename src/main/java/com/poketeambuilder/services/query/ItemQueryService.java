@@ -28,21 +28,22 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link Item} reference data. */
 @Service
 @Validated
 public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFilterDto, ItemReadDto> {
 
-    private ItemMapper itemMapper;
-    private ItemRepository itemRepository;
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
+
+    private final ItemMapper itemMapper;
+    private final ItemRepository itemRepository;
 
     public ItemQueryService(CacheManager cacheManager, ItemMapper itemMapper, ItemRepository itemRepository) {
         super(cacheManager);
         this.itemMapper = itemMapper;
         this.itemRepository = itemRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_NAME = "name";
 
     @Override
     protected String getEntityName() {
@@ -64,6 +65,7 @@ public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFi
         return itemRepository;
     }
 
+    /** Compact projection for embed / picker use cases. */
     public Page<ItemSummaryDto> filterItemSummaries(@Valid @NotNull ItemFilterDto filter, @NotNull Pageable pageable) {
         return filterAndMap(filter, pageable, itemMapper::toSummaryDto);
     }
@@ -80,15 +82,14 @@ public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFi
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
 
-        if (filter.getName() != null && !filter.getName().isEmpty()) {
+        if (filter.getName() != null && !filter.getName().isBlank()) {
             builder.with(FIELD_NAME, filter.getName(), SearchOperation.LIKE);
         }
 
-        if (filter.getNameExact() != null && !filter.getNameExact().isEmpty()) {
+        if (filter.getNameExact() != null && !filter.getNameExact().isBlank()) {
             builder.with(FIELD_NAME, filter.getNameExact(), SearchOperation.EQUAL);
         }
 
         return builder.build();
     }
-    
 }

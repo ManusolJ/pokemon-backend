@@ -24,9 +24,15 @@ import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link SeedLog} records for the admin endpoints. Uncached. */
 @Service
 @Validated
 public class SeedLogQueryService extends AbstractQueryService<SeedLog, Long, SeedLogFilterDto, SeedLogReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_STARTED_AT = "startedAt";
+    private static final String FIELD_TRIGGERED_BY = "triggeredBy";
 
     private final SeedLogMapper seedLogMapper;
     private final SeedLogRepository seedLogRepository;
@@ -36,11 +42,6 @@ public class SeedLogQueryService extends AbstractQueryService<SeedLog, Long, See
         this.seedLogMapper = seedLogMapper;
         this.seedLogRepository = seedLogRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_STATUS = "status";
-    private static final String FIELD_STARTED_AT = "startedAt";
-    private static final String FIELD_TRIGGERED_BY = "triggeredBy";
 
     @Override
     protected String getEntityName() {
@@ -73,23 +74,18 @@ public class SeedLogQueryService extends AbstractQueryService<SeedLog, Long, See
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
-
         if (filter.getStatus() != null && !filter.getStatus().isBlank()) {
             builder.with(FIELD_STATUS, filter.getStatus(), SearchOperation.EQUAL);
         }
-
         if (filter.getTriggeredBy() != null && !filter.getTriggeredBy().isBlank()) {
             builder.with(FIELD_TRIGGERED_BY, filter.getTriggeredBy(), SearchOperation.LIKE);
         }
-
         if (filter.getTriggeredByExact() != null && !filter.getTriggeredByExact().isBlank()) {
             builder.with(FIELD_TRIGGERED_BY, filter.getTriggeredByExact(), SearchOperation.EQUAL);
         }
-
         if (filter.getDateFrom() != null) {
             builder.with(FIELD_STARTED_AT, filter.getDateFrom(), SearchOperation.GREATER_THAN_OR_EQUAL);
         }
-
         if (filter.getDateTo() != null) {
             builder.with(FIELD_STARTED_AT, filter.getDateTo(), SearchOperation.LESS_THAN_OR_EQUAL);
         }

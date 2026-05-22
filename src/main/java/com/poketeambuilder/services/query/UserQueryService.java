@@ -31,9 +31,17 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link AppUser} for the admin endpoints. Uncached. */
 @Service
 @Validated
 public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFilterDto, UserReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_ROLE = "role";
+    private static final String FIELD_EMAIL = "email";
+    private static final String FIELD_ENABLED = "enabled";
+    private static final String FIELD_USERNAME = "username";
+    private static final String FIELD_CREATED_AT = "createdAt";
 
     private final UserMapper userMapper;
     private final UserRepository userRepository;
@@ -43,13 +51,6 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
         this.userMapper = userMapper;
         this.userRepository = userRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_ROLE = "role";
-    private static final String FIELD_EMAIL = "email";
-    private static final String FIELD_ENABLED = "enabled";
-    private static final String FIELD_USERNAME = "username";
-    private static final String FIELD_CREATED_AT = "createdAt";
 
     @Override
     protected String getEntityName() {
@@ -71,6 +72,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
         return userRepository;
     }
 
+    /** Self-service / admin lookup by exact username. Throws when the user doesn't exist. */
     public UserReadDto findByUsername(@NotNull String username) {
         return userRepository.findByUsername(username)
                 .map(userMapper::toReadDto)
@@ -78,6 +80,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
                         String.format("User '%s' not found", username)));
     }
 
+    /** Compact projection for the admin user listing. */
     public Page<UserSummaryDto> filterSummaries(@Valid @NotNull UserFilterDto filter, @NotNull Pageable pageable) {
         return filterAndMap(filter, pageable, userMapper::toSummaryDto);
     }

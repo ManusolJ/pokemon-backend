@@ -24,9 +24,17 @@ import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotNull;
 
+/** Read access to {@link AuditLog} records for the admin endpoints. Uncached. */
 @Service
 @Validated
 public class AuditLogQueryService extends AbstractQueryService<AuditLog, Long, AuditLogFilterDto, AuditLogReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_ACTION = "action";
+    private static final String FIELD_ENTITY = "entity";
+    private static final String FIELD_USERNAME = "username";
+    private static final String FIELD_ENTITY_ID = "entityId";
+    private static final String FIELD_CREATED_AT = "createdAt";
 
     private final AuditLogMapper auditLogMapper;
     private final AuditLogRepository auditLogRepository;
@@ -36,13 +44,6 @@ public class AuditLogQueryService extends AbstractQueryService<AuditLog, Long, A
         this.auditLogMapper = auditLogMapper;
         this.auditLogRepository = auditLogRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_ACTION = "action";
-    private static final String FIELD_ENTITY = "entity";
-    private static final String FIELD_USERNAME = "username";
-    private static final String FIELD_ENTITY_ID = "entityId";
-    private static final String FIELD_CREATED_AT = "createdAt";
 
     @Override
     protected String getEntityName() {
@@ -90,18 +91,13 @@ public class AuditLogQueryService extends AbstractQueryService<AuditLog, Long, A
         if (filter.getEntityId() != null && !filter.getEntityId().isBlank()) {
             builder.with(FIELD_ENTITY_ID, filter.getEntityId(), SearchOperation.EQUAL);
         }
-
-        Specification<AuditLog> spec = builder.build();
-
         if (filter.getDateFrom() != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.greaterThanOrEqualTo(root.get(FIELD_CREATED_AT), filter.getDateFrom()));
+            builder.with(FIELD_CREATED_AT, filter.getDateFrom(), SearchOperation.GREATER_THAN_OR_EQUAL);
         }
         if (filter.getDateTo() != null) {
-            spec = spec.and((root, query, cb) ->
-                    cb.lessThanOrEqualTo(root.get(FIELD_CREATED_AT), filter.getDateTo()));
+            builder.with(FIELD_CREATED_AT, filter.getDateTo(), SearchOperation.LESS_THAN_OR_EQUAL);
         }
 
-        return spec;
+        return builder.build();
     }
 }

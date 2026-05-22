@@ -20,12 +20,6 @@ import com.poketeambuilder.utils.enums.MoveCategory;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Subquery;
-
-import jakarta.validation.constraints.NotNull;
-
 import org.springframework.cache.CacheManager;
 
 import org.springframework.data.domain.Page;
@@ -35,9 +29,28 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.CriteriaQuery;
+
+import jakarta.validation.constraints.NotNull;
+
+/**
+ * Read access to {@link Move}. Always JOIN-FETCHes the {@code type} since every read DTO
+ * embeds it. The {@link #filterEmbeds(Integer, Pageable)} variant pages the
+ * {@code pokemon_move} join for the "moves learnable by Pokémon X" endpoint.
+ */
 @Service
 @Validated
 public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFilterDto, MoveReadDto> {
+
+    private static final String FIELD_ID = "id";
+    private static final String FIELD_NAME = "name";
+    private static final String FIELD_TYPE_ID = "type.id";
+    private static final String FIELD_POWER = "power";
+    private static final String FIELD_CATEGORY = "category";
+    private static final String FIELD_PRIORITY = "priority";
+    private static final String FIELD_ACCURACY = "accuracy";
 
     private final MoveMapper moveMapper;
     private final MoveRepository moveRepository;
@@ -52,14 +65,6 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
         this.pokemonMoveMapper = pokemonMoveMapper;
         this.pokemonMoveRepository = pokemonMoveRepository;
     }
-
-    private static final String FIELD_ID = "id";
-    private static final String FIELD_NAME = "name";
-    private static final String FIELD_TYPE_ID = "type.id";
-    private static final String FIELD_POWER = "power";
-    private static final String FIELD_CATEGORY = "category";
-    private static final String FIELD_PRIORITY = "priority";
-    private static final String FIELD_ACCURACY = "accuracy";
 
     @Override
     protected String getEntityName() {
@@ -87,10 +92,12 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
         query.distinct(true);
     }
 
-    public Page<MoveSummaryDto> filterSummaries(MoveFilterDto filter, Pageable pageable) {
+    /** Compact projection for embed / picker use cases. */
+    public Page<MoveSummaryDto> filterSummaries(@NotNull MoveFilterDto filter, @NotNull Pageable pageable) {
         return filterAndMap(filter, pageable, moveMapper::toSummaryDto);
     }
 
+    /** Pages the move list scoped to the given Pokémon, with learn-method + level metadata. */
     public Page<MoveEmbedDto> filterEmbeds(@NotNull Integer pokemonId, @NotNull Pageable pageable) {
         return pokemonMoveRepository.findByIdPokemonId(pokemonId, pageable)
                 .map(pokemonMoveMapper::toEmbedDto);
