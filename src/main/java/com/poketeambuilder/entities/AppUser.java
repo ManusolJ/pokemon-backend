@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Application user. Authentication uses {@link #password} (bcrypt) — the plain password
+ * Application user. Authentication uses {@link #password} (bcrypt); the plain password
  * never lives on the entity. {@link #role} drives Spring Security authorization checks;
  * {@link #enabled} is the soft-disable flag used by the admin reactivate / deactivate flow.
  */
