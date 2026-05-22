@@ -1,6 +1,6 @@
 package com.poketeambuilder.dtos.front.pokemon.species;
 
-import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
+import com.poketeambuilder.dtos.front.type.single.TypeReadDto;
 
 public record PokemonSpeciesSummaryDto(
     int id,

@@ -6,6 +6,9 @@ import java.time.Instant;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for the admin seed-log listing.
+ */
 @Getter
 public class SeedLogFilterDto implements FilterDtoInterface {
 
@@ -18,6 +21,6 @@ public class SeedLogFilterDto implements FilterDtoInterface {
     private String triggeredByExact;
 
     private Instant dateFrom;
-    
+
     private Instant dateTo;
 }

@@ -6,6 +6,9 @@ import java.time.Instant;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for the admin audit-log listing.
+ */
 @Getter
 public class AuditLogFilterDto implements FilterDtoInterface {
 
@@ -22,6 +25,6 @@ public class AuditLogFilterDto implements FilterDtoInterface {
     private String entityId;
 
     private Instant dateFrom;
-    
+
     private Instant dateTo;
 }

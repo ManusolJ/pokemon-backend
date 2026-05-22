@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.front.team.pokemon;
+package com.poketeambuilder.dtos.front.team.roster;
 
 import java.util.List;
 
@@ -7,10 +7,16 @@ import com.poketeambuilder.infrastructure.validation.annotations.ValidEvSpread;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotNull;
 
 import lombok.Getter;
 
+/**
+ * Payload for adding one Pokémon slot to a team. Per-stat ranges (slot-less, since the
+ * {@code slot_position} is assigned by the team itself) mirror the entity-level CHECKs. The
+ * class-level {@link ValidEvSpread} enforces the cross-field EV total ≤ 510 rule.
+ */
 @Getter
 @ValidEvSpread
 public class TeamPokemonCreateDto {
@@ -33,6 +39,7 @@ public class TeamPokemonCreateDto {
     @Min(1) @Max(100)
     private Integer level;
 
+    @Pattern(regexp = "MALE|FEMALE|GENDERLESS", message = "Gender must be one of MALE, FEMALE, or GENDERLESS")
     private String gender;
 
     private Boolean shiny;

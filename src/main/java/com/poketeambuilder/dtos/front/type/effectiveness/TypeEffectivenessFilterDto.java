@@ -6,12 +6,15 @@ import java.math.BigDecimal;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for {@link TypeEffectivenessReadDto}.
+ */
 @Getter
 public class TypeEffectivenessFilterDto implements FilterDtoInterface {
-    
+
     private BigDecimal multiplier;
-    
+
     private Integer attackingTypeId;
-    
+
     private Integer defendingTypeId;
 }

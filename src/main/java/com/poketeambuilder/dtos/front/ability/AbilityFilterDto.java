@@ -4,9 +4,12 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for ability listings.
+ */
 @Getter
 public class AbilityFilterDto implements FilterDtoInterface {
-    
+
     private Integer id;
 
     private String name;

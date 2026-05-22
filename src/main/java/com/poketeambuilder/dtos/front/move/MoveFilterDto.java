@@ -4,13 +4,16 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for move listings.
+ */
 @Getter
 public class MoveFilterDto implements FilterDtoInterface {
-    
+
     private Integer id;
-    
+
     private Integer pokemonId;
-    
+
     private String name;
 
     private String nameExact;
@@ -28,5 +31,4 @@ public class MoveFilterDto implements FilterDtoInterface {
     private Integer minAccuracy;
 
     private Integer maxAccuracy;
-
 }

@@ -1,6 +1,6 @@
-package com.poketeambuilder.dtos.front.team.team;
+package com.poketeambuilder.dtos.front.team.details;
 
-import com.poketeambuilder.dtos.front.team.pokemon.TeamPokemonCreateDto;
+import com.poketeambuilder.dtos.front.team.roster.TeamPokemonCreateDto;
 
 import java.util.List;
 
@@ -10,9 +10,10 @@ import jakarta.validation.constraints.NotBlank;
 
 import lombok.Getter;
 
+/** Full-replacement payload for PUT /teams/{id}. */
 @Getter
 public class TeamUpdateDto {
-    
+
     @NotBlank
     @Size(max = 50, message = "Team name must be at most 50 characters long")
     private String name;

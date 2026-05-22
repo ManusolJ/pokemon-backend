@@ -4,9 +4,12 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for nature listings.
+ */
 @Getter
-public class NatureFilterDto implements FilterDtoInterface{
-    
+public class NatureFilterDto implements FilterDtoInterface {
+
     private Integer id;
 
     private String name;

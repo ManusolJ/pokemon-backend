@@ -1,11 +1,15 @@
-package com.poketeambuilder.dtos.front.pokemon.individual;
+package com.poketeambuilder.dtos.front.pokemon.form;
 
-import com.poketeambuilder.dtos.front.type.typing.TypeReadDto;
 import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
+import com.poketeambuilder.dtos.front.type.single.TypeReadDto;
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
 
 import java.util.List;
 
+/**
+ * Full Pokémon (form-level) projection — battle stats, types, sprites, abilities, and the
+ * parent species.
+ */
 public record PokemonReadDto(
     int id,
     String name,

@@ -1,4 +1,4 @@
-package com.poketeambuilder.dtos.front.pokemon.common;
+package com.poketeambuilder.dtos.front.pokemon.form;
 
 import java.util.List;
 
@@ -6,6 +6,9 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import lombok.Getter;
 
+/**
+ * Filter payload for Pokémon listings.
+ */
 @Getter
 public class PokemonFilterDto implements FilterDtoInterface {
 
@@ -64,7 +67,7 @@ public class PokemonFilterDto implements FilterDtoInterface {
     private String evolutionItem;
     private String evolutionTrigger;
     private String evolutionTimeOfDay;
-    
+
     private Integer minEvolutionLevel;
     private Integer maxEvolutionLevel;
 }
