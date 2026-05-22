@@ -3,18 +3,13 @@ package com.poketeambuilder.utils.converters;
 import com.poketeambuilder.utils.enums.UserRole;
 
 import jakarta.persistence.Converter;
-import jakarta.persistence.AttributeConverter;
 
+/** JPA converter for {@link UserRole} columns. Activated globally via {@code autoApply}. */
 @Converter(autoApply = true)
-public class UserRoleConverter implements AttributeConverter<UserRole, String> {
+public class UserRoleConverter extends ValuedEnumConverter<UserRole> {
 
     @Override
-    public String convertToDatabaseColumn(UserRole userRole) {
-        return userRole == null ? null : userRole.getValue();
-    }
-
-    @Override
-    public UserRole convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : UserRole.fromValue(dbData);
+    protected UserRole fromValue(String value) {
+        return UserRole.fromValue(value);
     }
 }

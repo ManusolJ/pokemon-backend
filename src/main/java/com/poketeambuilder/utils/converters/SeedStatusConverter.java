@@ -3,19 +3,13 @@ package com.poketeambuilder.utils.converters;
 import com.poketeambuilder.utils.enums.SeedStatus;
 
 import jakarta.persistence.Converter;
-import jakarta.persistence.AttributeConverter;
 
+/** JPA converter for {@link SeedStatus} columns. Activated globally via {@code autoApply}. */
 @Converter(autoApply = true)
-public class SeedStatusConverter implements AttributeConverter<SeedStatus, String> {
+public class SeedStatusConverter extends ValuedEnumConverter<SeedStatus> {
 
     @Override
-    public String convertToDatabaseColumn(SeedStatus value) {
-        return value != null ? value.getValue() : null;
-    }
-
-    @Override
-    public SeedStatus convertToEntityAttribute(String dbData) {
-        return dbData != null ? SeedStatus.fromValue(dbData) : null;
-
+    protected SeedStatus fromValue(String value) {
+        return SeedStatus.fromValue(value);
     }
 }

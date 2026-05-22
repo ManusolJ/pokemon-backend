@@ -1,6 +1,15 @@
 package com.poketeambuilder.utils.enums;
 
-public enum RelevantItemCategory {
+import com.poketeambuilder.services.seed.ItemSeedService;
+
+/**
+ * Subset of PokeAPI item-category slugs the seed pipeline cares about — i.e. categories that
+ * matter for team-building (held items, mega stones, plates, …). Used by
+ * {@link ItemSeedService} to filter the full item catalog
+ * down to ones worth persisting.
+ */
+public enum RelevantItemCategory implements ValuedEnum {
+
     PLATES("plates"),
     CHOICE("choice"),
     JEWELS("jewels"),
@@ -16,13 +25,14 @@ public enum RelevantItemCategory {
     SPECIES_SPECIFIC("species-specific"),
     TYPE_ENHANCEMENT("type-enhancement");
 
-    private final String apiValue;
+    private final String value;
 
-    RelevantItemCategory(String apiValue) {
-        this.apiValue = apiValue;
+    RelevantItemCategory(String value) {
+        this.value = value;
     }
 
-    public String getApiValue() {
-        return apiValue;
+    @Override
+    public String getValue() {
+        return value;
     }
 }

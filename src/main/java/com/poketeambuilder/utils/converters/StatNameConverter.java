@@ -3,19 +3,13 @@ package com.poketeambuilder.utils.converters;
 import com.poketeambuilder.utils.enums.StatName;
 
 import jakarta.persistence.Converter;
-import jakarta.persistence.AttributeConverter;
 
+/** JPA converter for {@link StatName} columns. Activated globally via {@code autoApply}. */
 @Converter(autoApply = true)
-public class StatNameConverter implements AttributeConverter<StatName, String> {
+public class StatNameConverter extends ValuedEnumConverter<StatName> {
 
     @Override
-    public String convertToDatabaseColumn(StatName statName) {
-        return statName == null ? null : statName.getValue();
+    protected StatName fromValue(String value) {
+        return StatName.fromValue(value);
     }
-
-    @Override
-    public StatName convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : StatName.fromValue(dbData);
-    }
-    
 }

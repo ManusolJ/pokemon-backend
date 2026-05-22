@@ -1,25 +1,30 @@
 package com.poketeambuilder.utils.enums;
 
-public enum UserRole {
-    USER("USER"),
-    ADMIN("ADMIN");
+import com.poketeambuilder.entities.AppUser;
 
-    private final String value;
+/**
+ * Authorization role of an {@link AppUser}. Wire value equals
+ * {@link Enum#name()}, kept as a {@link ValuedEnum} for converter symmetry, so the security
+ * layer can serialize the role uniformly with every other value-backed enum.
+ */
+public enum UserRole implements ValuedEnum {
 
-    UserRole(String value) {
-        this.value = value;
-    }
+    USER,
+    ADMIN;
 
+    @Override
     public String getValue() {
-        return value;
+        return name();
     }
 
+    /** Parses the stored string back to the enum. Case-insensitive. */
     public static UserRole fromValue(String value) {
         for (UserRole role : values()) {
-            if (role.value.equals(value)) {
+            if (role.name().equalsIgnoreCase(value)) {
                 return role;
             }
         }
-        throw new IllegalArgumentException("Unknown enum value: " + value);
+
+        throw new IllegalArgumentException("Unknown user role: " + value);
     }
 }

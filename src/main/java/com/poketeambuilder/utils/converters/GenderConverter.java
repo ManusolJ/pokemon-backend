@@ -3,18 +3,13 @@ package com.poketeambuilder.utils.converters;
 import com.poketeambuilder.utils.enums.PokemonGender;
 
 import jakarta.persistence.Converter;
-import jakarta.persistence.AttributeConverter;
 
+/** JPA converter for {@link PokemonGender} columns. Activated globally via {@code autoApply}. */
 @Converter(autoApply = true)
-public class GenderConverter implements AttributeConverter<PokemonGender, String> {
+public class GenderConverter extends ValuedEnumConverter<PokemonGender> {
 
     @Override
-    public String convertToDatabaseColumn(PokemonGender attribute) {
-        return attribute != null ? attribute.getValue() : null;
-    }
-
-    @Override
-    public PokemonGender convertToEntityAttribute(String dbData) {
-        return dbData != null ? PokemonGender.fromValue(dbData) : null;
+    protected PokemonGender fromValue(String value) {
+        return PokemonGender.fromValue(value);
     }
 }
