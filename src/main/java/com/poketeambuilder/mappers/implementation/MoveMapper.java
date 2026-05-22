@@ -15,12 +15,15 @@ import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.SummaryMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
-import com.poketeambuilder.mappers.helpers.resource.MoveIngestionHelper;
 import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
+import com.poketeambuilder.mappers.helpers.resource.MoveIngestionHelper;
 
+/**
+ * Maps {@link Move} between persistence and the front-end / PokeAPI DTOs.
+ */
 @Mapper(config = MapperConfiguration.class, uses = { MoveIngestionHelper.class, TypeMapper.class, TextExtractor.class })
 public interface MoveMapper extends ReadMapper<Move, MoveReadDto>, ApiMapper<Move, MoveApiDto>, SummaryMapper<Move, MoveSummaryDto> {
-    
+
     @Override
     MoveReadDto toReadDto(Move entity);
 

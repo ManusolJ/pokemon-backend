@@ -6,8 +6,8 @@ import org.mapstruct.Mapping;
 
 import com.poketeambuilder.entities.Pokemon;
 
-import com.poketeambuilder.dtos.front.pokemon.individual.PokemonReadDto;
-import com.poketeambuilder.dtos.front.pokemon.individual.PokemonSummaryDto;
+import com.poketeambuilder.dtos.front.pokemon.form.PokemonReadDto;
+import com.poketeambuilder.dtos.front.pokemon.form.PokemonSummaryDto;
 
 import com.poketeambuilder.dtos.pokeapi.pokemon.PokemonApiDto;
 
@@ -16,9 +16,18 @@ import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.SummaryMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
+import com.poketeambuilder.mappers.helpers.shared.PokemonOrderNormalizer;
 import com.poketeambuilder.mappers.helpers.resource.PokemonIngestionHelper;
 
-@Mapper(config = MapperConfiguration.class, uses = { PokemonIngestionHelper.class, TypeMapper.class, SpeciesMapper.class })
+/**
+ * Maps {@link Pokemon} (form-level) between persistence and the front-end / PokeAPI DTOs.
+ * The {@code species}, {@code primaryType}, and {@code secondaryType} references are
+ * intentionally ignored on {@code toEntity}.
+ */
+@Mapper(
+    config = MapperConfiguration.class,
+    uses = { PokemonIngestionHelper.class, PokemonOrderNormalizer.class, TypeMapper.class, SpeciesMapper.class }
+)
 public interface PokemonMapper extends ReadMapper<Pokemon, PokemonReadDto>, ApiMapper<Pokemon, PokemonApiDto>, SummaryMapper<Pokemon, PokemonSummaryDto> {
 
     @Override
@@ -35,7 +44,7 @@ public interface PokemonMapper extends ReadMapper<Pokemon, PokemonReadDto>, ApiM
     @Mapping(target = "primaryType", ignore = true)
     @Mapping(target = "secondaryType", ignore = true)
     @Mapping(target = "isDefaultForm", source = "isDefault")
-    @Mapping(target = "order", source = "order", qualifiedByName = "normalizePokemonOrder")
+    @Mapping(target = "sortOrder", source = "order", qualifiedByName = "normalizePokemonOrder")
     @Mapping(target = "baseHp", source = "stats", qualifiedByName = "extractBaseHp")
     @Mapping(target = "baseAtk", source = "stats", qualifiedByName = "extractBaseAtk")
     @Mapping(target = "baseDef", source = "stats", qualifiedByName = "extractBaseDef")
@@ -48,11 +57,13 @@ public interface PokemonMapper extends ReadMapper<Pokemon, PokemonReadDto>, ApiM
     @Mapping(target = "spriteDefault", source = "sprites", qualifiedByName = "extractSpriteDefault")
     Pokemon toEntity(PokemonApiDto dto);
 
+    /** Converts PokeAPI height (decimetres) to metres. */
     @Named("convertHeight")
     default Double convertHeight(Integer heightInDecimeters) {
         return heightInDecimeters == null ? null : heightInDecimeters / 10.0;
     }
 
+    /** Converts PokeAPI weight (hectograms) to kilograms. */
     @Named("convertWeight")
     default Double convertWeight(Integer weightInHectograms) {
         return weightInHectograms == null ? null : weightInHectograms / 10.0;

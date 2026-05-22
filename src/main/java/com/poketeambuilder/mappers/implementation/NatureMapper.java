@@ -15,9 +15,10 @@ import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 import com.poketeambuilder.mappers.helpers.resource.NatureIngestionHelper;
 
+/** Maps {@link Nature} between its persistence form, the front-end read DTO, and the PokeAPI ingest DTO. */
 @Mapper(config = MapperConfiguration.class, uses = { NatureIngestionHelper.class })
 public interface NatureMapper extends ReadMapper<Nature, NatureReadDto>, ApiMapper<Nature, NatureApiDto> {
-    
+
     @Override
     NatureReadDto toReadDto(Nature entity);
 

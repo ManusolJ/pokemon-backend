@@ -9,9 +9,10 @@ import com.poketeambuilder.dtos.front.admin.seed.SeedLogReadDto;
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
+/** Maps {@link SeedLog} rows to their admin-listing read DTO. */
 @Mapper(config = MapperConfiguration.class)
-public interface SeedLogMapper extends ReadMapper<SeedLog, SeedLogReadDto>{
-    
+public interface SeedLogMapper extends ReadMapper<SeedLog, SeedLogReadDto> {
+
     @Override
     SeedLogReadDto toReadDto(SeedLog entity);
 }

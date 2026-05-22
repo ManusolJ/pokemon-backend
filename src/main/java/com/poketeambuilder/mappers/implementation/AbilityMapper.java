@@ -1,5 +1,8 @@
 package com.poketeambuilder.mappers.implementation;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import com.poketeambuilder.entities.Ability;
 
 import com.poketeambuilder.dtos.front.ability.AbilityReadDto;
@@ -14,12 +17,10 @@ import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-
+/** Maps {@link Ability} between persistence and the front-end / PokeAPI DTOs. */
 @Mapper(config = MapperConfiguration.class, uses = { TextExtractor.class })
-public interface AbilityMapper extends ReadMapper<Ability, AbilityReadDto>, ApiMapper<Ability, AbilityApiDto>, SummaryMapper<Ability, AbilitySummaryDto>{
-    
+public interface AbilityMapper extends ReadMapper<Ability, AbilityReadDto>, ApiMapper<Ability, AbilityApiDto>, SummaryMapper<Ability, AbilitySummaryDto> {
+
     @Override
     AbilityReadDto toReadDto(Ability entity);
 

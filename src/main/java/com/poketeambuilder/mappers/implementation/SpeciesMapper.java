@@ -4,6 +4,9 @@ import org.mapstruct.Named;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+import java.util.ArrayList;
+
 import com.poketeambuilder.entities.PokemonSpecies;
 
 import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesReadDto;
@@ -17,12 +20,18 @@ import com.poketeambuilder.mappers.common.SummaryMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
 import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
+import com.poketeambuilder.mappers.helpers.shared.PokemonOrderNormalizer;
 import com.poketeambuilder.mappers.helpers.resource.SpeciesIngestionHelper;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Mapper(config = MapperConfiguration.class, uses = { SpeciesIngestionHelper.class, TextExtractor.class })
+/**
+ * Maps {@link PokemonSpecies} between persistence and the front-end / PokeAPI DTOs. The summary
+ * mapping is hand-written because the default-form-derived fields ({@code primaryType},
+ * {@code secondaryType}, {@code spriteDefault}) are enriched later by the service layer.
+ */
+@Mapper(
+    config = MapperConfiguration.class,
+    uses = { SpeciesIngestionHelper.class, TextExtractor.class, PokemonOrderNormalizer.class }
+)
 public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpeciesReadDto>, ApiMapper<PokemonSpecies, PokemonSpeciesApiDto>, SummaryMapper<PokemonSpecies, PokemonSpeciesSummaryDto> {
 
     @Override
@@ -40,7 +49,7 @@ public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpecies
             entity.getName(),
             entity.getGenus(),
             entity.getNationalDexNumber(),
-            entity.getOrder(),
+            entity.getSortOrder(),
             entity.getGenderRate(),
             null,
             null,
@@ -51,7 +60,7 @@ public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpecies
     @Override
     @Mapping(target = "catchRate", source = "captureRate")
     @Mapping(target = "genus", source = "genera", qualifiedByName = "extractGenus")
-    @Mapping(target = "order", source = "order", qualifiedByName = "normalizePokemonOrder")
+    @Mapping(target = "sortOrder", source = "order", qualifiedByName = "normalizePokemonOrder")
     @Mapping(target = "eggGroup1", source = "eggGroups", qualifiedByName = "extractEggGroup1")
     @Mapping(target = "eggGroup2", source = "eggGroups", qualifiedByName = "extractEggGroup2")
     @Mapping(target = "generation", source = "generation", qualifiedByName = "extractGeneration")
@@ -60,6 +69,7 @@ public interface SpeciesMapper extends ReadMapper<PokemonSpecies, PokemonSpecies
     @Mapping(target = "flavorText", source = "flavorTextEntries", qualifiedByName = "extractSpeciesFlavorText")
     PokemonSpecies toEntity(PokemonSpeciesApiDto apiDto);
 
+    /** Flattens the two egg-group columns into the list shape the front-end expects. */
     @Named("combineEggGroups")
     default List<String> combineEggGroups(PokemonSpecies entity) {
         List<String> groups = new ArrayList<>();

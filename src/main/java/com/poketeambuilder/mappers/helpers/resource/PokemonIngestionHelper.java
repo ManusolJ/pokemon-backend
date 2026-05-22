@@ -1,19 +1,22 @@
 package com.poketeambuilder.mappers.helpers.resource;
 
+import java.util.List;
+
+import com.poketeambuilder.utils.enums.StatName;
 
 import com.poketeambuilder.dtos.pokeapi.pokemon.PokemonSprites;
 import com.poketeambuilder.dtos.pokeapi.pokemon.PokemonStatApiDto;
 
-import com.poketeambuilder.utils.enums.StatName;
-
 import com.poketeambuilder.mappers.helpers.shared.SpriteUrlRewriter;
-
-import java.util.List;
 
 import org.mapstruct.Named;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * MapStruct helper bean that pulls Pokémon-form-specific fields out of the PokeAPI payload:
+ * the six base stats, the four sprite / artwork URLs (default and shiny variants).
+ */
 @Component
 public class PokemonIngestionHelper {
 
@@ -47,34 +50,14 @@ public class PokemonIngestionHelper {
         return extractStat(stats, StatName.SPEED);
     }
 
-    private Integer extractStat(List<PokemonStatApiDto> stats, StatName stat) {
-        if (stats == null) {
-            return null;
-        }
-
-        return stats.stream()
-                .filter(s -> s.stat() != null && stat.getValue().equals(s.stat().name()))
-                .map(PokemonStatApiDto::baseStat)
-                .findFirst()
-                .orElse(null);
-    }
-
     @Named("extractSpriteDefault")
     public String extractSpriteDefault(PokemonSprites sprites) {
-        if (sprites == null) {
-            return null;
-        }
-
-        return SpriteUrlRewriter.rewrite(sprites.frontDefault());
+        return sprites == null ? null : SpriteUrlRewriter.rewrite(sprites.frontDefault());
     }
 
     @Named("extractSpriteShiny")
     public String extractSpriteShiny(PokemonSprites sprites) {
-        if (sprites == null) {
-            return null;
-        }
-
-        return SpriteUrlRewriter.rewrite(sprites.frontShiny());
+        return sprites == null ? null : SpriteUrlRewriter.rewrite(sprites.frontShiny());
     }
 
     @Named("extractArtworkUrl")
@@ -95,8 +78,16 @@ public class PokemonIngestionHelper {
         return SpriteUrlRewriter.rewrite(sprites.other().officialArtwork().frontShiny());
     }
 
-    @Named("normalizePokemonOrder")
-    public Integer normalizePokemonOrder(Integer order) {
-        return order == null || order < 0 ? null : order;
+    /** Locates the requested {@link StatName} entry in the PokeAPI stat list and returns its base value. */
+    private Integer extractStat(List<PokemonStatApiDto> stats, StatName stat) {
+        if (stats == null) {
+            return null;
+        }
+
+        return stats.stream()
+                .filter(s -> s.stat() != null && stat.getValue().equals(s.stat().name()))
+                .map(PokemonStatApiDto::baseStat)
+                .findFirst()
+                .orElse(null);
     }
 }

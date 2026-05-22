@@ -9,7 +9,7 @@ import com.poketeambuilder.dtos.front.type.effectiveness.TypeEffectivenessReadDt
 import com.poketeambuilder.mappers.common.ReadMapper;
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
+/** Maps {@link TypeEffectiveness} rows to their read DTO. */
 @Mapper(config = MapperConfiguration.class)
-public interface TypeEffectivenessMapper extends ReadMapper<TypeEffectiveness, TypeEffectivenessReadDto>{
-    
+public interface TypeEffectivenessMapper extends ReadMapper<TypeEffectiveness, TypeEffectivenessReadDto> {
 }

@@ -8,6 +8,7 @@ import com.poketeambuilder.dtos.front.ability.AbilityEmbedDto;
 
 import com.poketeambuilder.mappers.common.MapperConfiguration;
 
+/** Maps a {@link PokemonAbility} join row to its embed DTO (the ability summary + slot info). */
 @Mapper(config = MapperConfiguration.class, uses = AbilityMapper.class)
 public interface PokemonAbilityMapper {
 

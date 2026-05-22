@@ -1,5 +1,8 @@
 package com.poketeambuilder.mappers.implementation;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
 import com.poketeambuilder.entities.Item;
 
 import com.poketeambuilder.dtos.front.item.ItemReadDto;
@@ -15,15 +18,13 @@ import com.poketeambuilder.mappers.common.MapperConfiguration;
 import com.poketeambuilder.mappers.helpers.shared.TextExtractor;
 import com.poketeambuilder.mappers.helpers.resource.ItemIngestionHelper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-
+/** Maps {@link Item} between persistence and the front-end / PokeAPI DTOs. */
 @Mapper(config = MapperConfiguration.class, uses = { ItemIngestionHelper.class, TextExtractor.class })
 public interface ItemMapper extends ReadMapper<Item, ItemReadDto>, ApiMapper<Item, ItemApiDto>, SummaryMapper<Item, ItemSummaryDto> {
-    
+
     @Override
     ItemReadDto toReadDto(Item entity);
-    
+
     @Override
     ItemSummaryDto toSummaryDto(Item entity);
 
