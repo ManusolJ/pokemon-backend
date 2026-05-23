@@ -1,26 +1,24 @@
 package com.poketeambuilder.services.command;
 
+import java.util.List;
+import java.util.UUID;
+
 import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
-import com.poketeambuilder.dtos.front.team.team.TeamCreateDto;
-import com.poketeambuilder.dtos.front.team.team.TeamUpdateDto;
-import com.poketeambuilder.dtos.front.team.pokemon.TeamPokemonCreateDto;
+import com.poketeambuilder.dtos.front.team.details.TeamCreateDto;
+import com.poketeambuilder.dtos.front.team.details.TeamPatchDto;
+import com.poketeambuilder.dtos.front.team.details.TeamUpdateDto;
+import com.poketeambuilder.dtos.front.team.roster.TeamPokemonCreateDto;
 
-import com.poketeambuilder.entities.Item;
-import com.poketeambuilder.entities.Move;
 import com.poketeambuilder.entities.Team;
-import com.poketeambuilder.entities.Type;
-import com.poketeambuilder.entities.Nature;
 import com.poketeambuilder.entities.AppUser;
-import com.poketeambuilder.entities.Ability;
-import com.poketeambuilder.entities.Pokemon;
 import com.poketeambuilder.entities.TeamLike;
 import com.poketeambuilder.entities.TeamPokemon;
 import com.poketeambuilder.entities.TeamPokemonMove;
+
 import com.poketeambuilder.entities.compositeIDs.TeamLikeId;
 import com.poketeambuilder.entities.compositeIDs.TeamPokemonMoveId;
-
 
 import com.poketeambuilder.mappers.implementation.TeamMapper;
 import com.poketeambuilder.mappers.implementation.TeamPokemonMapper;
@@ -36,12 +34,10 @@ import com.poketeambuilder.repositories.PokemonRepository;
 import com.poketeambuilder.repositories.TeamLikeRepository;
 import com.poketeambuilder.repositories.TeamPokemonRepository;
 import com.poketeambuilder.repositories.TeamPokemonMoveRepository;
+
+import com.poketeambuilder.utils.enums.UserRole;
 import com.poketeambuilder.utils.enums.AuditAction;
 import com.poketeambuilder.utils.enums.PokemonGender;
-import com.poketeambuilder.utils.enums.UserRole;
-
-import java.util.List;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
@@ -54,10 +50,18 @@ import jakarta.validation.constraints.NotNull;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Mutating operations for {@link Team} ownership, roster, and like state
+ *
+ * <p>The {@code adminDeleteTeam} path keeps an in-service role check as defense-in-depth on
+ * top of {@code @PreAuthorize("hasRole('ADMIN')")} on the controller.</p>
+ */
 @Service
 @Validated
 @RequiredArgsConstructor
 public class TeamCommandService {
+
+    private static final String ENTITY_NAME = "Team";
 
     private final TeamMapper teamMapper;
     private final TeamPokemonMapper teamPokemonMapper;
@@ -77,8 +81,7 @@ public class TeamCommandService {
 
     private final AuditLogCommandService auditLogCommandService;
 
-    private final static String ENTITY_NAME = "Team";
-
+    /** Creates a team owned by the authenticated user with a fresh share slug. */
     @Transactional
     public Long createTeam(@NotNull String username, @Valid @NotNull TeamCreateDto dto) {
         AppUser owner = findUserOrThrow(username);
@@ -94,6 +97,7 @@ public class TeamCommandService {
         return savedTeam.getId();
     }
 
+    /** Full-replacement update. Wipes the roster, re-applies scalar fields, rebuilds the roster. */
     @Transactional
     public Long updateTeam(@NotNull String username, @NotNull Long teamId, @Valid @NotNull TeamUpdateDto dto) {
         Team team = findTeamOrThrow(teamId);
@@ -109,6 +113,24 @@ public class TeamCommandService {
         return savedTeam.getId();
     }
 
+    /** Partial update of the team's scalar fields. Does not touch the roster. */
+    @Transactional
+    public Long patchTeam(@NotNull String username, @NotNull Long teamId, @Valid @NotNull TeamPatchDto dto) {
+        Team team = findTeamOrThrow(teamId);
+        validateOwnership(team, username);
+
+        if (dto.getName() != null && !dto.getName().isBlank()) {
+            team.setName(dto.getName());
+        }
+        if (dto.getIsPublic() != null) {
+            team.setIsPublic(dto.getIsPublic());
+        }
+
+        teamRepository.save(team);
+        return team.getId();
+    }
+
+    /** Owner-only delete. Cascades to roster + likes. */
     @Transactional
     public void deleteTeam(@NotNull String username, @NotNull Long teamId) {
         Team team = findTeamOrThrow(teamId);
@@ -119,6 +141,11 @@ public class TeamCommandService {
         teamRepository.delete(team);
     }
 
+    /**
+     * Admin delete. Defense-in-depth: re-checks the admin role even though the controller
+     * already gates this with {@code @PreAuthorize}. Audit-logs the deletion with the team's
+     * id, name, and owner for forensic clarity.
+     */
     @Transactional
     public void adminDeleteTeam(@NotNull String adminUsername, @NotNull Long teamId) {
         Team team = findTeamOrThrow(teamId);
@@ -134,11 +161,13 @@ public class TeamCommandService {
         deleteTeamLikes(team);
         teamRepository.delete(team);
 
-        String entityName = String.format(ENTITY_NAME + " (id: %s, name: %s, owner: %s)", team.getId(), team.getName(), team.getOwner().getUsername());
+        String entityDescription = String.format("%s (id: %s, name: %s, owner: %s)",
+                ENTITY_NAME, team.getId(), team.getName(), team.getOwner().getUsername());
 
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, entityName, team.getId().toString());
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, entityDescription, team.getId().toString());
     }
 
+    /** Like a public team. 409 if already liked. Increments the denormalised counter atomically. */
     @Transactional
     public void likeTeam(@NotNull String username, @NotNull Long teamId) {
         AppUser user = findUserOrThrow(username);
@@ -159,6 +188,7 @@ public class TeamCommandService {
         teamRepository.incrementLikeCount(teamId);
     }
 
+    /** Remove a like. 404 if the user hasn't liked the team. Decrements the counter. */
     @Transactional
     public void unlikeTeam(@NotNull String username, @NotNull Long teamId) {
         AppUser user = findUserOrThrow(username);
@@ -181,17 +211,17 @@ public class TeamCommandService {
             TeamPokemon teamPokemon = teamPokemonMapper.toEntity(pokemonDto);
             teamPokemon.setTeam(team);
             teamPokemon.setSlot(i + 1);
-            teamPokemon.setPokemon(findPokemonOrThrow(pokemonDto.getPokemonId()));
-            teamPokemon.setAbility(findAbilityOrThrow(pokemonDto.getAbilityId()));
+            teamPokemon.setPokemon(pokemonRepository.getReferenceById(pokemonDto.getPokemonId()));
+            teamPokemon.setAbility(abilityRepository.getReferenceById(pokemonDto.getAbilityId()));
 
             if (pokemonDto.getNatureId() != null) {
-                teamPokemon.setNature(findNatureOrThrow(pokemonDto.getNatureId()));
+                teamPokemon.setNature(natureRepository.getReferenceById(pokemonDto.getNatureId()));
             }
             if (pokemonDto.getItemId() != null) {
-                teamPokemon.setHeldItem(findItemOrThrow(pokemonDto.getItemId()));
+                teamPokemon.setHeldItem(itemRepository.getReferenceById(pokemonDto.getItemId()));
             }
             if (pokemonDto.getTeraTypeId() != null) {
-                teamPokemon.setTeraType(findTypeOrThrow(pokemonDto.getTeraTypeId()));
+                teamPokemon.setTeraType(typeRepository.getReferenceById(pokemonDto.getTeraTypeId()));
             }
             if (pokemonDto.getGender() != null) {
                 teamPokemon.setGender(PokemonGender.fromValue(pokemonDto.getGender()));
@@ -201,12 +231,11 @@ public class TeamCommandService {
 
             List<Integer> moveIds = pokemonDto.getMoveIds();
             for (int j = 0; j < moveIds.size(); j++) {
-                Move move = findMoveOrThrow(moveIds.get(j));
                 TeamPokemonMoveId moveId = new TeamPokemonMoveId(savedTeamPokemon.getId(), j + 1);
                 TeamPokemonMove teamPokemonMove = TeamPokemonMove.builder()
                         .id(moveId)
                         .teamPokemon(savedTeamPokemon)
-                        .move(move)
+                        .move(moveRepository.getReferenceById(moveIds.get(j)))
                         .build();
                 teamPokemonMoveRepository.save(teamPokemonMove);
             }
@@ -243,41 +272,5 @@ public class TeamCommandService {
         return teamRepository.findById(teamId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("Team with id '%s' not found", teamId)));
-    }
-
-    private Pokemon findPokemonOrThrow(Integer pokemonId) {
-        return pokemonRepository.findById(pokemonId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Pokemon with id '%s' not found", pokemonId)));
-    }
-
-    private Ability findAbilityOrThrow(Integer abilityId) {
-        return abilityRepository.findById(abilityId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Ability with id '%s' not found", abilityId)));
-    }
-
-    private Nature findNatureOrThrow(Integer natureId) {
-        return natureRepository.findById(natureId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Nature with id '%s' not found", natureId)));
-    }
-
-    private Item findItemOrThrow(Integer itemId) {
-        return itemRepository.findById(itemId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Item with id '%s' not found", itemId)));
-    }
-
-    private Type findTypeOrThrow(Integer typeId) {
-        return typeRepository.findById(typeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Type with id '%s' not found", typeId)));
-    }
-
-    private Move findMoveOrThrow(Integer moveId) {
-        return moveRepository.findById(moveId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Move with id '%s' not found", moveId)));
     }
 }

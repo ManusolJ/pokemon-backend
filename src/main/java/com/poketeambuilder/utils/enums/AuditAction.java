@@ -8,7 +8,8 @@ import com.poketeambuilder.entities.AuditLog;
  * data is human-read only), so {@link #fromValue(String)} is intentionally omitted.
  *
  * <p>Naming convention: {@code USER_*} for self-service actions, {@code ADMIN_*} for
- * privileged actions, {@code ADMIN_BATCH_*} for bulk variants.</p>
+ * privileged actions, {@code ADMIN_BATCH_*} for bulk variants, {@code SECURITY_*} for
+ * system-detected security events (no human actor).</p>
  */
 public enum AuditAction implements ValuedEnum {
 
@@ -26,7 +27,9 @@ public enum AuditAction implements ValuedEnum {
     ADMIN_BATCH_REACTIVATE,
     ADMIN_BATCH_HARD_DELETE,
 
-    ADMIN_SEED_TRIGGERED;
+    ADMIN_SEED_TRIGGERED,
+
+    SECURITY_REFRESH_TOKEN_REUSE_DETECTED;
 
     @Override
     public String getValue() {
