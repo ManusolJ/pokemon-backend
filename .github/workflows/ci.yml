@@ -39,3 +39,42 @@ jobs:
       # Check that docker still builds cleanly.
       - name: Validate Docker image build
         run: docker build -t poketeam-builder:ci .
+
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - name: Install cloudflared
+        run: |
+          curl -fsSL --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat > ~/.ssh/config <<'EOF'
+          Host deploy.necobotultimus.org
+              User manu
+              IdentityFile ~/.ssh/id_ed25519
+              ProxyCommand cloudflared access ssh --hostname %h
+              StrictHostKeyChecking accept-new
+          EOF
+
+      - name: Deploy
+        run: |
+          ssh deploy.necobotultimus.org bash -s <<'REMOTE'
+          set -euo pipefail
+          cd ~/poketeam-backend
+          git fetch --quiet origin
+          git reset --hard origin/main
+          bash deploy.sh
+          REMOTE
