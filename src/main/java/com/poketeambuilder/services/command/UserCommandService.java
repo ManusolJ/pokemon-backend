@@ -57,8 +57,8 @@ public class UserCommandService {
 
     /** Self-service profile update. Email and username are checked for uniqueness before save. */
     @Transactional
-    public UserReadDto updateProfile(@NotNull Long userId, @Valid @NotNull UserUpdateDto dto) {
-        AppUser user = findUserOrThrow(userId);
+    public UserReadDto updateProfile(@NotNull String username, @Valid @NotNull UserUpdateDto dto) {
+        AppUser user = findUserOrThrowByUsername(username);
 
         validateEmailUniqueness(dto.getNewEmail(), user);
         validateUsernameUniqueness(dto.getNewUsername(), user);
@@ -67,7 +67,7 @@ public class UserCommandService {
 
         AppUser saved = userRepository.save(user);
 
-        auditLogCommandService.log(saved.getUsername(), AuditAction.USER_PROFILE_UPDATE, ENTITY_NAME, userId.toString());
+        auditLogCommandService.log(saved.getUsername(), AuditAction.USER_PROFILE_UPDATE, ENTITY_NAME, saved.getId().toString());
 
         return userMapper.toReadDto(saved);
     }
@@ -77,8 +77,8 @@ public class UserCommandService {
      * and revokes every active refresh token so old sessions die immediately.
      */
     @Transactional
-    public void changePassword(@NotNull Long userId, @Valid @NotNull PasswordChangeDto dto) {
-        AppUser user = findUserOrThrow(userId);
+    public void changePassword(@NotNull String username, @Valid @NotNull PasswordChangeDto dto) {
+        AppUser user = findUserOrThrowByUsername(username);
 
         if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPassword())) {
             throw new BadPasswordException("Current password is incorrect");
@@ -88,23 +88,23 @@ public class UserCommandService {
 
         userRepository.save(user);
 
-        refreshTokenService.revokeAllForUser(userId);
+        refreshTokenService.revokeAllForUser(user.getId());
 
-        auditLogCommandService.log(user.getUsername(), AuditAction.USER_PASSWORD_CHANGE, ENTITY_NAME, userId.toString());
+        auditLogCommandService.log(user.getUsername(), AuditAction.USER_PASSWORD_CHANGE, ENTITY_NAME, user.getId().toString());
     }
 
     /** Self-service account disable. Soft-deletes (enabled = false) and revokes every active session. */
     @Transactional
-    public void softDeleteAccount(@NotNull Long userId) {
-        AppUser user = findUserOrThrow(userId);
+    public void softDeleteAccount(@NotNull String username) {
+        AppUser user = findUserOrThrowByUsername(username);
 
         user.setEnabled(false);
 
         userRepository.save(user);
 
-        refreshTokenService.revokeAllForUser(userId);
+        refreshTokenService.revokeAllForUser(user.getId());
 
-        auditLogCommandService.log(user.getUsername(), AuditAction.USER_SELF_DELETE, ENTITY_NAME, userId.toString());
+        auditLogCommandService.log(user.getUsername(), AuditAction.USER_SELF_DELETE, ENTITY_NAME, user.getId().toString());
     }
 
     /** Admin update of a user's role/email/username/enabled flag. Uniqueness validated as for self-service. */
@@ -224,6 +224,12 @@ public class UserCommandService {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User with id '%s' not found", userId)));
+    }
+
+    private AppUser findUserOrThrowByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("User with username '%s' not found", username)));
     }
 
     private void validateUsernameUniqueness(String newUsername, AppUser currentUser) {

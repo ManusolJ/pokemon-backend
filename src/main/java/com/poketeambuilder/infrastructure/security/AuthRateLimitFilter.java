@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import java.time.Duration;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.MediaType;
@@ -28,9 +29,10 @@ import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Per-IP rate limit on the {@code /api/auth/**} endpoints. Backed by a Caffeine cache of
- * Bucket4j token buckets 10 requests per minute per IP, evicted after 5 minutes of
- * inactivity. Returns a JSON 429 with a {@code Retry-After} header when the bucket is empty.
+ * Per-IP rate limit on the abuse-prone unauthenticated endpoints ({@code /api/auth/**} and
+ * {@code /api/contact}). Backed by a Caffeine cache of Bucket4j token buckets: 10 requests
+ * per minute per IP, evicted after 5 minutes of inactivity. Returns a JSON 429 with a
+ * {@code Retry-After} header when the bucket is empty.
  */
 @Component
 @RequiredArgsConstructor
@@ -38,7 +40,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_REQUESTS = 10;
     private static final int WINDOW_MINUTES = 1;
-    private static final String AUTH_PATH_PREFIX = "/api/auth/";
+    private static final List<String> RATE_LIMITED_PATH_PREFIXES = List.of("/api/auth/", "/api/contact");
 
     private final ObjectMapper objectMapper;
 
@@ -72,7 +74,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(AUTH_PATH_PREFIX);
+        String uri = request.getRequestURI();
+        return RATE_LIMITED_PATH_PREFIXES.stream().noneMatch(uri::startsWith);
     }
 
     private Bucket createBucket() {

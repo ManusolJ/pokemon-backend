@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Read-only catalog endpoints for moves.
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/moves")
@@ -30,6 +33,7 @@ public class MoveController {
 
     private final MoveQueryService moveQueryService;
 
+    /** Paged moves matching the filter (full read shape). */
     @PostMapping("/filter")
     public ResponseEntity<Page<MoveReadDto>> getMoves(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable,
@@ -38,6 +42,7 @@ public class MoveController {
         return ResponseEntity.ok(moves);
     }
 
+    /** Paged moves as lightweight summaries. */
     @PostMapping("/summaries")
     public ResponseEntity<Page<MoveSummaryDto>> getMoveSummaries(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable,
@@ -46,18 +51,21 @@ public class MoveController {
         return ResponseEntity.ok(summaries);
     }
 
+    /** Single move by id (filter.id). */
     @PostMapping("/id")
     public ResponseEntity<MoveReadDto> getMoveById(@RequestBody MoveFilterDto filter) {
         MoveReadDto move = moveQueryService.findById(filter.getId());
         return ResponseEntity.ok(move);
     }
 
+    /** Count of moves matching the filter. */
     @PostMapping("/count")
     public ResponseEntity<Long> getMoveCount(@RequestBody MoveFilterDto filter) {
         long count = moveQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(count);
     }
 
+    /** Paged learn-set entries for a given Pokémon (move + learn-method embed). */
     @GetMapping("/pokemon/{pokemonId}")
     public ResponseEntity<Page<MoveEmbedDto>> getMovesByPokemon(
             @PageableDefault(page = 0, size = 50, sort = "id.moveId", direction = Direction.ASC) Pageable pageable,
