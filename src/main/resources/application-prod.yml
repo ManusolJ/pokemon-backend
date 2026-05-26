@@ -3,5 +3,47 @@ spring:
     activate:
       on-profile: prod
 
+  # In prod the DB is its own service.
+  docker:
+    compose:
+      enabled: false
+
+  # Flyway owns the schema.
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  # Baselining on migrate silently accepts a non-empty schema that wasn't
+  # tracked by Flyway.
   flyway:
     clean-disabled: true
+    baseline-on-migrate: false
+
+  # Let in-flight requests finish on SIGTERM before the JVM exits.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+# Disable Swagger / OpenAPI in prod.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# ProblemDetail responses for any error path that bypasses GlobalExceptionHandler
+spring.mvc.problemdetails.enabled: true
+
+# Only health + info exposed (load balancer + uptime probes).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true

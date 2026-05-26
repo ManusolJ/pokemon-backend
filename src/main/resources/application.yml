@@ -12,15 +12,18 @@ spring:
     username: ${DB_USER:poketeam}
     password: ${DB_PASSWORD:poketeam}
     hikari:
+      minimum-idle: 2
       maximum-pool-size: 10
-      minimum-idle: 5
 
   # JPA
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
-      "[hibernate.format_sql]": true
+      "[hibernate.jdbc.batch_size]": 50
+      "[hibernate.order_inserts]": true
+      "[hibernate.order_updates]": true
+      "[hibernate.jdbc.batch_versioned_data]": true
 
   # Flyway
   flyway:
@@ -32,7 +35,7 @@ spring:
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
-    host: ${MAIL_HOST:smtp.gmail.com}
+    host: ${MAIL_HOST}
     properties:
       mail:
         smtp:
@@ -45,9 +48,10 @@ app:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:4200}
   mail:
     from: ${MAIL_FROM:noreply@poketeambuilder.com}
+    contact-to: ${CONTACT_TO}
   password-reset:
     token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}
-    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/reset-password}
+    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/auth/reset-password/confirm}
 
   jwt:
     secret: ${JWT_SECRET}

@@ -32,6 +32,6 @@ build/
 .vscode/
 
 ### Project specific ###
-.env
-.env.dev
+.env*
+!.env.example
 docs/
