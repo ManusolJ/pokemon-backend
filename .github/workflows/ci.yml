@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new commit on the same branch cancels the previous in-progress run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      # `verify` runs through the package phase; -DskipTests for now.
+      # TODO: CHANGE ONCE TESTS ARE IMPLEMENTED (probably never lmao)
+      - name: Maven verify
+        run: ./mvnw -B -ntp -DskipTests verify
+
+      # Check that docker still builds cleanly.
+      - name: Validate Docker image build
+        run: docker build -t poketeam-builder:ci .
