@@ -5,10 +5,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env.prod
-    # Bind to localhost only — the app reaches Postgres over the docker
-    # network. Remove this section entirely if you don't need host access.
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +22,7 @@ services:
     env_file:
       - .env.prod
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
