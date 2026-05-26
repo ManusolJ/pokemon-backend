@@ -1,9 +1,12 @@
 package com.poketeambuilder.services.auth;
 
+import java.util.UUID;
+import java.time.Instant;
+
 import com.poketeambuilder.entities.AppUser;
 import com.poketeambuilder.entities.PasswordResetToken;
 
-import com.poketeambuilder.dtos.auth.PasswordResetDto;
+import com.poketeambuilder.dtos.auth.PasswordResetConfirmDto;
 import com.poketeambuilder.dtos.auth.PasswordResetRequestDto;
 
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
@@ -13,9 +16,6 @@ import com.poketeambuilder.repositories.PasswordResetTokenRepository;
 
 import com.poketeambuilder.utils.token.TokenHashUtil;
 
-import java.util.UUID;
-import java.time.Instant;
-
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,9 +23,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Password-reset flow: request a one-time token by email, then confirm with the token plus
+ * a new password. Reset confirmation revokes every active refresh token for the user so
+ * old sessions die immediately.
+ */
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
@@ -34,6 +40,7 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final TransactionTemplate transactionTemplate;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Value("${app.password-reset.token-expiration-minutes}")
@@ -42,27 +49,32 @@ public class PasswordResetService {
     @Value("${app.password-reset.base-url}")
     private String resetBaseUrl;
 
-    @Transactional
+    /**
+     * Issues a reset token to the address if it matches a known user, then sends the email.
+     * The token save runs in a short transaction so the DB connection isn't held during SMTP;
+     * the email is sent <em>after</em> commit. Returns silently when the email is unknown to
+     * avoid leaking which addresses are registered.
+     */
     public void requestReset(PasswordResetRequestDto requestDto) {
-        userRepository.findByEmail(requestDto.getEmail()).ifPresent(user -> {
-            String rawToken = UUID.randomUUID().toString();
+        PreparedReset prepared = transactionTemplate.execute(status ->
+                userRepository.findByEmail(requestDto.getEmail())
+                        .map(this::issueToken)
+                        .orElse(null)
+        );
 
-            PasswordResetToken resetToken = PasswordResetToken.builder()
-                    .tokenHash(TokenHashUtil.sha256(rawToken))
-                    .user(user)
-                    .used(false)
-                    .expiresAt(Instant.now().plusSeconds(tokenExpirationMinutes * 60L))
-                    .build();
+        if (prepared == null) {
+            return;
+        }
 
-            passwordResetTokenRepository.save(resetToken);
-
-            String resetUrl = resetBaseUrl + "?token=" + rawToken;
-            emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
-        });
+        emailService.sendPasswordResetEmail(prepared.email(), prepared.url());
     }
 
+    /**
+     * Validates the token, sets the new password, marks the token used, and revokes every
+     * active refresh token for the user (so all existing sessions are ended).
+     */
     @Transactional
-    public void resetPassword(PasswordResetDto resetDto) {
+    public void resetPassword(PasswordResetConfirmDto resetDto) {
         String tokenHash = TokenHashUtil.sha256(resetDto.getToken());
 
         PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(tokenHash)
@@ -71,7 +83,6 @@ public class PasswordResetService {
         if (resetToken.isUsed()) {
             throw new InvalidTokenException("Reset token has already been used");
         }
-
         if (resetToken.getExpiresAt().isBefore(Instant.now())) {
             throw new InvalidTokenException("Reset token has expired");
         }
@@ -86,8 +97,27 @@ public class PasswordResetService {
         refreshTokenService.revokeAllForUser(user.getId());
     }
 
+    /** Scheduled cleanup entry point. Drops expired tokens in bulk. */
     @Transactional
     public void purgeExpired() {
         passwordResetTokenRepository.deleteByExpiresAtBefore(Instant.now());
     }
+
+    /** Saves a fresh token row and returns the e-mail + URL the caller needs to send. */
+    private PreparedReset issueToken(AppUser user) {
+        String rawToken = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .tokenHash(TokenHashUtil.sha256(rawToken))
+                .user(user)
+                .used(false)
+                .expiresAt(Instant.now().plusSeconds(tokenExpirationMinutes * 60L))
+                .build();
+
+        passwordResetTokenRepository.save(resetToken);
+
+        return new PreparedReset(user.getEmail(), resetBaseUrl + "?token=" + rawToken);
+    }
+
+    private record PreparedReset(String email, String url) {}
 }

@@ -12,6 +12,11 @@ import lombok.RequiredArgsConstructor;
 // TODO: Add email templates and support for HTML emails
 // TODO: Email verification for new user registration and email change requests
 // TODO: Implement asynchronous email sending to improve performance and user experience
+
+/**
+ * Outbound email. Currently the password-reset link and the contact-form forwarder.
+ * Synchronous SMTP today; the TODOs above track the planned async / templated rewrite.
+ */
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -24,6 +29,7 @@ public class EmailService {
     @Value("${app.mail.contact-to}")
     private String contactToAddress;
 
+    /** Sends the one-time password-reset link to the user. */
     public void sendPasswordResetEmail(String to, String resetUrl) {
         SimpleMailMessage message = new SimpleMailMessage();
 
@@ -41,6 +47,7 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    /** Forwards a contact-form submission to the configured admin inbox. */
     public void sendContactEmail(String name, String senderEmail, String subject, String message) {
         SimpleMailMessage mail = new SimpleMailMessage();
         mail.setTo(contactToAddress);

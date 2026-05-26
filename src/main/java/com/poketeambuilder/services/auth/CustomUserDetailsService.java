@@ -1,10 +1,10 @@
 package com.poketeambuilder.services.auth;
 
+import java.util.List;
+
 import com.poketeambuilder.entities.AppUser;
 
 import com.poketeambuilder.repositories.UserRepository;
-
-import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
@@ -15,8 +15,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
+/**
+ * Bridges {@link AppUser} into Spring Security. The authority list carries a single
+ * {@code ROLE_<role>} entry built from {@link AppUser#getRole()}; {@link AppUser#getEnabled()}
+ * is wired through to the {@link User}'s {@code enabled} flag so disabled accounts cannot
+ * authenticate.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {

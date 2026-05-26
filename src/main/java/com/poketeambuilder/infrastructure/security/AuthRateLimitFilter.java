@@ -27,15 +27,20 @@ import tools.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Per-IP rate limit on the {@code /api/auth/**} endpoints. Backed by a Caffeine cache of
+ * Bucket4j token buckets 10 requests per minute per IP, evicted after 5 minutes of
+ * inactivity. Returns a JSON 429 with a {@code Retry-After} header when the bucket is empty.
+ */
 @Component
 @RequiredArgsConstructor
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    private final ObjectMapper objectMapper;
-
     private static final int MAX_REQUESTS = 10;
     private static final int WINDOW_MINUTES = 1;
     private static final String AUTH_PATH_PREFIX = "/api/auth/";
+
+    private final ObjectMapper objectMapper;
 
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
         .expireAfterAccess(Duration.ofMinutes(5))
@@ -44,26 +49,25 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-
         String ip = resolveClientIp(request);
         Bucket bucket = buckets.get(ip, k -> createBucket());
 
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setHeader("Retry-After", String.valueOf(WINDOW_MINUTES * 60));
-
-            Map<String, Object> body = Map.of(
-                "status", HttpStatus.TOO_MANY_REQUESTS.value(),
-                "error", "Too Many Requests",
-                "message", "Rate limit exceeded. Please try again later.",
-                "path", request.getRequestURI()
-            );
-
-            objectMapper.writeValue(response.getOutputStream(), body);
+            return;
         }
+
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setHeader("Retry-After", String.valueOf(WINDOW_MINUTES * 60));
+
+        Map<String, Object> body = Map.of(
+            "status", HttpStatus.TOO_MANY_REQUESTS.value(),
+            "error", "Too Many Requests",
+            "message", "Rate limit exceeded. Please try again later.",
+            "path", request.getRequestURI());
+
+        objectMapper.writeValue(response.getOutputStream(), body);
     }
 
     @Override
