@@ -47,3 +47,7 @@ management:
     health:
       probes:
         enabled: true
+  # Skip the SMTP handshake on every health probe.
+  health:
+    mail:
+      enabled: false
