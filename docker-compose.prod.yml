@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -12,6 +18,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
   app:
     build:
@@ -32,6 +39,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+    logging: *default-logging
 
 volumes:
   pgdata:
