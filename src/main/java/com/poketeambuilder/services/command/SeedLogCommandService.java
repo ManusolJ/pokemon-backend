@@ -43,14 +43,11 @@ public class SeedLogCommandService {
     private final SeedOrchestratorCommandService seedOrchestrator;
     private final TransactionTemplate requiresNewTransactionTemplate;
 
-    public SeedLogCommandService(SeedLogRepository seedLogRepository,
-                                 SeedOrchestratorCommandService seedOrchestrator,
-                                 @Qualifier("requiresNewTransactionTemplate") TransactionTemplate requiresNewTransactionTemplate,
-                                 TaskExecutor taskExecutor) {
-        this.seedLogRepository = seedLogRepository;
-        this.seedOrchestrator = seedOrchestrator;
-        this.requiresNewTransactionTemplate = requiresNewTransactionTemplate;
+    public SeedLogCommandService(SeedLogRepository seedLogRepository, SeedOrchestratorCommandService seedOrchestrator, @Qualifier("requiresNewTransactionTemplate") TransactionTemplate requiresNewTransactionTemplate, @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
         this.taskExecutor = taskExecutor;
+        this.seedOrchestrator = seedOrchestrator;
+        this.seedLogRepository = seedLogRepository;
+        this.requiresNewTransactionTemplate = requiresNewTransactionTemplate;
     }
 
     /**
