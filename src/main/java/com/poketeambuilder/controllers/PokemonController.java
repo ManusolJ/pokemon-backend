@@ -21,8 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Read-only catalog endpoints for Pokémon forms (individual entries, including alternate
- * forms).
+ * Read-only catalog endpoints for Pokémon forms.
  */
 @RestController
 @RequiredArgsConstructor
@@ -31,7 +30,7 @@ public class PokemonController {
 
     private final PokemonQueryService pokemonQueryService;
 
-    /** Paged Pokémon forms matching the filter (full read shape). */
+    /** Paged Pokémon forms matching the filter. */
     @PostMapping("/filter")
     public ResponseEntity<Page<PokemonReadDto>> getPokemon(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @RequestBody PokemonFilterDto filter) {
         Page<PokemonReadDto> pokemon = pokemonQueryService.filterEntities(filter, pageable);

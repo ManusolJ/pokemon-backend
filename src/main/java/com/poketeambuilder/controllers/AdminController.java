@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,13 +42,16 @@ public class AdminController {
     private final SeedLogQueryService seedLogQueryService;
     private final AuditLogQueryService auditLogQueryService;
 
-    /** Kicks off the seed pipeline synchronously and returns the persisted log row. */
+    /**
+     * Fire-and-poll: commits a RUNNING seed log, dispatches the pipeline on a background
+     * thread, and returns 202 Accepted with the log row immediately.
+     */
     @PostMapping("/seed")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SeedLogReadDto> triggerSeed(@AuthenticationPrincipal UserDetails user) {
-        SeedLog seedLog = seedService.executeSeed(user.getUsername());
+        SeedLog seedLog = seedService.triggerSeed(user.getUsername());
         SeedLogReadDto seedLogReadDto = seedLogQueryService.findById(seedLog.getId());
-        return ResponseEntity.ok(seedLogReadDto);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(seedLogReadDto);
     }
 
     /** Paged seed-log listing for the admin dashboard. */
