@@ -31,6 +31,8 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
 
     private static final String FIELD_ID = "id";
     private static final String FIELD_NAME = "name";
+    private static final String FIELD_INCREASED_STAT = "increasedStat";
+    private static final String FIELD_DECREASED_STAT = "decreasedStat";
 
     private final NatureMapper natureMapper;
     private final NatureRepository natureRepository;
@@ -79,6 +81,14 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
 
         if (filter.getNameExact() != null && !filter.getNameExact().isBlank()) {
             builder.with(FIELD_NAME, filter.getNameExact(), SearchOperation.EQUAL);
+        }
+
+        if (filter.getIncreasedStat() != null){
+            builder.with(FIELD_INCREASED_STAT, filter.getIncreasedStat(), SearchOperation.EQUAL);
+        }
+        
+        if (filter.getDecreasedStat() != null){
+            builder.with(FIELD_DECREASED_STAT, filter.getDecreasedStat(), SearchOperation.EQUAL);
         }
 
         return builder.build();
