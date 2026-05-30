@@ -161,7 +161,7 @@ public class UserController {
     }
 
     /** Admin: bulk hard-delete. */
-    @PostMapping("/admin/batch/hard-delete")
+    @PostMapping("/admin/batch/hard")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> adminBatchHardDelete(@AuthenticationPrincipal UserDetails admin, @Valid @RequestBody BatchUserActionDto dto) {
         userCommandService.adminBatchHardDelete(admin.getUsername(), dto.getIds());
