@@ -32,7 +32,7 @@ public interface RefreshTokenRepository extends BaseRepository<RefreshToken, Lon
      * load-and-iterate pattern when token-reuse is detected and we need to invalidate the
      * whole lineage immediately.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.familyId = :familyId")
     int revokeByFamilyId(@Param("familyId") UUID familyId);
 
@@ -40,7 +40,7 @@ public interface RefreshTokenRepository extends BaseRepository<RefreshToken, Lon
      * Bulk-revokes every token issued to the given user in a single UPDATE. Used on password
      * change, account disable, and password reset. Invalidates every active session.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user.id = :userId")
     int revokeByUserId(@Param("userId") Long userId);
 
