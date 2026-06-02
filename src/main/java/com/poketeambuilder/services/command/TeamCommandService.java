@@ -263,7 +263,7 @@ public class TeamCommandService {
     }
 
     private AppUser findUserOrThrow(String username) {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndDeletedAtIsNull(username)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User '%s' not found", username)));
     }

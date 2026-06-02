@@ -1,5 +1,6 @@
 package com.poketeambuilder.services.command;
 
+import java.time.Instant;
 import java.util.List;
 
 import com.poketeambuilder.entities.AppUser;
@@ -93,16 +94,15 @@ public class UserCommandService {
         auditLogCommandService.log(user.getUsername(), AuditAction.USER_PASSWORD_CHANGE, ENTITY_NAME, user.getId().toString());
     }
 
-    /** Self-service account disable. Soft-deletes (enabled = false) and revokes every active session. */
+    /**
+     * Self-service account disable. Tombstones the row (frees username/email for reuse),
+     * disables it, and revokes every active session.
+     */
     @Transactional
     public void softDeleteAccount(@NotNull String username) {
         AppUser user = findUserOrThrowByUsername(username);
 
-        user.setEnabled(false);
-
-        userRepository.save(user);
-
-        refreshTokenService.revokeAllForUser(user.getId());
+        tombstone(user);
 
         auditLogCommandService.log(user.getUsername(), AuditAction.USER_SELF_DELETE, ENTITY_NAME, user.getId().toString());
     }
@@ -124,27 +124,31 @@ public class UserCommandService {
         return userMapper.toReadDto(saved);
     }
 
-    /** Admin soft-delete. Disables the user and revokes every active session. */
+    /** Admin soft-delete. Tombstones the row and revokes every active session. */
     @Transactional
     public void adminSoftDeleteUser(@NotNull String adminUsername, @NotNull Long userId) {
         AppUser user = findUserOrThrow(userId);
 
-        user.setEnabled(false);
-
-        userRepository.save(user);
-
-        refreshTokenService.revokeAllForUser(userId);
+        String originalUsername = user.getUsername();
+        tombstone(user);
 
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_USER_SOFT_DELETE, ENTITY_NAME, userId.toString(),
-                "Soft-deleted user: " + user.getUsername());
+                "Soft-deleted user: " + originalUsername);
     }
 
-    /** Admin reactivation. Only flips the enabled flag — does not restore prior sessions (the user must log in again). */
+    /**
+     * Admin reactivation. Clears the tombstone and re-enables the account, but only after
+     * verifying the user's original username and email aren't already held by an active row
+     * (since the partial unique index would reject the save otherwise).
+     */
     @Transactional
     public UserReadDto adminReactivateUser(@NotNull String adminUsername, @NotNull Long userId) {
         AppUser user = findUserOrThrow(userId);
 
-        user.setEnabled(true);
+        if (isTombstoned(user)) {
+            assertIdentifiersStillFree(user);
+        }
+        restore(user);
 
         AppUser saved = userRepository.save(user);
 
@@ -175,9 +179,7 @@ public class UserCommandService {
         for (Long id : ids) {
             try {
                 AppUser user = findUserOrThrow(id);
-                user.setEnabled(false);
-                userRepository.save(user);
-                refreshTokenService.revokeAllForUser(id);
+                tombstone(user);
             } catch (ResourceNotFoundException e) {
                 log.debug("Skipping soft-delete for missing user id {}", id);
             } catch (Exception e) {
@@ -187,16 +189,21 @@ public class UserCommandService {
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_SOFT_DELETE, ENTITY_NAME, ids.toString());
     }
 
-    /** Bulk reactivation. */
+    /** Bulk reactivation. Skips users whose original identifiers are now held by an active row. */
     @Transactional
     public void adminBatchReactivate(@NotNull String adminUsername, @NotNull List<Long> ids) {
         for (Long id : ids) {
             try {
                 AppUser user = findUserOrThrow(id);
-                user.setEnabled(true);
+                if (isTombstoned(user)) {
+                    assertIdentifiersStillFree(user);
+                }
+                restore(user);
                 userRepository.save(user);
             } catch (ResourceNotFoundException e) {
                 log.debug("Skipping reactivate for missing user id {}", id);
+            } catch (ResourceAlreadyExistsException e) {
+                log.warn("Skipping reactivate for user id {}: {}", id, e.getMessage());
             } catch (Exception e) {
                 log.error("Failed to reactivate user id {}", id, e);
             }
@@ -220,6 +227,44 @@ public class UserCommandService {
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, ids.toString());
     }
 
+    /**
+     * Stamps the user as tombstoned: disabled, with a {@code deletedAt} timestamp so the
+     * partial unique index releases the username/email for re-registration. Also revokes
+     * every active refresh token so the disabled account can't continue refreshing.
+     */
+    private void tombstone(AppUser user) {
+        user.setEnabled(false);
+        user.setDeletedAt(Instant.now());
+        userRepository.save(user);
+        refreshTokenService.revokeAllForUser(user.getId());
+    }
+
+    /** Clears the tombstone and re-enables the user. */
+    private void restore(AppUser user) {
+        user.setEnabled(true);
+        user.setDeletedAt(null);
+    }
+
+    private boolean isTombstoned(AppUser user) {
+        return user.getDeletedAt() != null;
+    }
+
+    /**
+     * Reactivating a tombstoned user is only safe if the original username and email aren't
+     * already held by a currently-active row, otherwise the partial unique index would
+     * reject the save with a constraint violation.
+     */
+    private void assertIdentifiersStillFree(AppUser user) {
+        if (userRepository.existsByUsernameAndDeletedAtIsNull(user.getUsername())) {
+            throw new ResourceAlreadyExistsException(
+                    "Cannot reactivate: username '" + user.getUsername() + "' is now held by another user");
+        }
+        if (userRepository.existsByEmailAndDeletedAtIsNull(user.getEmail())) {
+            throw new ResourceAlreadyExistsException(
+                    "Cannot reactivate: email '" + user.getEmail() + "' is now held by another user");
+        }
+    }
+
     private AppUser findUserOrThrow(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -227,7 +272,7 @@ public class UserCommandService {
     }
 
     private AppUser findUserOrThrowByUsername(String username) {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndDeletedAtIsNull(username)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User with username '%s' not found", username)));
     }
@@ -235,7 +280,7 @@ public class UserCommandService {
     private void validateUsernameUniqueness(String newUsername, AppUser currentUser) {
         if (newUsername != null
                 && !newUsername.equalsIgnoreCase(currentUser.getUsername())
-                && userRepository.existsByUsername(newUsername)) {
+                && userRepository.existsByUsernameAndDeletedAtIsNull(newUsername)) {
             throw new ResourceAlreadyExistsException("Username is already taken");
         }
     }
@@ -243,7 +288,7 @@ public class UserCommandService {
     private void validateEmailUniqueness(String newEmail, AppUser currentUser) {
         if (newEmail != null
                 && !newEmail.equalsIgnoreCase(currentUser.getEmail())
-                && userRepository.existsByEmail(newEmail)) {
+                && userRepository.existsByEmailAndDeletedAtIsNull(newEmail)) {
             throw new ResourceAlreadyExistsException("Email is already registered");
         }
     }

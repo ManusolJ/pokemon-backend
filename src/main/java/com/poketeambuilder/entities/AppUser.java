@@ -27,6 +27,12 @@ import lombok.AllArgsConstructor;
  * Application user. Authentication uses {@link #password} (bcrypt); the plain password
  * never lives on the entity. {@link #role} drives Spring Security authorization checks;
  * {@link #enabled} is the soft-disable flag used by the admin reactivate / deactivate flow.
+ *
+ * <p>{@link #deletedAt} tombstones the row: a non-null value means the account is gone and
+ * its username/email no longer participate in uniqueness (see V23 partial indexes), freeing
+ * them for re-registration. Active code paths look up users via the
+ * {@code findBy…AndDeletedAtIsNull} repository methods, never by the inherited {@code findById}
+ * unless the operation explicitly targets tombstoned rows (hard-delete, restore).</p>
  */
 @Entity
 @Getter
@@ -46,12 +52,12 @@ public class AppUser {
 
     @NotBlank
     @Size(min = 3, max = 30)
-    @Column(name = "username", nullable = false, unique = true, length = 30)
+    @Column(name = "username", nullable = false, length = 30)
     private String username;
 
     @NotBlank
     @Size(max = 255)
-    @Column(name = "email", nullable = false, unique = true, length = 255)
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     @NotBlank
@@ -69,6 +75,9 @@ public class AppUser {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "deleted_at", nullable = true)
+    private Instant deletedAt;
 
     /** Sets {@link #createdAt} to the current instant before the first insert. */
     @PrePersist

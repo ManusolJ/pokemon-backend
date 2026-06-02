@@ -42,6 +42,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     private static final String FIELD_ENABLED = "enabled";
     private static final String FIELD_USERNAME = "username";
     private static final String FIELD_CREATED_AT = "createdAt";
+    private static final String FIELD_DELETED_AT = "deletedAt";
 
     private final UserMapper userMapper;
     private final UserRepository userRepository;
@@ -74,7 +75,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
 
     /** Self-service / admin lookup by exact username. Throws when the user doesn't exist. */
     public UserReadDto findByUsername(@NotNull String username) {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndDeletedAtIsNull(username)
                 .map(userMapper::toReadDto)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User '%s' not found", username)));
@@ -89,9 +90,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     protected Specification<AppUser> buildSpecification(@NotNull UserFilterDto filter) {
         SpecificationBuilder<AppUser> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
+        builder.with(FIELD_DELETED_AT, null, SearchOperation.IS_NULL);
 
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);

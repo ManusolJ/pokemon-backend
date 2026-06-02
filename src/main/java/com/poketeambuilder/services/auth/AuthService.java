@@ -67,10 +67,10 @@ public class AuthService {
     /** Registers a new user with a fresh refresh-token family. */
     @Transactional
     public TokenResponseDto register(RegisterDto registerDto) {
-        if (appUserRepository.existsByUsername(registerDto.getUsername())) {
+        if (appUserRepository.existsByUsernameAndDeletedAtIsNull(registerDto.getUsername())) {
             throw new ResourceAlreadyExistsException("Username is already taken");
         }
-        if (appUserRepository.existsByEmail(registerDto.getEmail())) {
+        if (appUserRepository.existsByEmailAndDeletedAtIsNull(registerDto.getEmail())) {
             throw new ResourceAlreadyExistsException("Email is already registered");
         }
 
@@ -146,11 +146,11 @@ public class AuthService {
 
     private AppUser resolveUser(String identifier) {
         if (identifier.contains("@")) {
-            return appUserRepository.findByEmail(identifier)
+            return appUserRepository.findByEmailAndDeletedAtIsNull(identifier)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + identifier));
         }
 
-        return appUserRepository.findByUsername(identifier)
+        return appUserRepository.findByUsernameAndDeletedAtIsNull(identifier)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + identifier));
     }
 

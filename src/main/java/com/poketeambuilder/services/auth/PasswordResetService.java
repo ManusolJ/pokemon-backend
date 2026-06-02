@@ -57,7 +57,7 @@ public class PasswordResetService {
      */
     public void requestReset(PasswordResetRequestDto requestDto) {
         PreparedReset prepared = transactionTemplate.execute(status ->
-                userRepository.findByEmail(requestDto.getEmail())
+                userRepository.findByEmailAndDeletedAtIsNull(requestDto.getEmail())
                         .map(this::issueToken)
                         .orElse(null)
         );

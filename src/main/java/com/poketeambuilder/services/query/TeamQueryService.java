@@ -193,7 +193,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
 
     /** Teams summary listing. Layered as a defensive copy + userId override on the filter. */
     public Page<TeamSummaryDto> filterOwnedSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, @NotNull String currentUsername) {
-        Long userId = userRepository.findByUsername(currentUsername)
+        Long userId = userRepository.findByUsernameAndDeletedAtIsNull(currentUsername)
                 .map(AppUser::getId)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("User '%s' not found", currentUsername)));
 
@@ -264,7 +264,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         if (username == null || username.isBlank()) {
             return null;
         }
-        return userRepository.findByUsername(username).map(AppUser::getId).orElse(null);
+        return userRepository.findByUsernameAndDeletedAtIsNull(username).map(AppUser::getId).orElse(null);
     }
 
     private Map<Long, List<TeamPokemonReadDto>> fetchPokemonForTeams(List<Long> teamIds) {
