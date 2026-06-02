@@ -15,6 +15,7 @@ public record TeamSummaryDto(
     boolean isPublic,
     Integer likeCount,
     Instant createdAt,
+    Instant updatedAt,
     UserSummaryDto owner,
     List<String> pokemonSprites,
     Boolean likedByCurrentUser
