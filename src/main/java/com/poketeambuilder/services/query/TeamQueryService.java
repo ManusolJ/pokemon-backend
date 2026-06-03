@@ -322,7 +322,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
 
     private TeamSummaryDto withSpritesAndLike(TeamSummaryDto dto, List<String> sprites, boolean liked) {
         return new TeamSummaryDto(
-                dto.id(), dto.name(), dto.isPublic(), dto.likeCount(), dto.createdAt(), dto.owner(), sprites, liked);
+                dto.id(), dto.name(), dto.slug(), dto.isPublic(), dto.likeCount(), dto.createdAt(),dto.updatedAt() ,dto.owner(), sprites, liked);
     }
 
     private TeamPokemonReadDto withMoves(TeamPokemonReadDto dto, List<TeamPokemonMoveEmbedDto> moves) {

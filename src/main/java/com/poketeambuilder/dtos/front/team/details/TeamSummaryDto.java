@@ -12,6 +12,7 @@ import com.poketeambuilder.dtos.front.user.UserSummaryDto;
 public record TeamSummaryDto(
     long id,
     String name,
+    String slug,
     boolean isPublic,
     Integer likeCount,
     Instant createdAt,

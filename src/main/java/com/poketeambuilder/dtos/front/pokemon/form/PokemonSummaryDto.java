@@ -12,5 +12,6 @@ public record PokemonSummaryDto(
     Integer order,
     TypeReadDto primaryType,
     TypeReadDto secondaryType,
-    String spriteDefault
+    String spriteDefault,
+    String spriteShiny
 ) {}
