@@ -52,10 +52,10 @@ app:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:4200}
   mail:
     from: ${MAIL_FROM:noreply@poketeambuilder.com}
-    contact-to: ${CONTACT_TO}
+    contact-to: ${CONTACT_TO:poketeamdev@gmail.com}
   password-reset:
     token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}
-    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/auth/reset-password/confirm}
+    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/auth/reset-password-confirmation}
 
   jwt:
     secret: ${JWT_SECRET}

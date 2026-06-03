@@ -54,6 +54,9 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
     private static final String FIELD_NAME = "name";
     private static final String FIELD_PRIMARY_TYPE_ID = "primaryType.id";
     private static final String FIELD_SECONDARY_TYPE_ID = "secondaryType.id";
+    private static final String JOIN_PRIMARY_TYPE = "primaryType";
+    private static final String JOIN_SECONDARY_TYPE = "secondaryType";
+    private static final String TYPE_ID = "id";
     private static final String FIELD_IS_DEFAULT_FORM = "isDefaultForm";
     private static final String FIELD_HEIGHT = "height";
     private static final String FIELD_WEIGHT = "weight";
@@ -189,7 +192,34 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
         addRange(builder, FIELD_BASE_SP_DEF, filter.getMinBaseSpDef(), filter.getMaxBaseSpDef());
         addRange(builder, FIELD_BASE_SPEED, filter.getMinBaseSpeed(), filter.getMaxBaseSpeed());
 
-        return addSpeciesFilters(builder.build(), filter);
+        return addTypeFilter(addSpeciesFilters(builder.build(), filter), filter);
+    }
+
+    /**
+     * Adds a slot-agnostic filter for {@link PokemonFilterDto#getTypeIds()}.
+     * For each requested type id the Pokémon must have it in either the
+     * primary or secondary slot.*/
+    private Specification<Pokemon> addTypeFilter(Specification<Pokemon> spec, PokemonFilterDto filter) {
+        List<Integer> typeIds = filter.getTypeIds();
+        if (typeIds == null || typeIds.isEmpty()) {
+            return spec;
+        }
+
+        return spec.and((root, query, cb) -> {
+            Join<Pokemon, ?> primary = root.join(JOIN_PRIMARY_TYPE, JoinType.LEFT);
+            Join<Pokemon, ?> secondary = root.join(JOIN_SECONDARY_TYPE, JoinType.LEFT);
+
+            Predicate predicates = cb.conjunction();
+            for (Integer typeId : typeIds) {
+                if (typeId == null) {
+                    continue;
+                }
+                predicates = cb.and(predicates, cb.or(
+                        cb.equal(primary.get(TYPE_ID), typeId),
+                        cb.equal(secondary.get(TYPE_ID), typeId)));
+            }
+            return predicates;
+        });
     }
 
     /**

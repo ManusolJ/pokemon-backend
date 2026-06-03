@@ -20,6 +20,8 @@ public class PokemonFilterDto implements FilterDtoInterface {
     private Integer primaryTypeId;
     private Integer secondaryTypeId;
 
+    private List<Integer> typeIds;
+
     private Integer minHeight;
     private Integer maxHeight;
 

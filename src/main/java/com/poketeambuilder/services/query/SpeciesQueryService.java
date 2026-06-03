@@ -310,6 +310,20 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
                 predicates.add(cb.equal(pokemon.get(POKEMON_SECONDARY_TYPE).get(FIELD_ID), filter.getSecondaryTypeId()));
             }
 
+            List<Integer> typeIds = filter.getTypeIds();
+            if (typeIds != null && !typeIds.isEmpty()) {
+                Path<Integer> primarySlot = pokemon.get(POKEMON_PRIMARY_TYPE).get(FIELD_ID);
+                Path<Integer> secondarySlot = pokemon.get(POKEMON_SECONDARY_TYPE).get(FIELD_ID);
+                for (Integer typeId : typeIds) {
+                    if (typeId == null) {
+                        continue;
+                    }
+                    predicates.add(cb.or(
+                            cb.equal(primarySlot, typeId),
+                            cb.equal(secondarySlot, typeId)));
+                }
+            }
+
             addRange(predicates, cb, pokemon.get(POKEMON_HEIGHT), filter.getMinHeight(), filter.getMaxHeight());
             addRange(predicates, cb, pokemon.get(POKEMON_WEIGHT), filter.getMinWeight(), filter.getMaxWeight());
             addRange(predicates, cb, pokemon.get(POKEMON_BASE_HP), filter.getMinBaseHp(), filter.getMaxBaseHp());
@@ -328,6 +342,7 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     private static boolean hasPokemonFilter(PokemonFilterDto filter) {
         return filter.getPrimaryTypeId() != null
                 || filter.getSecondaryTypeId() != null
+                || (filter.getTypeIds() != null && !filter.getTypeIds().isEmpty())
                 || filter.getMinHeight() != null
                 || filter.getMaxHeight() != null
                 || filter.getMinWeight() != null
