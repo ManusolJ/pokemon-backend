@@ -173,7 +173,7 @@ public class TeamCommandService {
         AppUser user = findUserOrThrow(username);
         Team team = findTeamOrThrow(teamId);
 
-        TeamLikeId likeId = new TeamLikeId(teamId, user.getId());
+        TeamLikeId likeId = new TeamLikeId(user.getId(), teamId);
 
         if (teamLikeRepository.existsById(likeId)) {
             throw new ResourceAlreadyExistsException("Team already liked by this user");
@@ -194,7 +194,7 @@ public class TeamCommandService {
         AppUser user = findUserOrThrow(username);
         findTeamOrThrow(teamId);
 
-        TeamLikeId likeId = new TeamLikeId(teamId, user.getId());
+        TeamLikeId likeId = new TeamLikeId(user.getId(), teamId);
 
         if (!teamLikeRepository.existsById(likeId)) {
             throw new ResourceNotFoundException("Team like not found");

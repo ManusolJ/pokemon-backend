@@ -13,8 +13,10 @@ import com.poketeambuilder.entities.Team;
  */
 public interface TeamRepository extends BaseRepository<Team, Long> {
 
-    /** Atomically increments {@link Team#getLikeCount()} by one. Paired with {@code TeamLike} insert. */
-    @Modifying(clearAutomatically = true)
+    /**
+     * Atomically increments {@link Team#getLikeCount()} by one.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Team t SET t.likeCount = t.likeCount + 1 WHERE t.id = :teamId")
     void incrementLikeCount(@Param("teamId") Long teamId);
 
@@ -22,7 +24,7 @@ public interface TeamRepository extends BaseRepository<Team, Long> {
      * Atomically decrements {@link Team#getLikeCount()} by one, but never below zero — guards
      * against double-decrement races if a delete is replayed.
      */
-    @Modifying(clearAutomatically = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Team t SET t.likeCount = t.likeCount - 1 WHERE t.id = :teamId AND t.likeCount > 0")
     void decrementLikeCount(@Param("teamId") Long teamId);
 }
