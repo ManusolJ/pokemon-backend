@@ -15,17 +15,15 @@ Java 21 · Spring Boot 4 · PostgreSQL 17 · Docker
 
 ## Screenshots
 
-| Team builder                                  | Team analysis                              |
-| --------------------------------------------- | ------------------------------------------ |
-| ![Team builder](docs/screenshots/builder.png) | ![Analysis](docs/screenshots/analysis.png) |
-
-| Team Share                                | Team Storage                                  |
-| ----------------------------------------- | --------------------------------------------- |
-| ![Team Share](docs/screenshots/share.png) | ![Team Storage](docs/screenshots/storage.png) |
-
-| Admin Panel                                | Seed Process                               |
-| ------------------------------------------ | ------------------------------------------ |
-| ![Admin Panel](docs/screenshots/admin.png) | ![Seed Process](docs/screenshots/seed.png) |
+| Team builder                                  | Team analysis                                 |
+| --------------------------------------------- | --------------------------------------------- |
+| ![Team builder](docs/screenshots/builder.png) | ![Analysis](docs/screenshots/analysis.png)    |
+| Team Share                                    | Team Storage                                  |
+| -----------------------------------------     | --------------------------------------------- |
+| ![Team Share](docs/screenshots/share.png)     | ![Team Storage](docs/screenshots/storage.png) |
+| Admin Panel                                   | Seed Process                                  |
+| ------------------------------------------    | ------------------------------------------    |
+| ![Admin Panel](docs/screenshots/admin.png)    | ![Seed Process](docs/screenshots/seed.png)    |
 
 ---
 
