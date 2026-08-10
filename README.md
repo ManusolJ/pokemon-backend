@@ -288,10 +288,6 @@ All endpoints live under `/api`.
 | **Administration** | `/admin/seed`, `/admin/seed-logs/filter`, `/admin/audit-logs/filter`, `/admin/users/{id}/batch`                                 | `ADMIN`               |
 | **Contact**        | `/contact`                                                                                                                      | Public                |
 
-> [!TIP]
-> Full interactive documentation is generated from annotations by SpringDoc and served at
-> `/swagger-ui.html`.
-
 ---
 
 ## Tech stack
