@@ -15,10 +15,6 @@ Java 21 · Spring Boot 4 · PostgreSQL 17 · Docker
 
 ## Screenshots
 
-<!-- Add 3–4 screenshots to docs/screenshots/. Suggested: team builder, analysis view,
-     admin seed panel, seed logs. IMPORTANT: blur user e-mail addresses in any
-     admin screenshot before committing. -->
-
 | Team builder                                  | Team analysis                              |
 | --------------------------------------------- | ------------------------------------------ |
 | ![Team builder](docs/screenshots/builder.png) | ![Analysis](docs/screenshots/analysis.png) |
@@ -26,6 +22,10 @@ Java 21 · Spring Boot 4 · PostgreSQL 17 · Docker
 | Team Share                                | Team Storage                                  |
 | ----------------------------------------- | --------------------------------------------- |
 | ![Team Share](docs/screenshots/share.png) | ![Team Storage](docs/screenshots/storage.png) |
+
+| Admin Panel                                | Seed Process                               |
+| ------------------------------------------ | ------------------------------------------ |
+| ![Admin Panel](docs/screenshots/admin.png) | ![Seed Process](docs/screenshots/seed.png) |
 
 ---
 
