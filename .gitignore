@@ -34,4 +34,4 @@ build/
 ### Project specific ###
 .env*
 !.env.example
-docs/
+docs/db
