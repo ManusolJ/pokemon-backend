@@ -2,6 +2,7 @@ package com.poketeambuilder.services.command;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.poketeambuilder.entities.AppUser;
 
@@ -12,6 +13,7 @@ import com.poketeambuilder.dtos.front.user.PasswordChangeDto;
 import com.poketeambuilder.dtos.front.admin.user.AdminUserUpdateDto;
 
 import com.poketeambuilder.infrastructure.exceptions.BadPasswordException;
+import com.poketeambuilder.infrastructure.exceptions.InvalidOperationException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
@@ -22,12 +24,14 @@ import com.poketeambuilder.repositories.UserRepository;
 import com.poketeambuilder.services.auth.RefreshTokenService;
 
 import com.poketeambuilder.utils.enums.AuditAction;
+import com.poketeambuilder.utils.enums.UserRole;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import org.springframework.validation.annotation.Validated;
 
@@ -53,10 +57,15 @@ public class UserCommandService {
     private final UserMapper userMapper;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TransactionTemplate transactionTemplate;
     private final RefreshTokenService refreshTokenService;
     private final AuditLogCommandService auditLogCommandService;
 
-    /** Self-service profile update. Email and username are checked for uniqueness before save. */
+    /**
+     * Self-service profile update. Email and username are checked for uniqueness before save.
+     * A username change revokes the user's refresh tokens: the subject claim on any token
+     * already issued still carries the old name, which no longer resolves to a row.
+     */
     @Transactional
     public UserReadDto updateProfile(@NotNull String username, @Valid @NotNull UserUpdateDto dto) {
         AppUser user = findUserOrThrowByUsername(username);
@@ -64,9 +73,15 @@ public class UserCommandService {
         validateEmailUniqueness(dto.getNewEmail(), user);
         validateUsernameUniqueness(dto.getNewUsername(), user);
 
+        boolean usernameChanged = dto.getNewUsername() != null && !dto.getNewUsername().equals(user.getUsername());
+
         userMapper.updateEntity(dto, user);
 
         AppUser saved = userRepository.save(user);
+
+        if (usernameChanged) {
+            refreshTokenService.revokeAllForUser(saved.getId());
+        }
 
         auditLogCommandService.log(saved.getUsername(), AuditAction.USER_PROFILE_UPDATE, ENTITY_NAME, saved.getId().toString());
 
@@ -107,13 +122,21 @@ public class UserCommandService {
         auditLogCommandService.log(user.getUsername(), AuditAction.USER_SELF_DELETE, ENTITY_NAME, user.getId().toString());
     }
 
-    /** Admin update of a user's role/email/username/enabled flag. Uniqueness validated as for self-service. */
+    /**
+     * Admin update of a user's role/email/username/enabled flag. Uniqueness validated as for
+     * self-service. Refuses any edit that would drop the last administrator, since recovering
+     * from that means editing the database by hand.
+     */
     @Transactional
     public UserReadDto adminUpdateUser(@NotNull String adminUsername, @NotNull Long userId, @Valid @NotNull AdminUserUpdateDto dto) {
         AppUser user = findUserOrThrow(userId);
 
         validateEmailUniqueness(dto.getNewEmail(), user);
         validateUsernameUniqueness(dto.getNewUsername(), user);
+
+        if (demotesAdmin(user, dto) || disablesUser(dto)) {
+            assertNotLastAdmin(user);
+        }
 
         userMapper.updateEntity(dto, user);
 
@@ -128,6 +151,8 @@ public class UserCommandService {
     @Transactional
     public void adminSoftDeleteUser(@NotNull String adminUsername, @NotNull Long userId) {
         AppUser user = findUserOrThrow(userId);
+
+        assertNotLastAdmin(user);
 
         String originalUsername = user.getUsername();
         tombstone(user);
@@ -165,6 +190,8 @@ public class UserCommandService {
     public void adminHardDeleteUser(@NotNull String adminUsername, @NotNull Long userId) {
         AppUser user = findUserOrThrow(userId);
 
+        assertNotLastAdmin(user);
+
         String username = user.getUsername();
 
         userRepository.delete(user);
@@ -174,57 +201,56 @@ public class UserCommandService {
     }
 
     /** Bulk soft-delete + session revoke. Skips ids that no longer resolve to a user, logs anything else. */
-    @Transactional
     public void adminBatchSoftDelete(@NotNull String adminUsername, @NotNull List<Long> ids) {
-        for (Long id : ids) {
-            try {
-                AppUser user = findUserOrThrow(id);
-                tombstone(user);
-            } catch (ResourceNotFoundException e) {
-                log.debug("Skipping soft-delete for missing user id {}", id);
-            } catch (Exception e) {
-                log.error("Failed to soft-delete user id {}", id, e);
-            }
-        }
+        forEachInOwnTransaction(ids, "soft-delete", id -> {
+            AppUser user = findUserOrThrow(id);
+            assertNotLastAdmin(user);
+            tombstone(user);
+        });
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_SOFT_DELETE, ENTITY_NAME, ids.toString());
     }
 
     /** Bulk reactivation. Skips users whose original identifiers are now held by an active row. */
-    @Transactional
     public void adminBatchReactivate(@NotNull String adminUsername, @NotNull List<Long> ids) {
-        for (Long id : ids) {
-            try {
-                AppUser user = findUserOrThrow(id);
-                if (isTombstoned(user)) {
-                    assertIdentifiersStillFree(user);
-                }
-                restore(user);
-                userRepository.save(user);
-            } catch (ResourceNotFoundException e) {
-                log.debug("Skipping reactivate for missing user id {}", id);
-            } catch (ResourceAlreadyExistsException e) {
-                log.warn("Skipping reactivate for user id {}: {}", id, e.getMessage());
-            } catch (Exception e) {
-                log.error("Failed to reactivate user id {}", id, e);
+        forEachInOwnTransaction(ids, "reactivate", id -> {
+            AppUser user = findUserOrThrow(id);
+            if (isTombstoned(user)) {
+                assertIdentifiersStillFree(user);
             }
-        }
+            restore(user);
+            userRepository.save(user);
+        });
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_REACTIVATE, ENTITY_NAME, ids.toString());
     }
 
     /** Bulk hard-delete. Token cleanup is via DB cascade. */
-    @Transactional
     public void adminBatchHardDelete(@NotNull String adminUsername, @NotNull List<Long> ids) {
+        forEachInOwnTransaction(ids, "hard-delete", id -> {
+            AppUser user = findUserOrThrow(id);
+            assertNotLastAdmin(user);
+            userRepository.delete(user);
+        });
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, ids.toString());
+    }
+
+    /**
+     * Applies {@code action} to each id in its own transaction so one bad row doesn't take the
+     * batch with it. Catching per-item inside a single shared transaction wouldn't work:
+     * whichever failure marked it rollback-only would still doom the commit at the end, and
+     * the loop would have reported success for every id it processed after that point.
+     */
+    private void forEachInOwnTransaction(List<Long> ids, String action, Consumer<Long> operation) {
         for (Long id : ids) {
             try {
-                AppUser user = findUserOrThrow(id);
-                userRepository.delete(user);
+                transactionTemplate.executeWithoutResult(status -> operation.accept(id));
             } catch (ResourceNotFoundException e) {
-                log.debug("Skipping hard-delete for missing user id {}", id);
+                log.debug("Skipping {} for missing user id {}", action, id);
+            } catch (ResourceAlreadyExistsException | InvalidOperationException e) {
+                log.warn("Skipping {} for user id {}: {}", action, id, e.getMessage());
             } catch (Exception e) {
-                log.error("Failed to hard-delete user id {}", id, e);
+                log.error("Failed to {} user id {}", action, id, e);
             }
         }
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, ids.toString());
     }
 
     /**
@@ -247,6 +273,32 @@ public class UserCommandService {
 
     private boolean isTombstoned(AppUser user) {
         return user.getDeletedAt() != null;
+    }
+
+    /**
+     * Blocks the change if {@code user} is the only administrator left who can still sign in.
+     * There is no in-app way back from an instance with no admins — the README's first-run
+     * {@code UPDATE app_user SET role = 'ADMIN'} is the only recovery.
+     */
+    private void assertNotLastAdmin(AppUser user) {
+        if (!UserRole.ADMIN.equals(user.getRole()) || isTombstoned(user) || !user.getEnabled()) {
+            return;
+        }
+
+        if (userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN) <= 1) {
+            throw new InvalidOperationException(
+                    "Cannot remove the last administrator; promote another account first");
+        }
+    }
+
+    private boolean demotesAdmin(AppUser user, AdminUserUpdateDto dto) {
+        return UserRole.ADMIN.equals(user.getRole())
+                && dto.getNewRole() != null
+                && !UserRole.ADMIN.name().equals(dto.getNewRole());
+    }
+
+    private boolean disablesUser(AdminUserUpdateDto dto) {
+        return Boolean.FALSE.equals(dto.getEnabled());
     }
 
     /**

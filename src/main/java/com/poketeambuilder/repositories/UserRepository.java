@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import com.poketeambuilder.entities.AppUser;
 
+import com.poketeambuilder.utils.enums.UserRole;
+
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -33,6 +35,9 @@ public interface UserRepository extends BaseRepository<AppUser, Long> {
 
     /** Returns {@code true} iff an active user with the given email exists. */
     boolean existsByEmailAndDeletedAtIsNull(String email);
+
+    /** Counts administrators who can still sign in. Guards the paths that could otherwise lock everyone out. */
+    long countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole role);
 
     /**
      * Hard-deletes tombstoned users whose {@code deleted_at} is strictly before the cutoff.
