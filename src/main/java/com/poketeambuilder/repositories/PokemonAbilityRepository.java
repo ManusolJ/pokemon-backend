@@ -24,4 +24,7 @@ public interface PokemonAbilityRepository extends BaseRepository<PokemonAbility,
             WHERE pa.id.pokemonId IN :pokemonIds
             """)
     List<PokemonAbility> findByPokemonIdInWithAbility(@Param("pokemonIds") Collection<Integer> pokemonIds);
+
+    /** Whether the given form actually has the given ability. Guards team saves against illegal pairings. */
+    boolean existsByIdPokemonIdAndIdAbilityId(Integer pokemonId, Integer abilityId);
 }

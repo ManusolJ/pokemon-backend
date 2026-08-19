@@ -25,7 +25,6 @@ import com.poketeambuilder.repositories.SpeciesRepository;
 import com.poketeambuilder.services.command.PokeApiClient;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -70,12 +69,6 @@ public class SpeciesSeedService {
         log.info("Linked {} evolution references", linked);
 
         return SeedResultDto.of(saved, fetched.errors());
-    }
-
-    @Transactional
-    public void clearSeedData() {
-        speciesRepository.clearPreviousEvolutions();
-        speciesRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAllSpecies() {
@@ -123,9 +116,13 @@ public class SpeciesSeedService {
     }
 
     /**
-     * Applies previous-evolution links and evolution-detail fields.
+     * Applies previous-evolution links and evolution-detail fields. Existing links are wiped
+     * first so a species that no longer evolves from anything doesn't keep a stale pointer
+     * from an earlier run.
      */
     private int linkEvolutions(List<PokemonSpeciesApiDto> speciesDtos, Map<String, EvolutionChainApiDto> chainsByUrl) {
+        speciesRepository.clearPreviousEvolutions();
+
         Map<Integer, Integer> previousEvolutionLinks = buildEvolutionLinks(speciesDtos);
         applyPreviousEvolutions(previousEvolutionLinks);
 

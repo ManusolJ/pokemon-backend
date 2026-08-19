@@ -9,9 +9,9 @@ import com.poketeambuilder.entities.PokemonSpecies;
 public interface SpeciesRepository extends BaseRepository<PokemonSpecies, Integer> {
 
     /**
-     * Clears every species' {@code previous_evolution_id}. Used by the seed pipeline to break
-     * the self-referencing FK cycle before re-ingesting evolution data so rows can be
-     * inserted in any order without violating FK constraints.
+     * Clears every species' {@code previous_evolution_id}. The seed pipeline runs this before
+     * re-applying evolution links, so a species whose chain changed upstream doesn't keep
+     * pointing at its old pre-evolution.
      */
     @Modifying
     @Query("UPDATE PokemonSpecies s SET s.previousEvolution = null")
