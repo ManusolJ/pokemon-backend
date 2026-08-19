@@ -89,7 +89,6 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     @Override
     protected void applyFetches(Root<Move> root, CriteriaQuery<?> query) {
         root.fetch("type");
-        query.distinct(true);
     }
 
     /** Compact projection for embed / picker use cases. */

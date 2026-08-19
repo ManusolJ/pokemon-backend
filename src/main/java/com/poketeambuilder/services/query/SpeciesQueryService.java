@@ -126,7 +126,6 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     @Override
     protected void applyFetches(Root<PokemonSpecies> root, CriteriaQuery<?> query) {
         root.fetch(FIELD_PREVIOUS_EVOLUTION, JoinType.LEFT);
-        query.distinct(true);
     }
 
     /**

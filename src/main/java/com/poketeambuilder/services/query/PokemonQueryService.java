@@ -124,7 +124,6 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
         root.fetch("primaryType");
         root.fetch("secondaryType", JoinType.LEFT);
         root.fetch("species");
-        query.distinct(true);
     }
 
     @Override
