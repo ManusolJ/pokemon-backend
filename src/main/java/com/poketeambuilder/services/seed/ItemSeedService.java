@@ -1,7 +1,9 @@
 package com.poketeambuilder.services.seed;
 
+import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 import com.poketeambuilder.entities.Item;
 
@@ -70,9 +72,16 @@ public class ItemSeedService {
             }
         }
 
+        List<PokeApiResource> distinctResources = deduplicateByName(relevantResources);
+
+        int duplicates = relevantResources.size() - distinctResources.size();
+        if (duplicates > 0) {
+            log.info("Dropped {} duplicate item reference(s) before fetching", duplicates);
+        }
+
         List<ItemApiDto> apiDtos = new ArrayList<>();
 
-        for (PokeApiResource resource : relevantResources) {
+        for (PokeApiResource resource : distinctResources) {
             try {
                 apiDtos.add(pokeApiClient.fetchResource(resource.url(), ItemApiDto.class));
             } catch (Exception e) {
@@ -82,6 +91,38 @@ public class ItemSeedService {
         }
 
         return new FetchResult(apiDtos, errors);
+    }
+
+    /**
+     * Collapses references that name the same item, keeping the lowest id.
+     *
+     * <p>PokeAPI sometimes carries a second entry for an item under a much higher id — the
+     * original record plus a later stub with the same name and category but no effect or
+     * flavour text. </p>
+     */
+    static List<PokeApiResource> deduplicateByName(List<PokeApiResource> resources) {
+        Map<String, PokeApiResource> byName = new LinkedHashMap<>();
+
+        for (PokeApiResource resource : resources) {
+            byName.merge(resource.name(), resource, ItemSeedService::lowerId);
+        }
+
+        return List.copyOf(byName.values());
+    }
+
+    /** Picks whichever reference carries the lower id, preferring one that resolves at all. */
+    private static PokeApiResource lowerId(PokeApiResource existing, PokeApiResource candidate) {
+        Integer existingId = existing.extractId();
+        Integer candidateId = candidate.extractId();
+
+        if (candidateId == null) {
+            return existing;
+        }
+        if (existingId == null) {
+            return candidate;
+        }
+
+        return candidateId < existingId ? candidate : existing;
     }
 
     private int persist(List<ItemApiDto> apiDtos) {
