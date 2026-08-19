@@ -26,6 +26,8 @@ public class TeamFilterDto implements FilterDtoInterface {
 
     private Boolean isPublic;
 
+    private Boolean ownerActive;
+
     /** Returns a shallow copy with every field carried over. Used to apply per-endpoint overrides safely. */
     public TeamFilterDto copy() {
         TeamFilterDto clone = new TeamFilterDto();
@@ -35,6 +37,7 @@ public class TeamFilterDto implements FilterDtoInterface {
         clone.name = this.name;
         clone.nameExact = this.nameExact;
         clone.isPublic = this.isPublic;
+        clone.ownerActive = this.ownerActive;
         return clone;
     }
 }
