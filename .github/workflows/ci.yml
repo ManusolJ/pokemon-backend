@@ -31,10 +31,9 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      # `verify` runs through the package phase; -DskipTests for now.
-      # TODO: CHANGE ONCE TESTS ARE IMPLEMENTED (probably never lmao)
+      # `verify` runs the test suite and then the package phase.
       - name: Maven verify
-        run: ./mvnw -B -ntp -DskipTests verify
+        run: ./mvnw -B -ntp verify
 
       # Check that docker still builds cleanly.
       - name: Validate Docker image build
