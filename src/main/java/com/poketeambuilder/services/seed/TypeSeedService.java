@@ -79,9 +79,12 @@ public class TypeSeedService {
     }
 
     @Transactional
-    public void clearSeedData() {
+    /**
+     * Empties the effectiveness matrix, which is rebuilt in full on every run. The
+     * {@code type} rows survive: {@code pokemon} and {@code team_pokemon} both reference them.
+     */
+    public void clearDerivedData() {
         typeEffectivenessRepository.deleteAllInBatch();
-        typeRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAll() {

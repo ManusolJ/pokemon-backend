@@ -18,7 +18,6 @@ import com.poketeambuilder.services.command.PokeApiClient;
 
 import org.springframework.stereotype.Service;
 
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -50,11 +49,6 @@ public class NatureSeedService {
         int saved = transactionTemplate.execute(status -> persist(fetched.apiDtos()));
         log.info("Seeded {} natures ({} fetch errors)", saved, fetched.errors());
         return SeedResultDto.of(saved, fetched.errors());
-    }
-
-    @Transactional
-    public void clearSeedData() {
-        natureRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAll() {

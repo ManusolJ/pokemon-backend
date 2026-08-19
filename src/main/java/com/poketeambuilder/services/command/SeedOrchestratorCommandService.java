@@ -58,7 +58,7 @@ public class SeedOrchestratorCommandService {
 
     /** Runs the full seed pipeline. Returns the aggregated entries-added / errors counts. */
     public SeedResultDto seed() {
-        clearSeedData();
+        clearDerivedData();
 
         SeedResultDto result = typeSeedService.seed()
                 .add(natureSeedService.seed())
@@ -75,15 +75,20 @@ public class SeedOrchestratorCommandService {
         return result;
     }
 
-    /** Clears every persisted seed in the reverse dependency order to respect FK constraints. */
-    private void clearSeedData() {
-        pokemonSeedService.clearSeedData();
-        speciesSeedService.clearSeedData();
-        abilitySeedService.clearSeedData();
-        natureSeedService.clearSeedData();
-        moveSeedService.clearSeedData();
-        itemSeedService.clearSeedData();
-        typeSeedService.clearSeedData();
+    /**
+     * Truncates the join tables the pipeline derives wholesale — learnsets, ability slots and
+     * the effectiveness matrix — so rows PokeAPI has since dropped don't linger.
+     *
+     * <p>The catalogue tables themselves are deliberately left alone. Every one of them is
+     * referenced by {@code team_pokemon} or {@code team_pokemon_move}, whose foreign keys
+     * carry no {@code ON DELETE} action, so a blanket delete is refused outright by the
+     * database the moment a single team exists. It isn't needed either: catalogue entities are
+     * keyed on PokeAPI's own ids, so re-saving them updates in place and user rows keep
+     * pointing at the same species, moves and items.</p>
+     */
+    private void clearDerivedData() {
+        pokemonSeedService.clearDerivedData();
+        typeSeedService.clearDerivedData();
 
         evictAllCaches();
     }

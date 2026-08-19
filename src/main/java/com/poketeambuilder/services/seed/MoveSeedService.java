@@ -19,7 +19,6 @@ import com.poketeambuilder.repositories.TypeRepository;
 import com.poketeambuilder.services.command.PokeApiClient;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,11 +54,6 @@ public class MoveSeedService {
         PersistResult persisted = transactionTemplate.execute(status -> persist(fetched.apiDtos(), fetched.errors()));
         log.info("Seeded {} moves ({} errors)", persisted.saved(), persisted.errors());
         return SeedResultDto.of(persisted.saved(), persisted.errors());
-    }
-
-    @Transactional
-    public void clearSeedData() {
-        moveRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAll() {

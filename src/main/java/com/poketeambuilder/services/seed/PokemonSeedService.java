@@ -113,11 +113,15 @@ public class PokemonSeedService {
         return SeedResultDto.of(forms.saved() + abilities.saved() + moves.saved(), moves.errors());
     }
 
+    /**
+     * Empties the two join tables this service rebuilds from scratch on every run. The
+     * {@code pokemon} rows themselves survive: {@code team_pokemon} references them, and they
+     * are re-saved under their PokeAPI ids anyway.
+     */
     @Transactional
-    public void clearSeedData() {
+    public void clearDerivedData() {
         pokemonMoveRepository.deleteAllInBatch();
         pokemonAbilityRepository.deleteAllInBatch();
-        pokemonRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAll() {

@@ -20,7 +20,6 @@ import com.poketeambuilder.services.command.PokeApiClient;
 import com.poketeambuilder.utils.enums.RelevantItemCategory;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -53,11 +52,6 @@ public class ItemSeedService {
         int saved = transactionTemplate.execute(status -> persist(fetched.apiDtos()));
         log.info("Seeded {} items ({} fetch errors)", saved, fetched.errors());
         return SeedResultDto.of(saved, fetched.errors());
-    }
-
-    @Transactional
-    public void clearSeedData() {
-        itemRepository.deleteAllInBatch();
     }
 
     private FetchResult fetchAll() {
