@@ -12,7 +12,13 @@ import com.poketeambuilder.utils.enums.SeedStatus;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+
+import org.springframework.context.event.EventListener;
+
 import org.springframework.core.task.TaskExecutor;
+
+import org.springframework.dao.DataIntegrityViolationException;
 
 import org.springframework.stereotype.Service;
 
@@ -61,17 +67,43 @@ public class SeedLogCommandService {
     public SeedLog triggerSeed(String triggeredBy) {
         seedLogRepository.findFirstByStatusOrderByStartedAtDesc(SeedStatus.RUNNING)
                 .ifPresent(running -> {
-                    throw new ResourceAlreadyExistsException(
-                            "A seed run is already in progress (log id=" + running.getId()
-                                    + "). Poll /api/admin/seed-logs/filter for its status.");
+                    throw alreadyRunning(running.getId());
                 });
 
-        SeedLog seedLog = createLog(triggeredBy);
+        SeedLog seedLog;
+        try {
+            seedLog = createLog(triggeredBy);
+        } catch (DataIntegrityViolationException e) {
+            throw alreadyRunning(null);
+        }
+
         Long logId = seedLog.getId();
 
         taskExecutor.execute(() -> runSeed(logId));
 
         return seedLog;
+    }
+
+    /**
+     * Resolves seed logs left {@code RUNNING} by a process that died mid-import. Nothing can
+     * still be running once the context has just come up, and the partial unique index would
+     * otherwise let that orphan block every future run.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void failInterruptedRuns() {
+        requiresNewTransactionTemplate.executeWithoutResult(status -> {
+            int reconciled = seedLogRepository.failRunningLogs(SeedStatus.FAILED, SeedStatus.RUNNING);
+            if (reconciled > 0) {
+                log.warn("Marked {} interrupted seed run(s) as failed on startup", reconciled);
+            }
+        });
+    }
+
+    private ResourceAlreadyExistsException alreadyRunning(Long logId) {
+        String location = logId == null ? "" : " (log id=" + logId + ")";
+        return new ResourceAlreadyExistsException(
+                "A seed run is already in progress" + location
+                        + ". Poll /api/admin/seed-logs/filter for its status.");
     }
 
     /** Background-thread body. Runs the orchestrator and updates the log accordingly. */
