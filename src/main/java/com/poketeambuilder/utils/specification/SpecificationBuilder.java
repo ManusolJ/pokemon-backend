@@ -11,13 +11,8 @@ public class SpecificationBuilder<T> {
 
     private final List<SearchCriteria> criteriaList = new ArrayList<>();
 
-    public SpecificationBuilder<T> with(String key, Object value, Object valueTo, SearchOperation operation) {
-        criteriaList.add(new SearchCriteria(key, value, valueTo, operation));
-        return this;
-    }
-
     public SpecificationBuilder<T> with(String key, Object value, SearchOperation operation) {
-        criteriaList.add(new SearchCriteria(key, value, null, operation));
+        criteriaList.add(new SearchCriteria(key, value, operation));
         return this;
     }
 

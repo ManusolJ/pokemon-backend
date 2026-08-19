@@ -3,7 +3,6 @@ package com.poketeambuilder.utils.specification;
 import com.poketeambuilder.utils.enums.SearchOperation;
 
 import java.io.Serial;
-import java.util.Collection;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -26,6 +25,8 @@ public class BaseSpecification<T> implements Specification<T> {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    private static final char LIKE_ESCAPE = '\\';
+
     private final SearchCriteria criteria;
 
     @Override
@@ -35,8 +36,6 @@ public class BaseSpecification<T> implements Specification<T> {
 
         Object value = criteria.value();
 
-        Object valueTo = criteria.valueTo();
-
         SearchOperation operation = criteria.operation();
 
         return switch (operation) {
@@ -44,59 +43,14 @@ public class BaseSpecification<T> implements Specification<T> {
                     ? cb.isNull(path)
                     : cb.equal(path, value);
 
-            case NOT_EQUAL -> value == null
-                    ? cb.isNotNull(path)
-                    : cb.notEqual(path, value);
-
             case LIKE -> {
                 validateString(value, "LIKE");
-                yield cb.like(cb.lower(path.as(String.class)), ("%" + value + "%").toLowerCase().trim());
+                yield cb.like(cb.lower(path.as(String.class)), containsPattern((String) value), LIKE_ESCAPE);
             }
 
-            case STARTS_WITH -> {
-                validateString(value, "STARTS_WITH");
-                yield cb.like(cb.lower(path.as(String.class)), (value + "%").toLowerCase().trim());
-            }
+            case IS_NULL -> cb.isNull(path);
 
-            case ENDS_WITH -> {
-                validateString(value, "ENDS_WITH");
-                yield cb.like(cb.lower(path.as(String.class)), ("%" + value).toLowerCase().trim());
-            }
-
-            case IN -> {
-                if (!(value instanceof Collection<?> collection)) {
-                    throw new IllegalArgumentException("IN operation requires a Collection value");
-                }
-
-                if (collection.isEmpty()) {
-                    yield cb.disjunction();
-                }
-
-                CriteriaBuilder.In<Object> in = cb.in(path);
-                collection.forEach(in::value);
-                yield in;
-            }
-
-            case NOT_IN -> {
-                if (!(value instanceof Collection<?> collection)) {
-                    throw new IllegalArgumentException("NOT_IN operation requires a Collection value");
-                }
-
-                if (collection.isEmpty()) {
-                    yield cb.conjunction();
-                }
-
-                CriteriaBuilder.In<Object> notIn = cb.in(path);
-                collection.forEach(notIn::value);
-                yield cb.not(notIn);
-            }
-
-            case IS_NULL     -> cb.isNull(path);
-            case IS_NOT_NULL -> cb.isNotNull(path);
-
-            case GREATER_THAN, GREATER_THAN_OR_EQUAL,
-                 LESS_THAN, LESS_THAN_OR_EQUAL,
-                 BETWEEN -> buildComparablePredicate(operation, path, value, valueTo, cb);
+            case GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL -> buildComparablePredicate(operation, path, value, cb);
         };
     }
 
@@ -108,6 +62,21 @@ public class BaseSpecification<T> implements Specification<T> {
         String[] parts = key.split("\\.", 2);
         Join<?, ?> join = root.join(parts[0], JoinType.LEFT);
         return join.get(parts[1]);
+    }
+
+    /**
+     * Wraps a search term in wildcards, escaping any the caller supplied. Left unescaped,
+     * {@code %} and {@code _} in user input act as pattern metacharacters — so a search for
+     * {@code a_b} would also match {@code aab}, and a term of {@code %} would match the whole
+     * table.
+     */
+    private String containsPattern(String value) {
+        String escaped = value.trim().toLowerCase()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+
+        return "%" + escaped + "%";
     }
 
     private void validateString(Object value, String operation) {
@@ -127,24 +96,15 @@ public class BaseSpecification<T> implements Specification<T> {
 
     @SuppressWarnings("unchecked")
     private <Y extends Comparable<? super Y>> Predicate buildComparablePredicate(
-            SearchOperation op, Path<?> path, Object value, Object valueTo, CriteriaBuilder cb) {
+            SearchOperation op, Path<?> path, Object value, CriteriaBuilder cb) {
 
         validateComparable(value, op.name());
 
         Path<Y> typedPath = (Path<Y>) path;
         Y typedValue = (Y) value;
 
-        return switch (op) {
-            case GREATER_THAN          -> cb.greaterThan(typedPath, typedValue);
-            case GREATER_THAN_OR_EQUAL -> cb.greaterThanOrEqualTo(typedPath, typedValue);
-            case LESS_THAN             -> cb.lessThan(typedPath, typedValue);
-            case LESS_THAN_OR_EQUAL    -> cb.lessThanOrEqualTo(typedPath, typedValue);
-            case BETWEEN -> {
-                validateComparable(valueTo, "BETWEEN (valueTo)");
-                Y typedValueTo = (Y) valueTo;
-                yield cb.between(typedPath, typedValue, typedValueTo);
-            }
-            default -> throw new UnsupportedOperationException("Unsupported comparable operation: " + op);
-        };
+        return op == SearchOperation.GREATER_THAN_OR_EQUAL
+                ? cb.greaterThanOrEqualTo(typedPath, typedValue)
+                : cb.lessThanOrEqualTo(typedPath, typedValue);
     }
 }
