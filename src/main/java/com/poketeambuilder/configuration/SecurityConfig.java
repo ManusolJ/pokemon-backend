@@ -24,6 +24,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import org.springframework.web.cors.CorsConfiguration;
@@ -40,7 +41,28 @@ import java.util.List;
 @Configuration(proxyBeanMethods = false)
 public class SecurityConfig {
 
+    /**
+     * Public catalogue reads, listed one by one rather than as prefix wildcards. A
+     * {@code /api/pokemon/**} rule would also cover any write endpoint added under that
+     * prefix later, so new routes are private until someone adds them here on purpose.
+     */
+    private static final String[] PUBLIC_CATALOG_READS = {
+            "/api/pokemon/filter", "/api/pokemon/id", "/api/pokemon/summaries", "/api/pokemon/count",
+            "/api/species/filter", "/api/species/id", "/api/species/summaries", "/api/species/count",
+            "/api/moves/filter", "/api/moves/id", "/api/moves/summaries", "/api/moves/count",
+            "/api/abilities/filter", "/api/abilities/id", "/api/abilities/summaries", "/api/abilities/count",
+            "/api/items/filter", "/api/items/id", "/api/items/summaries", "/api/items/count",
+            "/api/natures/filter", "/api/natures/id", "/api/natures/count",
+            "/api/types/filter", "/api/types/id", "/api/types/count",
+            "/api/types/effectiveness", "/api/types/effectiveness/count"
+    };
+
+    private static final String[] PUBLIC_TEAM_READS = {
+            "/api/teams/public/filter", "/api/teams/public/id"
+    };
+
     private final AuthEntryPoint authEntryPoint;
+    private final AccessDeniedHandler accessDeniedHandler;
     private final AuthRateLimitFilter authRateLimitFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
@@ -52,26 +74,15 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(authEntryPoint))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(authEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/pokemon/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/pokemon/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/species/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/species/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/moves/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/moves/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/abilities/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/abilities/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/items/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/types/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/types/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/natures/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/natures/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/teams/public/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/teams/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_CATALOG_READS).permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_TEAM_READS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/moves/pokemon/*").permitAll()
                         .requestMatchers("/api/contact").permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
@@ -83,7 +94,6 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/actuator/health/**"
                         ).permitAll()
-                        .requestMatchers("/seed/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/*/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
@@ -107,7 +117,6 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setMaxAge(3600L);
-        configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowedOrigins(List.of(allowedOrigin));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
