@@ -24,9 +24,11 @@ import com.poketeambuilder.dtos.error.ErrorResponseDto;
 import com.poketeambuilder.infrastructure.exceptions.PokeApiException;
 import com.poketeambuilder.infrastructure.exceptions.BadPasswordException;
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
+import com.poketeambuilder.infrastructure.exceptions.InvalidOperationException;
 import com.poketeambuilder.infrastructure.exceptions.PokeApiRateLimitException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
+import com.poketeambuilder.infrastructure.exceptions.IllegalTeamCompositionException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -76,6 +78,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "This account has been disabled", request);
     }
 
+    /**
+     * Covers denials raised by {@code @PreAuthorize} on a controller method. Denials from the
+     * authorization filter never reach this class, so {@code AuthAccessDeniedHandler} answers
+     * those with the same status and body.
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDto> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.debug("Access denied at {}: {}", request.getRequestURI(), ex.getMessage());
@@ -104,12 +111,18 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        log.debug("Constraint violation at {}: {}", request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "One or more request parameters are invalid", request);
+    }
+
+    @ExceptionHandler(IllegalTeamCompositionException.class)
+    public ResponseEntity<ErrorResponseDto> handleIllegalTeamComposition(IllegalTeamCompositionException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponseDto> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    @ExceptionHandler(InvalidOperationException.class)
+    public ResponseEntity<ErrorResponseDto> handleInvalidOperation(InvalidOperationException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
     /**
