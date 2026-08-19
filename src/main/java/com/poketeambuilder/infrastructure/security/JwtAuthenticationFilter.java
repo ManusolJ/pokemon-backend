@@ -39,9 +39,11 @@ import lombok.extern.slf4j.Slf4j;
  * Long-lived sessions are handled via the refresh-token rotation flow, which IS DB-backed
  * and revoked immediately on password change / disable.</p>
  *
- * <p>JJWT parsing exceptions (expired, malformed, tampered, bad signature) are caught and
- * logged; the request continues unauthenticated so {@link AuthEntryPoint} can produce a clean
- * 401 instead of the framework leaking a 500 with a JJWT stack trace.</p>
+ * <p>Parsing failures (expired, malformed, tampered, bad signature) are caught and logged;
+ * the request continues unauthenticated so {@link AuthEntryPoint} can produce a clean 401
+ * instead of the framework leaking a 500 with a JJWT stack trace. That includes
+ * {@link IllegalArgumentException}, which JJWT raises rather than {@link JwtException} when
+ * the token is empty — a filter throwing it would bypass the global handler entirely.</p>
  */
 @Slf4j
 @Component
@@ -66,9 +68,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(AUTH_HEADER_PREFIX_LENGTH);
 
+        if (token.isBlank()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             authenticateFromToken(token, request);
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.debug("Rejecting JWT for request {}: {}", request.getRequestURI(), e.getMessage());
             SecurityContextHolder.clearContext();
         }

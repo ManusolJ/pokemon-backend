@@ -33,6 +33,12 @@ import lombok.RequiredArgsConstructor;
  * {@code /api/contact}). Backed by a Caffeine cache of Bucket4j token buckets: 10 requests
  * per minute per IP, evicted after 5 minutes of inactivity. Returns a JSON 429 with a
  * {@code Retry-After} header when the bucket is empty.
+ *
+ * <p>The bucket key is {@code getRemoteAddr()}, never a forwarded-for header read straight
+ * off the request: that header is client-supplied, so keying on it lets a caller mint a fresh
+ * bucket per request and walk past the limit entirely. Behind the tunnel, prod sets
+ * {@code server.forward-headers-strategy: framework}, which resolves the real client address
+ * before this filter runs.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -51,8 +57,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String ip = resolveClientIp(request);
-        Bucket bucket = buckets.get(ip, k -> createBucket());
+        Bucket bucket = buckets.get(request.getRemoteAddr(), k -> createBucket());
 
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
@@ -83,15 +88,5 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             .addLimit(limit -> limit.capacity(MAX_REQUESTS)
                 .refillGreedy(MAX_REQUESTS, Duration.ofMinutes(WINDOW_MINUTES)))
             .build();
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        return request.getRemoteAddr();
     }
 }

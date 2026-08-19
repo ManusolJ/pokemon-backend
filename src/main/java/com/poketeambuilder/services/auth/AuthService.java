@@ -1,10 +1,10 @@
 package com.poketeambuilder.services.auth;
 
 import java.util.UUID;
+import java.util.Optional;
 import java.time.Instant;
 
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
-import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
 import com.poketeambuilder.dtos.auth.LoginDto;
@@ -29,6 +29,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import org.springframework.stereotype.Service;
@@ -59,10 +60,10 @@ public class AuthService {
     private final CustomUserDetailsService customUserDetailsService;
 
     @Value("${app.jwt.accessTokenExpirationMs}")
-    private int accessTokenExpirationMs;
+    private long accessTokenExpirationMs;
 
     @Value("${app.jwt.refreshTokenExpirationMs}")
-    private int refreshTokenExpirationMs;
+    private long refreshTokenExpirationMs;
 
     /** Registers a new user with a fresh refresh-token family. */
     @Transactional
@@ -84,9 +85,15 @@ public class AuthService {
         return buildTokenResponse(userDetails, newUser);
     }
 
-    /** Authenticates by username-or-email + password, issues a new token pair under a fresh family. */
+    /**
+     * Authenticates by username-or-email + password, issues a new token pair under a fresh
+     * family. An unknown identifier and a wrong password both end in
+     * {@link BadCredentialsException}, so the response can't be used to work out which
+     * accounts exist.
+     */
     public TokenResponseDto login(LoginDto loginDto) {
-        AppUser user = resolveUser(loginDto.getIdentifier());
+        AppUser user = resolveUser(loginDto.getIdentifier())
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), loginDto.getPassword()));
 
@@ -144,14 +151,12 @@ public class AuthService {
         return new TokenResponseDto(newAccessToken, newRefreshToken, accessTokenExpirationMs);
     }
 
-    private AppUser resolveUser(String identifier) {
+    private Optional<AppUser> resolveUser(String identifier) {
         if (identifier.contains("@")) {
-            return appUserRepository.findByEmailAndDeletedAtIsNull(identifier)
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + identifier));
+            return appUserRepository.findByEmailAndDeletedAtIsNull(identifier);
         }
 
-        return appUserRepository.findByUsernameAndDeletedAtIsNull(identifier)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + identifier));
+        return appUserRepository.findByUsernameAndDeletedAtIsNull(identifier);
     }
 
     private TokenResponseDto buildTokenResponse(UserDetails userDetails, AppUser user) {

@@ -72,19 +72,9 @@ public class JwtService {
                 .compact();
     }
 
-    /** True if the token's signature, subject, and expiration all check out for the supplied user. */
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
-
     /** Subject claim. */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
-    }
-
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
@@ -99,15 +89,6 @@ public class JwtService {
     /** {@code true} if the token's {@code type} claim is {@code access}. */
     public boolean isAccessToken(String token) {
         return TOKEN_TYPE_ACCESS.equals(extractTokenType(token));
-    }
-
-    /** {@code true} iff the token's {@code type} claim is {@code refresh}. */
-    public boolean isRefreshToken(String token) {
-        return TOKEN_TYPE_REFRESH.equals(extractTokenType(token));
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
     }
 
     private Claims extractAllClaims(String token) {
