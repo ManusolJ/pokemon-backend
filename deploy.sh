@@ -3,8 +3,11 @@
 set -euo pipefail
 
 COMPOSE_FILE="docker-compose.prod.yml"
-HEALTH_URL="http://localhost:8080/actuator/health"
 PROJECT_DIR="${PROJECT_DIR:-/home/manu/poketeam-backend}"
+
+APP_PORT="${PORT:-8080}"
+
+HEALTH_URL="http://localhost:${APP_PORT}/actuator/health"
 
 cd "$PROJECT_DIR"
 echo ":: deploy starting on $(hostname) at $(date -Is)"
