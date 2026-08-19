@@ -100,6 +100,10 @@ third-party service being up at request time.
 
 ### Team analysis
 
+Computed in the [SPA](https://github.com/ManusolJ/pokemon-frontend) from the data this API
+serves - base stats, movesets and the type-effectiveness matrix. The analysis recomputes on
+every roster edit, so it runs client-side rather than costing a round trip per change.
+
 | Analysis               | What it resolves                                                                               |
 | :--------------------- | :--------------------------------------------------------------------------------------------- |
 | **Offensive coverage** | The team's move pool resolved against all 18 defending types.                                  |
@@ -154,7 +158,7 @@ flowchart TD
 
     subgraph host ["Ubuntu 24.04 server &mdash; private Docker network"]
         App["Spring Boot 4 &middot; Java 21<br>Temurin 25 JRE Alpine"]
-        DB[("PostgreSQL 17<br>Flyway V1-V23")]
+        DB[("PostgreSQL 17<br>Flyway V1-V24")]
     end
 
     PokeAPI["PokéAPI"]
@@ -205,8 +209,14 @@ The dataset is not bundled with the application. An administrator triggers an im
 PokéAPI, and the obvious risk is that re-importing would orphan every saved team.
 
 Catalogue entities are therefore keyed on **PokéAPI's own stable identifiers** rather than
-locally generated surrogate keys. A full re-seed replaces reference data in place while
-user-owned rows keep pointing at the same species, moves and items.
+locally generated surrogate keys. A re-seed saves every row under the id it already has, so
+reference data is replaced in place and user-owned rows keep pointing at the same species,
+moves and items.
+
+Only the tables the pipeline derives wholesale - learnsets, ability slots, the effectiveness
+matrix - are emptied first, and none of those are referenced by user data. The catalogue
+tables themselves are never deleted: `team_pokemon` and `team_pokemon_move` reference them
+with no `ON DELETE` action, so the database would refuse the delete outright.
 
 > Refreshing the entire catalogue is a safe operation.
 
@@ -269,9 +279,14 @@ application memory would mean loading the entire catalogue per request.
 
 ### Soft deletion
 
-Teams and users are soft-deleted via a `deleted_at` column rather than removed. Hard
-deletion would break the audit log's references and make moderation actions unreviewable
-after the fact. After a retention period, a weekly scheduled job removes them permanently.
+Accounts are tombstoned with a `deleted_at` stamp rather than removed. Hard deletion would
+break the audit log's references and make moderation actions unreviewable after the fact,
+and a partial unique index scoped to live rows frees the username and e-mail for reuse
+without dropping the history.
+
+Teams have no tombstone of their own; they follow the owner. A deleted account's teams stop
+appearing in public listings immediately, and the weekly job that purges tombstoned users
+past their retention window takes the teams with them by cascade.
 
 ---
 
@@ -300,7 +315,7 @@ All endpoints live under `/api`.
 | **Rate limiting** | Bucket4j (per-IP, auth endpoints)                        |
 | **Cache**         | Caffeine                                                 |
 | **Database**      | PostgreSQL 17                                            |
-| **Migrations**    | Flyway (V1–V23)                                          |
+| **Migrations**    | Flyway (V1–V24)                                          |
 | **Mapping**       | MapStruct, Lombok                                        |
 | **API docs**      | SpringDoc OpenAPI + Swagger UI                           |
 | **Mail**          | Spring Mail over Brevo SMTP                              |
@@ -371,7 +386,7 @@ Deployment is automated.
 
 ```mermaid
 flowchart LR
-    Push["Push / PR to main"] --> Verify["Verify<br>compile + Docker image build"]
+    Push["Push / PR to main"] --> Verify["Verify<br>compile + tests + Docker image build"]
     Verify -- fail --> Blocked["Pipeline blocked"]
     Verify -- pass --> Deploy["SSH deploy<br>rebuild Compose stack"]
     Deploy --> Health["Poll health endpoint<br>for 60 seconds"]
@@ -379,9 +394,9 @@ flowchart LR
     Health -- unhealthy --> Failed["Dump log excerpt<br>exit non-zero"]
 ```
 
-**Verification stage** - runs on every push and pull request to `main`: compiles the
-project and confirms the Docker image builds. Acts as a quality gate and blocks the rest of
-the pipeline on failure.
+**Verification stage** - runs on every push and pull request to `main`: compiles the project,
+runs the test suite and confirms the Docker image builds. Acts as a quality gate and blocks
+the rest of the pipeline on failure.
 
 **Deploy stage** - runs only after a successful verification on `main`. The runner connects
 over SSH to the production server and executes a deployment script versioned in this
@@ -400,9 +415,10 @@ published exclusively through the Cloudflare Tunnel.
 
 Live and in use, but not finished. Known gaps, in the order I intend to close them:
 
-- [ ] **Automated tests.** The highest-value targets are the stat calculator and the
-      type-effectiveness resolver - both are pure functions with known expected outputs.
-      Planned: JUnit for unit tests, Testcontainers for the repository layer.
+- [ ] **Automated tests.** The filter-to-predicate translation in `BaseSpecification` is
+      covered; the auth service - login, refresh rotation, reuse detection - and the seed
+      pipeline's mapping layer are next. Testcontainers for the repository layer after that,
+      since the interesting failures there are constraint behaviour H2 won't reproduce.
 - [ ] **Observability.** Metrics and traces; right now failure diagnosis is log-based.
 - [ ] **Cancellable seed runs.** The import cannot be interrupted once started.
 - [ ] **Staging environment** in the pipeline, with manual promotion to production.
