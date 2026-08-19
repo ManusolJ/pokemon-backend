@@ -1,10 +1,12 @@
 package com.poketeambuilder.services.command;
 
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
 import com.poketeambuilder.infrastructure.exceptions.ResourceNotFoundException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
+import com.poketeambuilder.infrastructure.exceptions.IllegalTeamCompositionException;
 
 import com.poketeambuilder.dtos.front.team.details.TeamCreateDto;
 import com.poketeambuilder.dtos.front.team.details.TeamPatchDto;
@@ -32,7 +34,9 @@ import com.poketeambuilder.repositories.NatureRepository;
 import com.poketeambuilder.repositories.AbilityRepository;
 import com.poketeambuilder.repositories.PokemonRepository;
 import com.poketeambuilder.repositories.TeamLikeRepository;
+import com.poketeambuilder.repositories.PokemonMoveRepository;
 import com.poketeambuilder.repositories.TeamPokemonRepository;
+import com.poketeambuilder.repositories.PokemonAbilityRepository;
 import com.poketeambuilder.repositories.TeamPokemonMoveRepository;
 
 import com.poketeambuilder.utils.enums.UserRole;
@@ -78,6 +82,8 @@ public class TeamCommandService {
     private final NatureRepository natureRepository;
     private final AbilityRepository abilityRepository;
     private final PokemonRepository pokemonRepository;
+    private final PokemonMoveRepository pokemonMoveRepository;
+    private final PokemonAbilityRepository pokemonAbilityRepository;
 
     private final AuditLogCommandService auditLogCommandService;
 
@@ -167,11 +173,23 @@ public class TeamCommandService {
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, entityDescription, team.getId().toString());
     }
 
-    /** Like a public team. 409 if already liked. Increments the denormalised counter atomically. */
+    /**
+     * Like a public team. 409 if already liked. Increments the denormalised counter atomically.
+     * Private teams answer 404 rather than 403, matching the read path, so a like attempt can't
+     * be used to probe which team ids exist.
+     */
     @Transactional
     public void likeTeam(@NotNull String username, @NotNull Long teamId) {
         AppUser user = findUserOrThrow(username);
         Team team = findTeamOrThrow(teamId);
+
+        if (!Boolean.TRUE.equals(team.getIsPublic())) {
+            throw new ResourceNotFoundException(String.format("Team with id '%s' not found", teamId));
+        }
+
+        if (team.getOwner().getId().equals(user.getId())) {
+            throw new ResourceAlreadyExistsException("A team cannot be liked by its owner");
+        }
 
         TeamLikeId likeId = new TeamLikeId(user.getId(), teamId);
 
@@ -208,6 +226,8 @@ public class TeamCommandService {
         for (int i = 0; i < pokemonDtos.size(); i++) {
             TeamPokemonCreateDto pokemonDto = pokemonDtos.get(i);
 
+            validateLegality(pokemonDto);
+
             TeamPokemon teamPokemon = teamPokemonMapper.toEntity(pokemonDto);
             teamPokemon.setTeam(team);
             teamPokemon.setSlot(i + 1);
@@ -238,6 +258,30 @@ public class TeamCommandService {
                         .move(moveRepository.getReferenceById(moveIds.get(j)))
                         .build();
                 teamPokemonMoveRepository.save(teamPokemonMove);
+            }
+        }
+    }
+
+    /**
+     * Rejects a slot whose ability or moves the chosen form can't legally have. The foreign
+     * keys only prove the rows exist, not that they belong together, so without this the API
+     * accepts any combination the client sends and relies on the UI to offer sane options.
+     */
+    private void validateLegality(TeamPokemonCreateDto dto) {
+        Integer pokemonId = dto.getPokemonId();
+
+        if (!pokemonAbilityRepository.existsByIdPokemonIdAndIdAbilityId(pokemonId, dto.getAbilityId())) {
+            throw new IllegalTeamCompositionException(
+                    String.format("Ability %s is not available to Pokemon %s", dto.getAbilityId(), pokemonId));
+        }
+
+        List<Integer> requested = dto.getMoveIds();
+        Set<Integer> learnable = Set.copyOf(pokemonMoveRepository.findLearnableMoveIds(pokemonId, requested));
+
+        for (Integer moveId : requested) {
+            if (!learnable.contains(moveId)) {
+                throw new IllegalTeamCompositionException(
+                        String.format("Move %s is not learnable by Pokemon %s", moveId, pokemonId));
             }
         }
     }

@@ -68,6 +68,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     private static final String FIELD_SLUG = "slug";
     private static final String FIELD_IS_PUBLIC = "isPublic";
     private static final String FIELD_OWNER_ID = "owner.id";
+    private static final String FIELD_OWNER_DELETED_AT = "owner.deletedAt";
 
     private final TeamMapper teamMapper;
     private final TeamRepository teamRepository;
@@ -114,7 +115,6 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     @Override
     protected void applyFetches(Root<Team> root, CriteriaQuery<?> query) {
         root.fetch("owner");
-        query.distinct(true);
     }
 
     @Override
@@ -156,12 +156,15 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return new PageImpl<>(enriched, pageable, page.getTotalElements());
     }
 
-    /** Public read of a team by id. Refuses to serve private teams (404 instead of 403 to avoid leaking existence). */
+    /**
+     * Public read of a team by id. Refuses to serve private teams, and teams belonging to a
+     * tombstoned account, with a 404 rather than a 403 so neither case leaks existence.
+     */
     public TeamReadDto findPublicTeamById(@NotNull Long id, String currentUsername) {
         TeamReadDto publicTeam = this.findById(id, currentUsername);
 
-        if (!publicTeam.isPublic()) {
-            throw new ResourceNotFoundException(String.format("Team with id %s is private.", publicTeam.id()));
+        if (!publicTeam.isPublic() || !teamRepository.existsByIdAndOwnerDeletedAtIsNull(id)) {
+            throw new ResourceNotFoundException(String.format("Team with id %s not found", id));
         }
 
         return publicTeam;
@@ -178,19 +181,6 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return team;
     }
 
-    /** Returns the team only if it's public OR owned by the requester; 404 otherwise. */
-    public TeamReadDto findVisibleTeamById(@NotNull Long id, String currentUsername) {
-        TeamReadDto team = this.findById(id, currentUsername);
-
-        if (!team.isPublic()) {
-            if (currentUsername == null || team.owner() == null || !currentUsername.equals(team.owner().username())) {
-                throw new ResourceNotFoundException(String.format("Team with id %s not found", id));
-            }
-        }
-
-        return team;
-    }
-
     /** Teams summary listing. Layered as a defensive copy + userId override on the filter. */
     public Page<TeamSummaryDto> filterOwnedSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, @NotNull String currentUsername) {
         Long userId = userRepository.findByUsernameAndDeletedAtIsNull(currentUsername)
@@ -202,10 +192,15 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return filterSummaries(scoped, pageable, currentUsername);
     }
 
-    /** Public team summary listing. Same as {@link #filterSummaries} but with {@code isPublic = true} forced. */
+    /**
+     * Public team summary listing. Same as {@link #filterSummaries} but with
+     * {@code isPublic = true} and an active owner forced, so a client can't widen the scope
+     * and a tombstoned account's teams drop out of the listing.
+     */
     public Page<TeamSummaryDto> filterPublicSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
         TeamFilterDto scoped = filter.copy();
         scoped.setIsPublic(true);
+        scoped.setOwnerActive(true);
         return filterSummaries(scoped, pageable, currentUsername);
     }
 
@@ -254,6 +249,9 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         }
         if (filter.getUserId() != null) {
             builder.with(FIELD_OWNER_ID, filter.getUserId(), SearchOperation.EQUAL);
+        }
+        if (Boolean.TRUE.equals(filter.getOwnerActive())) {
+            builder.with(FIELD_OWNER_DELETED_AT, null, SearchOperation.IS_NULL);
         }
 
         return builder.build();

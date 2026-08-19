@@ -27,4 +27,7 @@ public interface TeamRepository extends BaseRepository<Team, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Team t SET t.likeCount = t.likeCount - 1 WHERE t.id = :teamId AND t.likeCount > 0")
     void decrementLikeCount(@Param("teamId") Long teamId);
+
+    /** Whether the team exists and its owner hasn't been tombstoned. Gates the public single-team read. */
+    boolean existsByIdAndOwnerDeletedAtIsNull(Long id);
 }
