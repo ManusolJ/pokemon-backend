@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Read-only catalog endpoints for canonical Pokémon species (Bulbasaur, Charmander, etc).
+ * Read-only catalog endpoints for canonical Pokemon species (Bulbasaur, Charmander, etc).
  */
 @RestController
 @RequiredArgsConstructor

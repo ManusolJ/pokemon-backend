@@ -12,8 +12,8 @@ import com.poketeambuilder.entities.Pokemon;
 public interface PokemonRepository extends BaseRepository<Pokemon, Integer> {
 
     /**
-     * Loads the default-form Pokémon for each supplied species id, with both type references
-     * fetched. Used by the Pokédex listing to enrich each species summary with its canonical types and sprite.
+     * Loads the default-form Pokemon for each supplied species id, with both type references
+     * fetched. Used by the Pokedex listing to enrich each species summary with its canonical types and sprite.
      */
     @Query("""
             SELECT p FROM Pokemon p

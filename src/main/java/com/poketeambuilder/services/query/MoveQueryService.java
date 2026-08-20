@@ -38,7 +38,7 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Read access to {@link Move}. Always JOIN-FETCHes the {@code type} since every read DTO
  * embeds it. The {@link #filterEmbeds(Integer, Pageable)} variant pages the
- * {@code pokemon_move} join for the "moves learnable by Pokémon X" endpoint.
+ * {@code pokemon_move} join for the "moves learnable by Pokemon X" endpoint.
  */
 @Service
 @Validated
@@ -96,7 +96,7 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
         return filterAndMap(filter, pageable, moveMapper::toSummaryDto);
     }
 
-    /** Pages the move list scoped to the given Pokémon, with learn-method + level metadata. */
+    /** Pages the move list scoped to the given Pokemon, with learn-method + level metadata. */
     public Page<MoveEmbedDto> filterEmbeds(@NotNull Integer pokemonId, @NotNull Pageable pageable) {
         return pokemonMoveRepository.findByIdPokemonId(pokemonId, pageable)
                 .map(pokemonMoveMapper::toEmbedDto);

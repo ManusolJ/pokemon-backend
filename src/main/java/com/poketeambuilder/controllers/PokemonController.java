@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Read-only catalog endpoints for Pokémon forms.
+ * Read-only catalog endpoints for Pokemon forms.
  */
 @RestController
 @RequiredArgsConstructor
@@ -30,28 +30,28 @@ public class PokemonController {
 
     private final PokemonQueryService pokemonQueryService;
 
-    /** Paged Pokémon forms matching the filter. */
+    /** Paged Pokemon forms matching the filter. */
     @PostMapping("/filter")
     public ResponseEntity<Page<PokemonReadDto>> getPokemon(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @RequestBody PokemonFilterDto filter) {
         Page<PokemonReadDto> pokemon = pokemonQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(pokemon);
     }
 
-    /** Single Pokémon form by id (filter.id). */
+    /** Single Pokemon form by id (filter.id). */
     @PostMapping("/id")
     public ResponseEntity<PokemonReadDto> getPokemonById(@RequestBody PokemonFilterDto filter) {
         PokemonReadDto pokemon = pokemonQueryService.findById(filter.getId());
         return ResponseEntity.ok(pokemon);
     }
 
-    /** Paged Pokémon forms as lightweight summaries. */
+    /** Paged Pokemon forms as lightweight summaries. */
     @PostMapping("/summaries")
     public ResponseEntity<Page<PokemonSummaryDto>> getPokemonSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @RequestBody PokemonFilterDto filter) {
         Page<PokemonSummaryDto> pokemonSummaries = pokemonQueryService.filterSummaries(filter, pageable);
         return ResponseEntity.ok(pokemonSummaries);
     }
 
-    /** Count of Pokémon forms matching the filter. */
+    /** Count of Pokemon forms matching the filter. */
     @PostMapping("/count")
     public ResponseEntity<Long> getPokemonCount(@RequestBody PokemonFilterDto filter) {
         Long pokemonCount = pokemonQueryService.countFilteredEntities(filter);

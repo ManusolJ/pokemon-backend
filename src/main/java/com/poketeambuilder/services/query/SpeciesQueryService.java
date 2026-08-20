@@ -129,7 +129,7 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     }
 
     /**
-     * Pokédex listing: pages species rows and enriches each with the default form's types
+     * Pokedex listing: pages species rows and enriches each with the default form's types
      * and sprite. One species query + one Pokemon query per page; no n+1.
      */
     public Page<PokemonSpeciesSummaryDto> filterSummaries(@Valid @NotNull PokemonFilterDto filter, @NotNull Pageable pageable) {
@@ -285,7 +285,7 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
 
     /**
      * Adds an {@code EXISTS (SELECT 1 FROM pokemon p WHERE p.species = root AND p.is_default_form
-     * AND …)} clause to the species spec when the filter carries Pokémon-level criteria.
+     * AND …)} clause to the species spec when the filter carries Pokemon-level criteria.
      * Backed by {@code idx_pokemon_species_default}.
      */
     private Specification<PokemonSpecies> addPokemonFilters(Specification<PokemonSpecies> spec, PokemonFilterDto filter) {

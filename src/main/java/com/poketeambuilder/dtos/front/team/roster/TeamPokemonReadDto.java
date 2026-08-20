@@ -9,7 +9,7 @@ import com.poketeambuilder.dtos.front.pokemon.form.PokemonSummaryDto;
 import java.util.List;
 
 /**
- * One configured slot of a team — Pokémon plus the build (level, nature, ability, held item,
+ * One configured slot of a team — Pokemon plus the build (level, nature, ability, held item,
  * tera type, EVs/IVs, and chosen moves). Maps 1:1 to the {@code team_pokemon} row.
  */
 public record TeamPokemonReadDto(

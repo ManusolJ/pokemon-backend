@@ -17,9 +17,9 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Pokémon elemental type (Fire, Water, etc). Reference data ingested from PokeAPI with stable
+ * Pokemon elemental type (Fire, Water, etc). Reference data ingested from PokeAPI with stable
  * upstream ids; equality is keyed on {@link #id}. Used as both the attribute of moves and
- * Pokémon, and as the axes of {@link TypeEffectiveness}.
+ * Pokemon, and as the axes of {@link TypeEffectiveness}.
  */
 @Entity
 @Getter

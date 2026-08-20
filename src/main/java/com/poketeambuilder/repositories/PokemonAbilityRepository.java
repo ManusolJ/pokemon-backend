@@ -14,9 +14,9 @@ import com.poketeambuilder.entities.compositeIDs.PokemonAbilityId;
 public interface PokemonAbilityRepository extends BaseRepository<PokemonAbility, PokemonAbilityId> {
 
     /**
-     * Loads every {@link PokemonAbility} row for the supplied Pokémon ids, with the
+     * Loads every {@link PokemonAbility} row for the supplied Pokemon ids, with the
      * {@link Ability} already fetched. Single SQL statement;
-     * used by the Pokémon listing read path to avoid an n+1 fetch over abilities.
+     * used by the Pokemon listing read path to avoid an n+1 fetch over abilities.
      */
     @Query("""
             SELECT pa FROM PokemonAbility pa

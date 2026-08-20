@@ -196,7 +196,7 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
 
     /**
      * Adds a slot-agnostic filter for {@link PokemonFilterDto#getTypeIds()}.
-     * For each requested type id the Pokémon must have it in either the
+     * For each requested type id the Pokemon must have it in either the
      * primary or secondary slot.*/
     private Specification<Pokemon> addTypeFilter(Specification<Pokemon> spec, PokemonFilterDto filter) {
         List<Integer> typeIds = filter.getTypeIds();
@@ -222,7 +222,7 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
     }
 
     /**
-     * Joins the form's species and adds species-level predicates (Pokédex shape, evolution
+     * Joins the form's species and adds species-level predicates (Pokedex shape, evolution
      * mechanic, egg groups, …) on top of the form-level base spec.
      */
     private Specification<Pokemon> addSpeciesFilters(Specification<Pokemon> spec, PokemonFilterDto filter) {

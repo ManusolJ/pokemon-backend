@@ -13,7 +13,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 /**
- * Payload for adding one Pokémon slot to a team. Per-stat ranges (slot-less, since the
+ * Payload for adding one Pokemon slot to a team. Per-stat ranges (slot-less, since the
  * {@code slot_position} is assigned by the team itself) mirror the entity-level CHECKs. The
  * class-level {@link ValidEvSpread} enforces the cross-field EV total ≤ 510 rule.
  */

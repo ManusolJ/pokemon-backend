@@ -11,7 +11,7 @@ import jakarta.validation.constraints.NotNull;
 
 import lombok.Getter;
 
-/** Payload for team creation. A team must have between 1 and 6 Pokémon and a non-blank name. */
+/** Payload for team creation. A team must have between 1 and 6 Pokemon and a non-blank name. */
 @Getter
 public class TeamCreateDto {
 

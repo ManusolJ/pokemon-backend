@@ -65,7 +65,7 @@ public class MoveController {
         return ResponseEntity.ok(count);
     }
 
-    /** Paged learn-set entries for a given Pokémon (move + learn-method embed). */
+    /** Paged learn-set entries for a given Pokemon (move + learn-method embed). */
     @GetMapping("/pokemon/{pokemonId}")
     public ResponseEntity<Page<MoveEmbedDto>> getMovesByPokemon(
             @PageableDefault(page = 0, size = 50, sort = "id.moveId", direction = Direction.ASC) Pageable pageable,

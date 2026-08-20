@@ -9,7 +9,7 @@ import jakarta.validation.ConstraintValidatorContext;
 
 /**
  * Enforces the cross-field rule that the six EV stats sum to at most 510 — the canonical
- * Pokémon battle cap. Individual stat ranges (0–252 per stat) are enforced by per-field
+ * Pokemon battle cap. Individual stat ranges (0–252 per stat) are enforced by per-field
  * {@code @Min}/{@code @Max} on the DTO; this validator only handles the cross-field total.
  * The violation is reported at the bean level so the front-end can render it as a
  * non-field-specific error.

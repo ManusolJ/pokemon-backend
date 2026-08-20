@@ -21,7 +21,7 @@ import lombok.AllArgsConstructor;
 /**
  * One of the (up to four) moves chosen for a {@link TeamPokemon}. The {@code slot_position}
  * portion of the composite key constrains slots to 1–4; uniqueness of the pair means the
- * same move cannot be slotted twice on the same Pokémon.
+ * same move cannot be slotted twice on the same Pokemon.
  */
 @Entity
 @Getter

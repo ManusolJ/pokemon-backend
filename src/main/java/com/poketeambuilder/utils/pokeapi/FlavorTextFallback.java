@@ -15,7 +15,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Picks the "best" English flavor-text entry from a list. Pokémon resources expose flavor
+ * Picks the "best" English flavor-text entry from a list. Pokemon resources expose flavor
  * text per game version; we prefer the most recent generation that has an entry, falling
  * back to older releases when newer ones are missing. The priority lists below order the
  * games newest-to-oldest.

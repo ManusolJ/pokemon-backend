@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class SpeciesIngestionHelper {
 
-    /** Returns the national-Pokédex entry number, or {@code null} when the species has no national listing. */
+    /** Returns the national-Pokedex entry number, or {@code null} when the species has no national listing. */
     @Named("extractNationalDex")
     public Integer extractNationalDex(List<PokedexNumber> pokedexNumbers) {
         if (pokedexNumbers == null || pokedexNumbers.isEmpty()) {
@@ -46,7 +46,7 @@ public class SpeciesIngestionHelper {
         return growthRate == null ? null : growthRate.name();
     }
 
-    /** Returns the English genus string (e.g. {@code "Seed Pokémon"}). */
+    /** Returns the English genus string (e.g. {@code "Seed Pokemon"}). */
     @Named("extractGenus")
     public String extractGenus(List<GenusEntry> genera) {
         return LocalizedEntries.english(genera)

@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * A configured Pokémon occupying one of the six slots of a {@link Team}. Holds the build:
+ * A configured Pokemon occupying one of the six slots of a {@link Team}. Holds the build:
  * level, nature, ability, held item, tera type, EV/IV spreads, and shininess.
  *
  * <p>Per-field ranges (slot 1–6, level 1–100, EV 0–252, IV 0–31) are enforced by Bean

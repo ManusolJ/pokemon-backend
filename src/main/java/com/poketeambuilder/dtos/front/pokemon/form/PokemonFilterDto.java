@@ -7,7 +7,7 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 import lombok.Getter;
 
 /**
- * Filter payload for Pokémon listings.
+ * Filter payload for Pokemon listings.
  */
 @Getter
 public class PokemonFilterDto implements FilterDtoInterface {

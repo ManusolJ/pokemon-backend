@@ -35,7 +35,7 @@ public class EmailService {
 
         message.setTo(to);
         message.setFrom(fromAddress);
-        message.setSubject("PokéTeam Builder — Password Reset");
+        message.setSubject("PokeTeam Builder — Password Reset");
         message.setText(
             "You requested a password reset.\n\n" +
             "Click the link below to reset your password:\n" +
@@ -53,7 +53,7 @@ public class EmailService {
         mail.setTo(contactToAddress);
         mail.setFrom(fromAddress);
         mail.setReplyTo(senderEmail);
-        mail.setSubject("PokéTeam Builder — Contact: " + subject);
+        mail.setSubject("PokeTeam Builder — Contact: " + subject);
         mail.setText("From: " + name + " <" + senderEmail + ">\n\n" + message);
         mailSender.send(mail);
     }

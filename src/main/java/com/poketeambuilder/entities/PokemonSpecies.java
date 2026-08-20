@@ -21,9 +21,9 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Pokémon species — the canonical entry that groups all forms of the same creature
+ * Pokemon species — the canonical entry that groups all forms of the same creature
  * (e.g. {@code Charizard} is one species with default, mega-X, mega-Y, and gigantamax forms).
- * Holds Pokédex metadata, evolution data, and egg-group info shared across every form.
+ * Holds Pokedex metadata, evolution data, and egg-group info shared across every form.
  */
 @Entity
 @Getter

@@ -14,7 +14,7 @@ import org.mapstruct.Named;
 import org.springframework.stereotype.Component;
 
 /**
- * MapStruct helper bean that pulls Pokémon-form-specific fields out of the PokeAPI payload:
+ * MapStruct helper bean that pulls Pokemon-form-specific fields out of the PokeAPI payload:
  * the six base stats, the four sprite / artwork URLs (default and shiny variants).
  */
 @Component

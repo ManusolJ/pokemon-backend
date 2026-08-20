@@ -28,7 +28,7 @@ public interface TeamPokemonRepository extends BaseRepository<TeamPokemon, Long>
 
     /**
      * Loads every team-pokemon row for the supplied teams together with the join targets
-     * needed to render them: base Pokémon (with both types), ability, nature, held item, and
+     * needed to render them: base Pokemon (with both types), ability, nature, held item, and
      * tera type. Used by the team-detail read path to avoid n+1.
      *
      * @param teamIds team ids to load (typically the current page of a listing)
@@ -49,7 +49,7 @@ public interface TeamPokemonRepository extends BaseRepository<TeamPokemon, Long>
     List<TeamPokemon> findByTeamIdInWithDetails(@Param("teamIds") List<Long> teamIds);
 
     /**
-     * Returns just the per-slot Pokémon sprite URL for the supplied teams. Used by the
+     * Returns just the per-slot Pokemon sprite URL for the supplied teams. Used by the
      * team-summary listing where the rest of the roster join isn't needed.
      */
     @Query("""

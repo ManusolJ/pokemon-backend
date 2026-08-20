@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Personality trait that biases a Pokémon's stat growth. Either both {@link #increasedStat}
+ * Personality trait that biases a Pokemon's stat growth. Either both {@link #increasedStat}
  * and {@link #decreasedStat} are set (and distinct), or both are {@code null} (neutral
  * nature). Invariant enforced both at the DB ({@code chk_nature_stats})
  * and via {@link #validateStats()}.

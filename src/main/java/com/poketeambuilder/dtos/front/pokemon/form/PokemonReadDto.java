@@ -7,7 +7,7 @@ import com.poketeambuilder.dtos.front.pokemon.species.PokemonSpeciesSummaryDto;
 import java.util.List;
 
 /**
- * Full Pokémon (form-level) projection — battle stats, types, sprites, abilities, and the
+ * Full Pokemon (form-level) projection — battle stats, types, sprites, abilities, and the
  * parent species.
  */
 public record PokemonReadDto(

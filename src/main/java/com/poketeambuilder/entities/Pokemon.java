@@ -21,9 +21,9 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * Pokémon at form-level (e.g. {@code "venusaur-mega"}, {@code "rotom-wash"}).
+ * Pokemon at form-level (e.g. {@code "venusaur-mega"}, {@code "rotom-wash"}).
  * Holds form-specific battle attributes: types, base stats, sprites, artwork. Species-level
- * data (Pokédex info, evolution chain, egg groups) lives on {@link PokemonSpecies} and is
+ * data (Pokedex info, evolution chain, egg groups) lives on {@link PokemonSpecies} and is
  * reached via {@link #species}.
  */
 @Entity
