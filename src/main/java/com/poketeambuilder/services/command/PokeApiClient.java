@@ -82,7 +82,7 @@ public class PokeApiClient {
      * server-side {@link PokeApiException}, and network-level
      * {@link ResourceAccessException}). Non-retryable client errors propagate immediately.
      *
-     * <p>The loop re-throws the caught exception directly on the final attemp.
+     * <p>The loop re-throws the caught exception directly on the final attempt.</p>
      */
     public <T> T fetchResource(String url, Class<T> responseType) {
         log.debug("Fetching resource: {}", url);
@@ -124,7 +124,7 @@ public class PokeApiClient {
             Thread.sleep(millis);
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted during PokeAPI retry backoff", ie);
+            throw new IllegalStateException("Interrupted during PokeAPI retry backoff", ie);
         }
     }
 }
