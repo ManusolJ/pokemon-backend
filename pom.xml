@@ -17,6 +17,7 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<jacoco.version>0.8.15</jacoco.version>
 		<jjwt.version>0.13.0</jjwt.version>
 		<dotenv.version>5.1.0</dotenv.version>
 		<flyway.version>12.6.2</flyway.version>
@@ -280,6 +281,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
 				<executions>
 					<execution>
 						<id>prepare-agent</id>
