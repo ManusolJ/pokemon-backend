@@ -35,6 +35,10 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Filter chain, password encoding and CORS.
+ *
+ */
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
@@ -70,10 +74,10 @@ public class SecurityConfig {
     private String allowedOrigin;
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))

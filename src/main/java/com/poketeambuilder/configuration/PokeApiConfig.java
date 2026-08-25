@@ -4,11 +4,6 @@ import com.poketeambuilder.infrastructure.exceptions.PokeApiException;
 import com.poketeambuilder.infrastructure.exceptions.PokeApiRateLimitException;
 import com.poketeambuilder.infrastructure.interceptors.PokeApiThrottlingInterceptor;
 
-import java.time.Duration;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.http.client.HttpClientSettings;
@@ -20,34 +15,35 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClient.Builder;
 
+import lombok.extern.slf4j.Slf4j;
 
-@Configuration
+/**
+ * The {@link RestClient} used for PokeAPI ingestion: timeouts, outbound throttling, and the
+ * status handlers that turn HTTP failures into the project's own exception types.
+ */
+@Slf4j
+@Configuration(proxyBeanMethods = false)
 public class PokeApiConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(PokeApiConfig.class);
-
-    private static final int READ_TIMEOUT_MS = 10000;
-    private static final int CONNECTION_TIMEOUT_MS = 5000;
-    private static final int DEFAULT_REQUEST_DELAY_MS = 200;
-    private static final String POKEAPI_BASE_URL = "https://pokeapi.co/api/v2";
+    private static final int HTTP_TOO_MANY_REQUESTS = 429;
 
     @Bean
-    RestClient pokeApiRestClient(Builder builder) {
+    RestClient pokeApiRestClient(Builder builder, PokeApiProperties properties) {
 
         HttpClientSettings clientSettings = HttpClientSettings.defaults()
-            .withReadTimeout(Duration.ofMillis(READ_TIMEOUT_MS))
-            .withConnectTimeout(Duration.ofMillis(CONNECTION_TIMEOUT_MS));
- 
+            .withReadTimeout(properties.readTimeout())
+            .withConnectTimeout(properties.connectTimeout());
+
         ClientHttpRequestFactory requestFactory = ClientHttpRequestFactoryBuilder.jdk()
             .build(clientSettings);
 
         return builder
-                .baseUrl(POKEAPI_BASE_URL)
+                .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
-                .requestInterceptor(new PokeApiThrottlingInterceptor(DEFAULT_REQUEST_DELAY_MS))
+                .requestInterceptor(new PokeApiThrottlingInterceptor(properties.requestDelay().toMillis()))
                 .defaultStatusHandler(HttpStatusCode::is4xxClientError, (request, response) -> {
                     int status = response.getStatusCode().value();
-                    if (status == 429) {
+                    if (status == HTTP_TOO_MANY_REQUESTS) {
                         String uri = request.getURI().toString();
                         log.warn("PokeAPI rate limit hit on request: {}", uri);
                         throw new PokeApiRateLimitException(String.format("Rate limited by PokeAPI on request: %s", uri));

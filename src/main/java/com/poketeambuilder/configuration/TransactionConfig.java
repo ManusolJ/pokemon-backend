@@ -12,7 +12,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * around part of a method body, typically because the rest of the method does I/O that
  * shouldn't hold a DB connection (seed services calling PokeAPI, password reset sending email, etc).
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class TransactionConfig {
 
     /**
