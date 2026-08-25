@@ -59,6 +59,7 @@ public class SeedOrchestratorCommandService {
     /** Runs the full seed pipeline. Returns the aggregated entries-added / errors counts. */
     public SeedResultDto seed() {
         clearDerivedData();
+        evictAllCaches();
 
         SeedResultDto result = typeSeedService.seed()
                 .add(natureSeedService.seed())
@@ -89,8 +90,6 @@ public class SeedOrchestratorCommandService {
     private void clearDerivedData() {
         pokemonSeedService.clearDerivedData();
         typeSeedService.clearDerivedData();
-
-        evictAllCaches();
     }
 
     private void evictAllCaches() {
