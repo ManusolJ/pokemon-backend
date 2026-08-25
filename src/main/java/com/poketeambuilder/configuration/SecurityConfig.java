@@ -4,8 +4,6 @@ import com.poketeambuilder.infrastructure.security.AuthEntryPoint;
 import com.poketeambuilder.infrastructure.security.AuthRateLimitFilter;
 import com.poketeambuilder.infrastructure.security.JwtAuthenticationFilter;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -65,13 +63,11 @@ public class SecurityConfig {
             "/api/teams/public/filter", "/api/teams/public/id"
     };
 
+    private final CorsProperties corsProperties;
     private final AuthEntryPoint authEntryPoint;
     private final AccessDeniedHandler accessDeniedHandler;
     private final AuthRateLimitFilter authRateLimitFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @Value("${app.cors.allowed-origin}")
-    private String allowedOrigin;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
@@ -122,7 +118,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setMaxAge(3600L);
         configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowedOrigins(List.of(allowedOrigin));
+        configuration.setAllowedOrigins(List.of(corsProperties.allowedOrigin()));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 

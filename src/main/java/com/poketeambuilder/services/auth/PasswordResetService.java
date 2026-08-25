@@ -16,7 +16,7 @@ import com.poketeambuilder.repositories.PasswordResetTokenRepository;
 
 import com.poketeambuilder.utils.token.TokenHashUtil;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.poketeambuilder.configuration.PasswordResetProperties;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -42,12 +42,7 @@ public class PasswordResetService {
     private final RefreshTokenService refreshTokenService;
     private final TransactionTemplate transactionTemplate;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
-
-    @Value("${app.password-reset.token-expiration-minutes}")
-    private int tokenExpirationMinutes;
-
-    @Value("${app.password-reset.base-url}")
-    private String resetBaseUrl;
+    private final PasswordResetProperties passwordResetProperties;
 
     /**
      * Issues a reset token to the address if it matches a known user, then sends the email.
@@ -66,7 +61,8 @@ public class PasswordResetService {
             return;
         }
 
-        emailService.sendPasswordResetEmail(prepared.email(), prepared.url(), tokenExpirationMinutes);
+        emailService.sendPasswordResetEmail(prepared.email(), prepared.url(),
+                passwordResetProperties.tokenExpirationMinutes());
     }
 
     /**
@@ -111,12 +107,12 @@ public class PasswordResetService {
                 .tokenHash(TokenHashUtil.sha256(rawToken))
                 .user(user)
                 .used(false)
-                .expiresAt(Instant.now().plusSeconds(tokenExpirationMinutes * 60L))
+                .expiresAt(Instant.now().plusSeconds(passwordResetProperties.tokenExpirationMinutes() * 60L))
                 .build();
 
         passwordResetTokenRepository.save(resetToken);
 
-        return new PreparedReset(user.getEmail(), resetBaseUrl + "?token=" + rawToken);
+        return new PreparedReset(user.getEmail(), passwordResetProperties.baseUrl() + "?token=" + rawToken);
     }
 
     private record PreparedReset(String email, String url) {}

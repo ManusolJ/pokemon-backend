@@ -3,9 +3,10 @@ package com.poketeambuilder.infrastructure.scheduling;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.poketeambuilder.configuration.UserCleanupProperties;
+
 import com.poketeambuilder.repositories.UserRepository;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -26,15 +27,12 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class UserCleanupTask {
 
-    private static final int DEFAULT_GRACE_PERIOD_DAYS = 30;
-
     private final UserRepository userRepository;
-
-    @Value("${app.user-cleanup.grace-period-days:" + DEFAULT_GRACE_PERIOD_DAYS + "}")
-    private int gracePeriodDays;
+    private final UserCleanupProperties cleanupProperties;
 
     @Scheduled(cron = "0 0 3 1 * *")
     public void purgeTombstonedUsers() {
+        int gracePeriodDays = cleanupProperties.gracePeriodDays();
         Instant cutoff = Instant.now().minus(Duration.ofDays(gracePeriodDays));
         log.info("Purging tombstoned users with deleted_at before {} (grace = {} days)", cutoff, gracePeriodDays);
 

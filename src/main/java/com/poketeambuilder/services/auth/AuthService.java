@@ -23,8 +23,6 @@ import com.poketeambuilder.services.command.AuditLogCommandService;
 
 import com.poketeambuilder.utils.enums.AuditAction;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -60,12 +58,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final AuditLogCommandService auditLogCommandService;
     private final CustomUserDetailsService customUserDetailsService;
-
-    @Value("${app.jwt.accessTokenExpirationMs}")
-    private long accessTokenExpirationMs;
-
-    @Value("${app.jwt.refreshTokenExpirationMs}")
-    private long refreshTokenExpirationMs;
 
     /** Registers a new user with a fresh refresh-token family. */
     @Transactional
@@ -148,9 +140,9 @@ public class AuthService {
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
 
         refreshTokenService.create(storedToken.getUser(), newRefreshToken, storedToken.getFamilyId(),
-                Instant.now().plusMillis(refreshTokenExpirationMs));
+                Instant.now().plusMillis(jwtService.getRefreshTokenExpirationMs()));
 
-        return new TokenResponseDto(newAccessToken, newRefreshToken, accessTokenExpirationMs);
+        return new TokenResponseDto(newAccessToken, newRefreshToken, jwtService.getAccessTokenExpirationMs());
     }
 
     /**
@@ -189,10 +181,10 @@ public class AuthService {
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
         UUID familyId = UUID.randomUUID();
-        Instant expiresAt = Instant.now().plusMillis(refreshTokenExpirationMs);
+        Instant expiresAt = Instant.now().plusMillis(jwtService.getRefreshTokenExpirationMs());
 
         refreshTokenService.create(user, refreshToken, familyId, expiresAt);
 
-        return new TokenResponseDto(accessToken, refreshToken, accessTokenExpirationMs);
+        return new TokenResponseDto(accessToken, refreshToken, jwtService.getAccessTokenExpirationMs());
     }
 }

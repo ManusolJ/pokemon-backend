@@ -1,6 +1,6 @@
 package com.poketeambuilder.services.auth;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.poketeambuilder.configuration.MailProperties;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -22,12 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class EmailService {
 
     private final JavaMailSender mailSender;
-
-    @Value("${app.mail.from}")
-    private String fromAddress;
-
-    @Value("${app.mail.contact-to}")
-    private String contactToAddress;
+    private final MailProperties mailProperties;
 
     /**
      * Sends the one-time password-reset link to the user.
@@ -38,7 +33,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(to);
-        message.setFrom(fromAddress);
+        message.setFrom(mailProperties.from());
         message.setSubject("PokeTeam Builder — Password Reset");
         message.setText(
             "You requested a password reset.\n\n" +
@@ -54,8 +49,8 @@ public class EmailService {
     /** Forwards a contact-form submission to the configured admin inbox. */
     public void sendContactEmail(String name, String senderEmail, String subject, String message) {
         SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setTo(contactToAddress);
-        mail.setFrom(fromAddress);
+        mail.setTo(mailProperties.contactTo());
+        mail.setFrom(mailProperties.from());
         mail.setReplyTo(senderEmail);
         mail.setSubject("PokeTeam Builder — Contact: " + subject);
         mail.setText("From: " + name + " <" + senderEmail + ">\n\n" + message);

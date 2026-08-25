@@ -9,7 +9,7 @@ import javax.crypto.SecretKey;
 
 import org.springframework.stereotype.Service;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.poketeambuilder.configuration.JwtProperties;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,15 +38,27 @@ public class JwtService {
     private static final String AUDIENCE = "poketeam-builder-api";
 
     private final SecretKey signingKey;
+    private final long accessTokenExpirationMs;
+    private final long refreshTokenExpirationMs;
 
-    @Value("${app.jwt.accessTokenExpirationMs}")
-    private long accessTokenExpirationMs;
+    public JwtService(JwtProperties properties) {
+        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(properties.secret()));
+        this.accessTokenExpirationMs = properties.accessTokenExpirationMs();
+        this.refreshTokenExpirationMs = properties.refreshTokenExpirationMs();
+    }
 
-    @Value("${app.jwt.refreshTokenExpirationMs}")
-    private long refreshTokenExpirationMs;
+    /**
+     * Access-token lifetime, in milliseconds. Exposed so callers that report it to the client can
+     * read it from the component that issues the tokens rather than binding the same property a
+     * second time and risking the two drifting apart.
+     */
+    public long getAccessTokenExpirationMs() {
+        return accessTokenExpirationMs;
+    }
 
-    public JwtService(@Value("${app.jwt.secret}") String secret) {
-        this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+    /** Refresh-token lifetime, in milliseconds. See {@link #getAccessTokenExpirationMs()}. */
+    public long getRefreshTokenExpirationMs() {
+        return refreshTokenExpirationMs;
     }
 
     /** Builds an access token carrying the user's authorities for the security context. */

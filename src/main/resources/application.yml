@@ -71,8 +71,8 @@ app:
 
   jwt:
     secret: ${JWT_SECRET}
-    accessTokenExpirationMs: ${ACCESS_TOKEN_EXPIRATION_MS:900000}
-    refreshTokenExpirationMs: ${REFRESH_TOKEN_EXPIRATION_MS:604800000}
+    access-token-expiration-ms: ${ACCESS_TOKEN_EXPIRATION_MS:900000}
+    refresh-token-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:604800000}
 
 # Server
 server:
