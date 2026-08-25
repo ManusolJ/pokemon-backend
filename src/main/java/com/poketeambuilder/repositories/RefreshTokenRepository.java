@@ -1,6 +1,5 @@
 package com.poketeambuilder.repositories;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
 import java.time.Instant;
@@ -20,12 +19,6 @@ public interface RefreshTokenRepository extends BaseRepository<RefreshToken, Lon
 
     /** Looks up a stored token by its SHA-256 hash. */
     Optional<RefreshToken> findByTokenHash(String tokenHash);
-
-    /** Returns every token in a rotation family. Used to revoke the whole lineage on reuse detection. */
-    List<RefreshToken> findByFamilyId(UUID familyId);
-
-    /** Returns every active or revoked token issued to a given user. */
-    List<RefreshToken> findByUserId(Long userId);
 
     /**
      * Bulk-revokes every token in the given rotation family in a single UPDATE. Avoids the
