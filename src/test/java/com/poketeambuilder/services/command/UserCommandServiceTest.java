@@ -19,6 +19,7 @@ import com.poketeambuilder.repositories.UserRepository;
 
 import com.poketeambuilder.services.auth.RefreshTokenService;
 
+import com.poketeambuilder.utils.enums.AuditAction;
 import com.poketeambuilder.utils.enums.UserRole;
 
 import org.junit.jupiter.api.Test;
@@ -26,11 +27,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -45,7 +46,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,7 +61,6 @@ import static org.mockito.Mockito.when;
  * and anything that changes credentials has to end the sessions carrying the old ones.
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class UserCommandServiceTest {
 
     private static final long ADMIN_ID = 1L;
@@ -72,6 +75,8 @@ class UserCommandServiceTest {
 
     @InjectMocks private UserCommandService userCommandService;
 
+    @Captor private ArgumentCaptor<String> auditDetails;
+
     private AppUser admin;
     private AppUser regularUser;
 
@@ -80,10 +85,10 @@ class UserCommandServiceTest {
         admin = user(ADMIN_ID, "oak", UserRole.ADMIN);
         regularUser = user(USER_ID, "ash", UserRole.USER);
 
-        when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(admin));
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(regularUser));
-        when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(regularUser));
-        when(userRepository.save(any(AppUser.class))).thenAnswer(call -> call.getArgument(0));
+        lenient().when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(admin));
+        lenient().when(userRepository.findById(USER_ID)).thenReturn(Optional.of(regularUser));
+        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(regularUser));
+        lenient().when(userRepository.save(any(AppUser.class))).thenAnswer(call -> call.getArgument(0));
     }
 
     // --- last-administrator protection --------------------------------------------------
@@ -221,6 +226,48 @@ class UserCommandServiceTest {
         verify(refreshTokenService).revokeAllForUser(USER_ID);
     }
 
+    // --- admin edits -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Disabling an account through the admin edit actually clears the enabled flag")
+    void adminDisableIsPersisted() {
+        applyAdminUpdateForReal();
+
+        userCommandService.adminUpdateUser("oak", USER_ID, adminUpdate(null, false));
+
+        assertThat(regularUser.getEnabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Disabling an account ends its sessions, so the refresh token cannot outlive it")
+    void adminDisableRevokesSessions() {
+        applyAdminUpdateForReal();
+
+        userCommandService.adminUpdateUser("oak", USER_ID, adminUpdate(null, false));
+
+        verify(refreshTokenService).revokeAllForUser(USER_ID);
+    }
+
+    @Test
+    @DisplayName("Changing a role ends the sessions still carrying the old one")
+    void adminRoleChangeRevokesSessions() {
+        applyAdminUpdateForReal();
+
+        userCommandService.adminUpdateUser("oak", USER_ID, adminUpdate("ADMIN", null));
+
+        verify(refreshTokenService).revokeAllForUser(USER_ID);
+    }
+
+    @Test
+    @DisplayName("An edit that changes nothing security-relevant leaves sessions alone")
+    void adminEmailEditKeepsSessions() {
+        applyAdminUpdateForReal();
+
+        userCommandService.adminUpdateUser("oak", USER_ID, adminUpdate(null, null));
+
+        verify(refreshTokenService, never()).revokeAllForUser(anyLong());
+    }
+
     // --- batch isolation -------------------------------------------------------------------
 
     @Test
@@ -235,10 +282,47 @@ class UserCommandServiceTest {
         assertThat(regularUser.getDeletedAt()).isNotNull();
     }
 
+    @Test
+    @DisplayName("A batch records its ids in details, not in the 50-character entity_id column")
+    void batchAuditKeepsIdsOutOfTheReferenceColumn() {
+        runTransactionsInline();
+        List<Long> ids = java.util.stream.LongStream.rangeClosed(1, 100).boxed().toList();
+
+        userCommandService.adminBatchHardDelete("oak", ids);
+
+        verify(auditLogCommandService).log(eq("oak"), eq(AuditAction.ADMIN_BATCH_HARD_DELETE),
+                eq("User"), isNull(), auditDetails.capture());
+        assertThat(auditDetails.getValue()).contains("100 user id(s)");
+    }
+
     // --- helpers ---------------------------------------------------------------------------
 
+    /**
+     * Makes the mapper mock behave like the real generated one for the fields under test. The
+     * service delegates the write to MapStruct, so a no-op mock would let a regression in the
+     * mapping pass unnoticed here.
+     */
+    private void applyAdminUpdateForReal() {
+        doAnswer(call -> {
+            AdminUserUpdateDto dto = call.getArgument(0);
+            AppUser target = call.getArgument(1);
+            if (dto.getEnabled() != null) {
+                target.setEnabled(dto.getEnabled());
+            }
+            if (dto.getNewRole() != null) {
+                target.setRole(UserRole.valueOf(dto.getNewRole()));
+            }
+            return null;
+        }).when(userMapper).updateEntity(any(AdminUserUpdateDto.class), any(AppUser.class));
+    }
+
+    /**
+     * States that a single administrator is left. Lenient because two of the callers assert the
+     * opposite of the usual case: that the guard returns before it ever counts, so the stub is
+     * meant to go unused there.
+     */
     private void onlyOneAdminRemains() {
-        when(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN)).thenReturn(1L);
+        lenient().when(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN)).thenReturn(1L);
     }
 
     @SuppressWarnings("unchecked")

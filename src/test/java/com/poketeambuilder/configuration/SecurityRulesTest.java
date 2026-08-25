@@ -9,6 +9,7 @@ import com.poketeambuilder.infrastructure.security.AuthEntryPoint;
 import com.poketeambuilder.infrastructure.security.AuthAccessDeniedHandler;
 import com.poketeambuilder.infrastructure.security.AuthRateLimitFilter;
 import com.poketeambuilder.infrastructure.security.JwtAuthenticationFilter;
+import com.poketeambuilder.infrastructure.security.SecurityErrorWriter;
 
 import com.poketeambuilder.services.auth.JwtService;
 import com.poketeambuilder.services.command.SeedLogCommandService;
@@ -66,6 +67,7 @@ import static org.mockito.Mockito.when;
     SecurityConfig.class,
     AuthEntryPoint.class,
     AuthRateLimitFilter.class,
+    SecurityErrorWriter.class,
     AuthAccessDeniedHandler.class,
     JwtAuthenticationFilter.class,
 })

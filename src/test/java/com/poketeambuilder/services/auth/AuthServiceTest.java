@@ -32,11 +32,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -48,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,7 +62,6 @@ import static org.mockito.Mockito.when;
  * leak, which means revoking the whole family rather than just refusing the one token.</p>
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthServiceTest {
 
     private static final String USERNAME = "ash";
@@ -98,9 +98,9 @@ class AuthServiceTest {
 
         UserDetails principal = User.withUsername(USERNAME).password("").authorities("ROLE_USER").build();
 
-        when(customUserDetailsService.loadUserByUsername(USERNAME)).thenReturn(principal);
-        when(jwtService.generateAccessToken(any())).thenReturn("access-token");
-        when(jwtService.generateRefreshToken(any())).thenReturn("refresh-token");
+        lenient().when(customUserDetailsService.loadUserByUsername(USERNAME)).thenReturn(principal);
+        lenient().when(jwtService.generateAccessToken(any())).thenReturn("access-token");
+        lenient().when(jwtService.generateRefreshToken(any())).thenReturn("refresh-token");
     }
 
     // --- sign-in -----------------------------------------------------------------------
@@ -241,6 +241,54 @@ class AuthServiceTest {
 
         verify(refreshTokenService, never()).create(any(), any(), any(), any());
         verify(refreshTokenService, never()).revokeFamily(any());
+    }
+
+    @Test
+    @DisplayName("A disabled account cannot refresh, and the attempt ends the whole family")
+    void refreshRefusesADisabledAccount() {
+        UUID family = UUID.randomUUID();
+        when(refreshTokenService.findByRawToken("raw"))
+                .thenReturn(storedToken(family, false, Instant.now().plusSeconds(3600)));
+        when(customUserDetailsService.loadUserByUsername(USERNAME))
+                .thenReturn(User.withUsername(USERNAME).password("").authorities("ROLE_USER").disabled(true).build());
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
+                .isInstanceOf(DisabledException.class);
+
+        verify(refreshTokenService).revokeFamily(family);
+        verify(jwtService, never()).generateAccessToken(any());
+        verify(refreshTokenService, never()).create(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("A token whose account no longer resolves is refused, not reported as a server fault")
+    void refreshRefusesAVanishedAccount() {
+        UUID family = UUID.randomUUID();
+        when(refreshTokenService.findByRawToken("raw"))
+                .thenReturn(storedToken(family, false, Instant.now().plusSeconds(3600)));
+        when(customUserDetailsService.loadUserByUsername(USERNAME))
+                .thenThrow(new UsernameNotFoundException("User not found: " + USERNAME));
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
+                .isInstanceOf(InvalidTokenException.class);
+
+        verify(refreshTokenService).revokeFamily(family);
+        verify(refreshTokenService, never()).create(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("The presented token is only spent once the account has been cleared")
+    void refreshChecksTheAccountBeforeSpendingTheToken() {
+        UUID family = UUID.randomUUID();
+        RefreshToken stored = storedToken(family, false, Instant.now().plusSeconds(3600));
+        when(refreshTokenService.findByRawToken("raw")).thenReturn(stored);
+        when(customUserDetailsService.loadUserByUsername(USERNAME))
+                .thenReturn(User.withUsername(USERNAME).password("").authorities("ROLE_USER").disabled(true).build());
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
+                .isInstanceOf(DisabledException.class);
+
+        verify(refreshTokenService, never()).revoke(stored);
     }
 
     // --- sign-out ----------------------------------------------------------------------

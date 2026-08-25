@@ -30,6 +30,7 @@ import com.poketeambuilder.repositories.TeamPokemonRepository;
 import com.poketeambuilder.repositories.PokemonAbilityRepository;
 import com.poketeambuilder.repositories.TeamPokemonMoveRepository;
 
+import com.poketeambuilder.utils.enums.AuditAction;
 import com.poketeambuilder.utils.enums.UserRole;
 
 import org.junit.jupiter.api.Test;
@@ -37,19 +38,25 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
+
+import org.springframework.security.access.AccessDeniedException;
 
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,7 +68,6 @@ import static org.mockito.Mockito.when;
  * catch.
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class TeamCommandServiceTest {
 
     private static final long OWNER_ID = 1L;
@@ -90,6 +96,9 @@ class TeamCommandServiceTest {
 
     @InjectMocks private TeamCommandService teamCommandService;
 
+    @Captor private ArgumentCaptor<String> auditEntity;
+    @Captor private ArgumentCaptor<String> auditDetails;
+
     private AppUser owner;
     private AppUser stranger;
 
@@ -98,8 +107,10 @@ class TeamCommandServiceTest {
         owner = user(OWNER_ID, "ash");
         stranger = user(STRANGER_ID, "gary");
 
-        when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(owner));
-        when(userRepository.findByUsernameAndDeletedAtIsNull("gary")).thenReturn(Optional.of(stranger));
+        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(owner));
+        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("gary")).thenReturn(Optional.of(stranger));
+        lenient().when(teamMapper.toEntity(any(TeamCreateDto.class))).thenReturn(team(owner, false));
+        lenient().when(teamRepository.save(any(Team.class))).thenAnswer(call -> call.getArgument(0));
     }
 
     // --- ownership -----------------------------------------------------------------------
@@ -185,6 +196,37 @@ class TeamCommandServiceTest {
         verify(teamRepository, never()).decrementLikeCount(anyLong());
     }
 
+    // --- admin moderation ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("An admin delete records the type in entity and the description in details")
+    void adminDeleteKeepsTheDescriptionOutOfTheReferenceColumn() {
+        AppUser oak = user(3L, "oak");
+        oak.setRole(UserRole.ADMIN);
+        when(userRepository.findByUsernameAndDeletedAtIsNull("oak")).thenReturn(Optional.of(oak));
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
+
+        teamCommandService.adminDeleteTeam("oak", TEAM_ID);
+
+        verify(auditLogCommandService).log(eq("oak"), eq(AuditAction.ADMIN_TEAM_DELETE),
+                auditEntity.capture(), eq(String.valueOf(TEAM_ID)), auditDetails.capture());
+
+        assertThat(auditEntity.getValue()).isEqualTo("Team");
+        assertThat(auditEntity.getValue().length()).isLessThanOrEqualTo(50);
+        assertThat(auditDetails.getValue()).contains("Kanto").contains("ash");
+    }
+
+    @Test
+    @DisplayName("A non-admin reaching the admin delete is refused as forbidden, not as missing")
+    void adminDeleteRefusesANonAdmin() {
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
+
+        assertThatThrownBy(() -> teamCommandService.adminDeleteTeam("gary", TEAM_ID))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(teamRepository, never()).delete(any(Team.class));
+    }
+
     // --- roster legality -------------------------------------------------------------------
 
     @Test
@@ -251,6 +293,7 @@ class TeamCommandServiceTest {
                 .build();
     }
 
+    /** Builds a payload. Deliberately free of stubbing, so a caller can see what it is arranging. */
     private TeamCreateDto createTeam() {
         TeamPokemonCreateDto member = new TeamPokemonCreateDto();
         ReflectionTestUtils.setField(member, "pokemonId", PIKACHU);
@@ -261,9 +304,6 @@ class TeamCommandServiceTest {
         ReflectionTestUtils.setField(dto, "name", "Kanto");
         ReflectionTestUtils.setField(dto, "isPublic", false);
         ReflectionTestUtils.setField(dto, "pokemon", List.of(member));
-
-        when(teamMapper.toEntity(any(TeamCreateDto.class))).thenReturn(team(owner, false));
-        when(teamRepository.save(any(Team.class))).thenAnswer(call -> call.getArgument(0));
 
         return dto;
     }

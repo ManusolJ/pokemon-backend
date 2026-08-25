@@ -57,7 +57,10 @@ public abstract class PostgresTestBase {
             try {
                 DockerClientFactory.instance().client();
                 dockerUsable = true;
-            } catch (Throwable failure) {
+            } catch (RuntimeException | LinkageError failure) {
+                // Testcontainers reports an unreachable daemon as an unchecked exception, and a
+                // missing native dependency as a LinkageError. Anything outside those two is a
+                // real problem and should not be quietly turned into a skipped test.
                 dockerUsable = false;
             }
         }
