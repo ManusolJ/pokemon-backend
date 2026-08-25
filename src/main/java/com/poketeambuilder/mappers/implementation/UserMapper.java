@@ -46,10 +46,15 @@ public interface UserMapper extends ReadMapper<AppUser, UserReadDto>, SummaryMap
     @Mapping(target = "username", source = "newUsername")
     void updateEntity(UserUpdateDto dto, @MappingTarget AppUser entity);
 
-    /** Applies an admin mutation. Adds the {@code role} field on top of the self-service set. */
+    /**
+     * Applies an admin mutation. Adds {@code role} and {@code enabled} on top of the
+     * self-service set.
+     *
+     */
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "role", source = "newRole")
     @Mapping(target = "email", source = "newEmail")
+    @Mapping(target = "enabled", source = "enabled")
     @Mapping(target = "username", source = "newUsername")
     void updateEntity(AdminUserUpdateDto dto, @MappingTarget AppUser entity);
 }
