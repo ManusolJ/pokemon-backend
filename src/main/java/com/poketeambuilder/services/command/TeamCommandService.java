@@ -41,7 +41,8 @@ import com.poketeambuilder.repositories.TeamPokemonMoveRepository;
 
 import com.poketeambuilder.utils.enums.UserRole;
 import com.poketeambuilder.utils.enums.AuditAction;
-import com.poketeambuilder.utils.enums.PokemonGender;
+
+import org.springframework.security.access.AccessDeniedException;
 
 import org.springframework.stereotype.Service;
 
@@ -151,6 +152,7 @@ public class TeamCommandService {
      * Admin delete. Defense-in-depth: re-checks the admin role even though the controller
      * already gates this with {@code @PreAuthorize}. Audit-logs the deletion with the team's
      * id, name, and owner for forensic clarity.
+     *
      */
     @Transactional
     public void adminDeleteTeam(@NotNull String adminUsername, @NotNull Long teamId) {
@@ -159,18 +161,19 @@ public class TeamCommandService {
         AppUser adminUser = findUserOrThrow(adminUsername);
 
         if (!isUserAdmin(adminUser)) {
-            throw new ResourceNotFoundException(
-                    String.format("Team with id '%s' not found for user '%s'", team.getId(), adminUsername));
+            throw new AccessDeniedException(
+                    String.format("User '%s' is not an administrator", adminUsername));
         }
+
+        String teamDescription = String.format("id: %s, name: %s, owner: %s",
+                team.getId(), team.getName(), team.getOwner().getUsername());
+        String teamIdValue = team.getId().toString();
 
         deleteTeamPokemon(team);
         deleteTeamLikes(team);
         teamRepository.delete(team);
 
-        String entityDescription = String.format("%s (id: %s, name: %s, owner: %s)",
-                ENTITY_NAME, team.getId(), team.getName(), team.getOwner().getUsername());
-
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, entityDescription, team.getId().toString());
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, ENTITY_NAME, teamIdValue, teamDescription);
     }
 
     /**
@@ -242,9 +245,6 @@ public class TeamCommandService {
             }
             if (pokemonDto.getTeraTypeId() != null) {
                 teamPokemon.setTeraType(typeRepository.getReferenceById(pokemonDto.getTeraTypeId()));
-            }
-            if (pokemonDto.getGender() != null) {
-                teamPokemon.setGender(PokemonGender.fromValue(pokemonDto.getGender()));
             }
 
             TeamPokemon savedTeamPokemon = teamPokemonRepository.save(teamPokemon);

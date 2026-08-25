@@ -138,9 +138,15 @@ public class UserCommandService {
             assertNotLastAdmin(user);
         }
 
+        boolean securityRelevant = disablesUser(dto) || changesRole(user, dto) || changesUsername(user, dto);
+
         userMapper.updateEntity(dto, user);
 
         AppUser saved = userRepository.save(user);
+
+        if (securityRelevant) {
+            refreshTokenService.revokeAllForUser(saved.getId());
+        }
 
         auditLogCommandService.log(adminUsername, AuditAction.ADMIN_USER_UPDATE, ENTITY_NAME, userId.toString());
 
@@ -207,7 +213,7 @@ public class UserCommandService {
             assertNotLastAdmin(user);
             tombstone(user);
         });
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_SOFT_DELETE, ENTITY_NAME, ids.toString());
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_SOFT_DELETE, ENTITY_NAME, null, batchDetails(ids));
     }
 
     /** Bulk reactivation. Skips users whose original identifiers are now held by an active row. */
@@ -220,7 +226,7 @@ public class UserCommandService {
             restore(user);
             userRepository.save(user);
         });
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_REACTIVATE, ENTITY_NAME, ids.toString());
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_REACTIVATE, ENTITY_NAME, null, batchDetails(ids));
     }
 
     /** Bulk hard-delete. Token cleanup is via DB cascade. */
@@ -230,7 +236,7 @@ public class UserCommandService {
             assertNotLastAdmin(user);
             userRepository.delete(user);
         });
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, ids.toString());
+        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_BATCH_HARD_DELETE, ENTITY_NAME, null, batchDetails(ids));
     }
 
     /**
@@ -277,7 +283,7 @@ public class UserCommandService {
 
     /**
      * Blocks the change if {@code user} is the only administrator left who can still sign in.
-     * There is no in-app way back from an instance with no admins — the README's first-run
+     * There is no in-app way back from an instance with no admins - the README's first-run
      * {@code UPDATE app_user SET role = 'ADMIN'} is the only recovery.
      */
     private void assertNotLastAdmin(AppUser user) {
@@ -299,6 +305,26 @@ public class UserCommandService {
 
     private boolean disablesUser(AdminUserUpdateDto dto) {
         return Boolean.FALSE.equals(dto.getEnabled());
+    }
+
+    /** Any role change, in either direction. Must be evaluated before the mapper applies the update. */
+    private boolean changesRole(AppUser user, AdminUserUpdateDto dto) {
+        return dto.getNewRole() != null && !user.getRole().name().equals(dto.getNewRole());
+    }
+
+    /** A username change strands every issued token, whose subject claim carries the old name. */
+    private boolean changesUsername(AppUser user, AdminUserUpdateDto dto) {
+        return dto.getNewUsername() != null && !dto.getNewUsername().equals(user.getUsername());
+    }
+
+    /**
+     * Renders a batch's target ids for the audit trail. The list goes in {@code details}
+     * ({@code TEXT}) rather than {@code entityId}, which is a 50-character column that a
+     * hundred-id batch overruns many times over - and because each item commits in its own
+     * transaction, a failed audit write left the accounts deleted with no record of it.
+     */
+    private String batchDetails(List<Long> ids) {
+        return String.format("%d user id(s): %s", ids.size(), ids);
     }
 
     /**

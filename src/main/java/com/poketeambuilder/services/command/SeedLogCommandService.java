@@ -8,6 +8,7 @@ import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsExcept
 
 import com.poketeambuilder.repositories.SeedLogRepository;
 
+import com.poketeambuilder.utils.enums.AuditAction;
 import com.poketeambuilder.utils.enums.SeedStatus;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -44,15 +45,19 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SeedLogCommandService {
 
+    private static final String ENTITY_NAME = "SeedLog";
+
     private final TaskExecutor taskExecutor;
     private final SeedLogRepository seedLogRepository;
     private final SeedOrchestratorCommandService seedOrchestrator;
+    private final AuditLogCommandService auditLogCommandService;
     private final TransactionTemplate requiresNewTransactionTemplate;
 
-    public SeedLogCommandService(SeedLogRepository seedLogRepository, SeedOrchestratorCommandService seedOrchestrator, @Qualifier("requiresNewTransactionTemplate") TransactionTemplate requiresNewTransactionTemplate, @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
+    public SeedLogCommandService(SeedLogRepository seedLogRepository, SeedOrchestratorCommandService seedOrchestrator, AuditLogCommandService auditLogCommandService, @Qualifier("requiresNewTransactionTemplate") TransactionTemplate requiresNewTransactionTemplate, @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor) {
         this.taskExecutor = taskExecutor;
         this.seedOrchestrator = seedOrchestrator;
         this.seedLogRepository = seedLogRepository;
+        this.auditLogCommandService = auditLogCommandService;
         this.requiresNewTransactionTemplate = requiresNewTransactionTemplate;
     }
 
@@ -78,6 +83,9 @@ public class SeedLogCommandService {
         }
 
         Long logId = seedLog.getId();
+
+        auditLogCommandService.log(triggeredBy, AuditAction.ADMIN_SEED_TRIGGERED, ENTITY_NAME, logId.toString(),
+                "Full PokeAPI catalogue re-import dispatched");
 
         taskExecutor.execute(() -> runSeed(logId));
 
