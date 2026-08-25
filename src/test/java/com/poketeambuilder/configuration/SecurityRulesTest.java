@@ -30,6 +30,8 @@ import org.junit.jupiter.api.DisplayName;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 
 import org.springframework.context.annotation.Import;
@@ -72,6 +74,7 @@ import static org.mockito.Mockito.when;
     JwtAuthenticationFilter.class,
 })
 @ActiveProfiles("test")
+@EnableConfigurationProperties({ CorsProperties.class, JwtProperties.class })
 class SecurityRulesTest {
 
     private static final String EMPTY_FILTER = "{}";

@@ -84,8 +84,8 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(authService, "accessTokenExpirationMs", ACCESS_TTL_MS);
-        ReflectionTestUtils.setField(authService, "refreshTokenExpirationMs", REFRESH_TTL_MS);
+        lenient().when(jwtService.getAccessTokenExpirationMs()).thenReturn(ACCESS_TTL_MS);
+        lenient().when(jwtService.getRefreshTokenExpirationMs()).thenReturn(REFRESH_TTL_MS);
 
         user = AppUser.builder()
                 .id(1L)

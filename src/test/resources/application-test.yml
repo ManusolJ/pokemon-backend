@@ -26,8 +26,8 @@ app:
   jwt:
     # This secret is only for testing - won't work anywhere else.
     secret: cG9rZXRlYW0tYnVpbGRlci10ZXN0LXNpZ25pbmcta2V5
-    accessTokenExpirationMs: 900000
-    refreshTokenExpirationMs: 604800000
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
 
 logging:
   level:

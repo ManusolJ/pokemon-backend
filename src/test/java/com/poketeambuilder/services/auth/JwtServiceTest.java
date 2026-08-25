@@ -9,7 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import org.springframework.test.util.ReflectionTestUtils;
+import com.poketeambuilder.configuration.JwtProperties;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.JwtException;
@@ -43,9 +43,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        jwtService = new JwtService(SECRET);
-        ReflectionTestUtils.setField(jwtService, "accessTokenExpirationMs", ACCESS_TTL_MS);
-        ReflectionTestUtils.setField(jwtService, "refreshTokenExpirationMs", REFRESH_TTL_MS);
+        jwtService = new JwtService(new JwtProperties(SECRET, ACCESS_TTL_MS, REFRESH_TTL_MS));
     }
 
     @Test
@@ -124,9 +122,9 @@ class JwtServiceTest {
     @Test
     @DisplayName("An expired token is rejected")
     void rejectsExpiredToken() {
-        ReflectionTestUtils.setField(jwtService, "accessTokenExpirationMs", -1_000L);
+        JwtService alreadyExpired = new JwtService(new JwtProperties(SECRET, -1_000L, REFRESH_TTL_MS));
 
-        String expired = jwtService.generateAccessToken(user);
+        String expired = alreadyExpired.generateAccessToken(user);
 
         assertThatThrownBy(() -> jwtService.extractUsername(expired)).isInstanceOf(JwtException.class);
     }
