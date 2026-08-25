@@ -37,6 +37,7 @@ import lombok.AllArgsConstructor;
 public class SeedLog {
 
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;

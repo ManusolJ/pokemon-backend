@@ -38,6 +38,7 @@ import lombok.AllArgsConstructor;
 public class AuditLog {
     
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
