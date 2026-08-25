@@ -3,13 +3,14 @@ package com.poketeambuilder.utils.enums;
 import com.poketeambuilder.entities.TeamPokemon;
 
 /**
- * Gender of a {@link TeamPokemon}. {@link #NONE} represents
- * genderless species (Magnemite, Voltorb, etc); PokeAPI sends lowercase strings.
+ * Gender of a {@link TeamPokemon}.
+ *
+ *
  */
 public enum PokemonGender implements ValuedEnum {
 
     MALE("male"),
-    NONE("none"),
+    GENDERLESS("none"),
     FEMALE("female");
 
     private final String value;
@@ -23,10 +24,10 @@ public enum PokemonGender implements ValuedEnum {
         return value;
     }
 
-    /** Parses the string back to the enum. Case-insensitive. */
+    /** Parses either the storage value ({@code "none"}) or the wire name ({@code "GENDERLESS"}). Case-insensitive. */
     public static PokemonGender fromValue(String value) {
         for (PokemonGender gender : values()) {
-            if (gender.value.equalsIgnoreCase(value)) {
+            if (gender.value.equalsIgnoreCase(value) || gender.name().equalsIgnoreCase(value)) {
                 return gender;
             }
         }
