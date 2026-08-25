@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-# A new commit on the same branch cancels the previous in-progress run.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -31,11 +30,17 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      # `verify` runs the test suite and then the package phase.
       - name: Maven verify
         run: ./mvnw -B -ntp verify
 
-      # Check that docker still builds cleanly.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
       - name: Validate Docker image build
         run: docker build -t poketeam-builder:ci .
 
