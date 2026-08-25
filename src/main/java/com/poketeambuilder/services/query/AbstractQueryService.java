@@ -148,9 +148,6 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
             return loader.get();
         }
 
-        @SuppressWarnings("unchecked")
-        T value = (T) cache.get(key, loader::get);
-
-        return value;
+        return cache.get(key, loader::get);
     }
 }
