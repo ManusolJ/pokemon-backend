@@ -39,7 +39,7 @@ public class PokeApiThrottlingInterceptor implements ClientHttpRequestIntercepto
 
     /**
      * Atomically computes the wait needed to respect the rate cap, stamps the future release
-     * time, and then sleeps  so other callers can queue.
+     * time, and then sleeps outside the lock so other callers can queue.
      */
     private void throttle() {
         long sleepTime;
@@ -60,7 +60,7 @@ public class PokeApiThrottlingInterceptor implements ClientHttpRequestIntercepto
             Thread.sleep(sleepTime);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while throttling PokeAPI requests", e);
+            throw new IllegalStateException("Interrupted while throttling PokeAPI requests", e);
         }
     }
 }
