@@ -3,21 +3,30 @@ package com.poketeambuilder.controllers;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
+import org.springframework.context.i18n.LocaleContextHolder;
+
 import org.springframework.dao.DataIntegrityViolationException;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import org.springframework.validation.FieldError;
 
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import com.poketeambuilder.dtos.error.ErrorResponseDto;
 
@@ -40,13 +49,19 @@ import lombok.extern.slf4j.Slf4j;
  * Every business-domain exception is mapped explicitly so the response shape is predictable;
  * the trailing {@link #handleGeneric(Exception, HttpServletRequest)} catches the unexpected
  * and logs at ERROR making every 500 leave a trail.
+ *
  */
 @Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponseDto> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    /**
+     * Validation failures on a {@code @Valid @RequestBody}. Overridden rather than declared as a
+     * fresh {@code @ExceptionHandler}: the base class already maps this type, and two mappings for
+     * one exception in the same advice fails the context at startup.
+     */
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
 
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
@@ -57,15 +72,49 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 "Validation Failed",
                 "One or more fields are invalid",
-                request.getRequestURI(),
+                pathOf(request),
                 fieldErrors);
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return super.handleExceptionInternal(ex, body, headers, HttpStatus.BAD_REQUEST, request);
+    }
+
+    /**
+     * Re-bodies everything the base class handles, so framework failures and domain failures look
+     * the same to the caller. The message comes from Spring's own {@link ProblemDetail} detail
+     * where there is one - that text is already written for client consumption - and falls back
+     * to the status reason phrase, so nothing internal leaks.
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+        if (statusCode.is5xxServerError()) {
+            log.error("Framework exception at {}", pathOf(request), ex);
+        } else {
+            log.debug("Framework exception at {}: {}", pathOf(request), ex.getMessage());
+        }
+
+        ErrorResponseDto errorBody = new ErrorResponseDto(
+                statusCode.value(),
+                reasonPhrase(statusCode),
+                detailFor(ex, statusCode),
+                pathOf(request));
+
+        return super.handleExceptionInternal(ex, errorBody, headers, statusCode, request);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponseDto> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username/email or password", request);
+    }
+
+    /**
+     * Only reachable from the paths that resolve a {@code UserDetails} directly; the
+     * authentication manager hides it behind {@link BadCredentialsException}. Answered as a
+     * generic 401 so the exception's "User not found: x" message never reaches the caller.
+     */
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest request) {
+        log.debug("Unresolvable principal at {}: {}", request.getRequestURI(), ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid or expired credentials", request);
     }
 
     @ExceptionHandler(InvalidTokenException.class)
@@ -99,11 +148,6 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleEndpointNotFound(NoResourceFoundException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
-    }
-
     @ExceptionHandler(BadPasswordException.class)
     public ResponseEntity<ErrorResponseDto> handleBadPassword(BadPasswordException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
@@ -127,7 +171,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Caught when a request references a non-existent FK (e.g. a malicious pokemonId in a
-     * team save). Mapped to 400 with a generic message so we don't leak constraint names.
+     * team save). Mapped to 400 with a generic message so constraint names are not leaked.
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
@@ -164,5 +208,30 @@ public class GlobalExceptionHandler {
                 request.getRequestURI());
 
         return ResponseEntity.status(status).body(body);
+    }
+
+    private String detailFor(Exception ex, HttpStatusCode statusCode) {
+        if (ex instanceof ErrorResponse errorResponse) {
+            ProblemDetail problemDetail = errorResponse.updateAndGetBody(getMessageSource(), LocaleContextHolder.getLocale());
+            String detail = problemDetail == null ? null : problemDetail.getDetail();
+            if (detail != null && !detail.isBlank()) {
+                return detail;
+            }
+        }
+
+        return reasonPhrase(statusCode);
+    }
+
+    private String reasonPhrase(HttpStatusCode statusCode) {
+        HttpStatus resolved = HttpStatus.resolve(statusCode.value());
+        return resolved == null ? "Error" : resolved.getReasonPhrase();
+    }
+
+    private String pathOf(WebRequest request) {
+        if (request instanceof ServletWebRequest servletWebRequest) {
+            return servletWebRequest.getRequest().getRequestURI();
+        }
+
+        return request.getDescription(false);
     }
 }
