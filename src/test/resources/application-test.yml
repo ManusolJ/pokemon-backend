@@ -1,8 +1,4 @@
 spring:
-  docker:
-    compose:
-      enabled: false
-
   flyway:
     enabled: true
     baseline-on-migrate: false

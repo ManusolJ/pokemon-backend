@@ -3,11 +3,6 @@ spring:
     activate:
       on-profile: prod
 
-  # In prod the DB is its own service.
-  docker:
-    compose:
-      enabled: false
-
   # Flyway owns the schema.
   jpa:
     hibernate:

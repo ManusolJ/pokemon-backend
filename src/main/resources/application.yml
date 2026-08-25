@@ -58,6 +58,17 @@ app:
     token-expiration-minutes: ${PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES:30}
     base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:4200/auth/reset-password-confirmation}
 
+  # Retention window for tombstoned accounts before the monthly job hard-deletes them.
+  user-cleanup:
+    grace-period-days: ${USER_CLEANUP_GRACE_PERIOD_DAYS:30}
+
+  # Outbound PokeAPI client. Defaults match the values these used to be compiled in as.
+  pokeapi:
+    base-url: ${POKEAPI_BASE_URL:https://pokeapi.co/api/v2}
+    connect-timeout: 5s
+    read-timeout: 10s
+    request-delay: 200ms
+
   jwt:
     secret: ${JWT_SECRET}
     accessTokenExpirationMs: ${ACCESS_TOKEN_EXPIRATION_MS:900000}
