@@ -60,7 +60,7 @@ public class BaseSpecification<T> implements Specification<T> {
         }
 
         String[] parts = key.split("\\.", 2);
-        Join<?, ?> join = root.join(parts[0], JoinType.LEFT);
+        Join<Object, Object> join = root.join(parts[0], JoinType.LEFT);
         return join.get(parts[1]);
     }
 
