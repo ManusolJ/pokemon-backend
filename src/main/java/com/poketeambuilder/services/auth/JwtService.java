@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import io.jsonwebtoken.Jwts;
@@ -26,6 +27,8 @@ import io.jsonwebtoken.security.Keys;
  */
 @Service
 public class JwtService {
+
+    public static final String CLAIM_AUTHORITIES = "authorities";
 
     private static final String CLAIM_TOKEN_TYPE = "type";
     private static final String TOKEN_TYPE_ACCESS = "access";
@@ -49,9 +52,9 @@ public class JwtService {
     /** Builds an access token carrying the user's authorities for the security context. */
     public String generateAccessToken(UserDetails userDetails) {
         List<String> roles = userDetails.getAuthorities().stream()
-                .map(auth -> auth.getAuthority())
+                .map(GrantedAuthority::getAuthority)
                 .toList();
-        return buildToken(Map.of("authorities", roles), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
+        return buildToken(Map.of(CLAIM_AUTHORITIES, roles), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
     }
 
     /** Builds a refresh token (no authorities embedded). */
