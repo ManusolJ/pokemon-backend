@@ -53,7 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final int AUTH_HEADER_PREFIX_LENGTH = 7;
     private static final String AUTH_HEADER_PREFIX = "Bearer ";
     private static final String AUTH_HEADER_NAME = "Authorization";
-    private static final String AUTHORITIES_CLAIM = "authorities";
 
     private final JwtService jwtService;
 
@@ -121,7 +120,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /** Reads the {@code authorities} claim as a list of role strings and wraps them as {@link SimpleGrantedAuthority}. */
     private Collection<GrantedAuthority> extractAuthorities(String token) {
         List<String> roles = jwtService.extractClaim(token, claims -> {
-            Object raw = claims.get(AUTHORITIES_CLAIM);
+            Object raw = claims.get(JwtService.CLAIM_AUTHORITIES);
             if (raw instanceof List<?> list) {
                 return list.stream().map(Object::toString).toList();
             }
