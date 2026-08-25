@@ -292,8 +292,9 @@ and a partial unique index scoped to live rows frees the username and e-mail for
 without dropping the history.
 
 Teams have no tombstone of their own; they follow the owner. A deleted account's teams stop
-appearing in public listings immediately, and the weekly job that purges tombstoned users
-past their retention window takes the teams with them by cascade.
+appearing in public listings immediately, and the monthly job that purges tombstoned users
+past their retention window takes the teams with them by cascade. The window defaults to 30 days
+and is set by `USER_CLEANUP_GRACE_PERIOD_DAYS`.
 
 ---
 
@@ -394,6 +395,7 @@ panel, or `POST /api/admin/seed`.
 | **Database (client)**    | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`                                                                                       |
 | **Mail**                 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `CONTACT_TO`                                                           |
 | **Security**             | `JWT_SECRET`, `ACCESS_TOKEN_EXPIRATION_MS`, `REFRESH_TOKEN_EXPIRATION_MS`, `PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES`, `PASSWORD_RESET_BASE_URL` |
+| **Retention**            | `USER_CLEANUP_GRACE_PERIOD_DAYS`                                                                                                                |
 
 > [!IMPORTANT]
 > `.env.example` documents every supported variable. Compose reads `.env.dev` in development
