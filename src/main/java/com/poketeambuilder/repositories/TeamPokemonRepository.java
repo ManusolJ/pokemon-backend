@@ -15,7 +15,7 @@ import com.poketeambuilder.repositories.projections.TeamSpriteProjection;
 /**
  * CRUD + targeted reads for {@link TeamPokemon}. The bulk read joins every association
  * needed to render a team in one query, avoiding n+1 fetches in the team detail endpoints;
- * the lightweight projection skips that join when the only needes sprite URLs.
+ * the lightweight projection skips that join when only sprite URLs are needed.
  */
 public interface TeamPokemonRepository extends BaseRepository<TeamPokemon, Long> {
 

@@ -10,6 +10,8 @@ import com.poketeambuilder.utils.enums.UserRole;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import org.springframework.transaction.annotation.Transactional;
+
 /**
  * CRUD + lookups for {@link AppUser}. Username and email are unique <em>among non-tombstoned
  * rows</em> in the database (see V23 partial indexes), so the {@code findBy…AndDeletedAtIsNull}
@@ -48,6 +50,7 @@ public interface UserRepository extends BaseRepository<AppUser, Long> {
      * Pass {@code Instant.now()} to purge all tombstoned rows immediately.</p>
      */
     @Modifying
+    @Transactional
     @Query("DELETE FROM AppUser u WHERE u.deletedAt IS NOT NULL AND u.deletedAt < :cutoff")
     int purgeDeletedBefore(Instant cutoff);
 }
