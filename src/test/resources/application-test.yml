@@ -1,0 +1,40 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+
+app:
+  cors:
+    allowed-origin: http://localhost:4200
+  mail:
+    from: noreply@test.local
+    contact-to: contact@test.local
+  password-reset:
+    token-expiration-minutes: 30
+    base-url: http://localhost:4200/auth/reset-password-confirmation
+  jwt:
+    # This secret is only for testing - won't work anywhere else.
+    secret: cG9rZXRlYW0tYnVpbGRlci10ZXN0LXNpZ25pbmcta2V5
+    accessTokenExpirationMs: 900000
+    refreshTokenExpirationMs: 604800000
+
+logging:
+  level:
+    "[com.poketeambuilder]": WARN
+    "[org.testcontainers]": WARN
+    "[org.springframework.security]": WARN
