@@ -8,7 +8,6 @@ import com.poketeambuilder.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +34,6 @@ public class UserCleanupTask {
     private int gracePeriodDays;
 
     @Scheduled(cron = "0 0 3 1 * *")
-    @Transactional
     public void purgeTombstonedUsers() {
         Instant cutoff = Instant.now().minus(Duration.ofDays(gracePeriodDays));
         log.info("Purging tombstoned users with deleted_at before {} (grace = {} days)", cutoff, gracePeriodDays);
