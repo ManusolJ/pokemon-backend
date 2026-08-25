@@ -16,8 +16,6 @@ import jakarta.validation.ConstraintValidatorContext;
  */
 public class ValidEvSpreadValidator implements ConstraintValidator<ValidEvSpread, TeamPokemonCreateDto> {
 
-    private static final int MAX_TOTAL_EVS = 510;
-
     @Override
     public boolean isValid(TeamPokemonCreateDto dto, ConstraintValidatorContext context) {
         if (dto == null) {
@@ -31,7 +29,7 @@ public class ValidEvSpreadValidator implements ConstraintValidator<ValidEvSpread
                   + orZero(dto.getEvSpDef())
                   + orZero(dto.getEvSpeed());
 
-        return total <= MAX_TOTAL_EVS;
+        return total <= ValidEvSpread.MAX_TOTAL_EVS;
     }
 
     private int orZero(Integer value) {

@@ -20,9 +20,11 @@ import jakarta.validation.Constraint;
 @Constraint(validatedBy = ValidEvSpreadValidator.class)
 public @interface ValidEvSpread {
 
+    final int MAX_TOTAL_EVS = 510;
+
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
 
-    String message() default "Total EVs cannot exceed 510";
+    String message() default "Total EVs cannot exceed " + MAX_TOTAL_EVS;
 }
