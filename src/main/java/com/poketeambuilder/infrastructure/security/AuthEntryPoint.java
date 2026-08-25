@@ -1,9 +1,7 @@
 package com.poketeambuilder.infrastructure.security;
 
-import java.util.Map;
 import java.io.IOException;
 
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Component;
@@ -17,8 +15,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import tools.jackson.databind.ObjectMapper;
-
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -30,20 +26,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
+    private final SecurityErrorWriter errorWriter;
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-        Map<String, Object> body = Map.of(
-                "status", HttpStatus.UNAUTHORIZED.value(),
-                "error", "Unauthorized",
-                "message", resolveMessage(authException),
-                "path", request.getRequestURI());
-
-        objectMapper.writeValue(response.getOutputStream(), body);
+        errorWriter.write(request, response, HttpStatus.UNAUTHORIZED, resolveMessage(authException));
     }
 
     private String resolveMessage(AuthenticationException ex) {

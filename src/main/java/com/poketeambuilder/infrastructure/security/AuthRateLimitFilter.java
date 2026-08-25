@@ -5,9 +5,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import java.util.List;
-import java.util.Map;
 
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Component;
@@ -23,8 +21,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import tools.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -48,7 +44,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final int WINDOW_MINUTES = 1;
     private static final List<String> RATE_LIMITED_PATH_PREFIXES = List.of("/api/auth/", "/api/contact");
 
-    private final ObjectMapper objectMapper;
+    private final SecurityErrorWriter errorWriter;
 
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
         .expireAfterAccess(Duration.ofMinutes(5))
@@ -64,17 +60,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setHeader("Retry-After", String.valueOf(WINDOW_MINUTES * 60));
 
-        Map<String, Object> body = Map.of(
-            "status", HttpStatus.TOO_MANY_REQUESTS.value(),
-            "error", "Too Many Requests",
-            "message", "Rate limit exceeded. Please try again later.",
-            "path", request.getRequestURI());
-
-        objectMapper.writeValue(response.getOutputStream(), body);
+        errorWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
+            "Rate limit exceeded. Please try again later.");
     }
 
     @Override
