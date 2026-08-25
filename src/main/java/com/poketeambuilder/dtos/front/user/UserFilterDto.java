@@ -4,6 +4,8 @@ import com.poketeambuilder.interfaces.FilterDtoInterface;
 
 import java.time.Instant;
 
+import jakarta.validation.constraints.Pattern;
+
 import lombok.Getter;
 
 /**
@@ -22,6 +24,9 @@ public class UserFilterDto implements FilterDtoInterface {
 
     private String email;
 
+    /** Matched case-insensitively against {@link com.poketeambuilder.utils.enums.UserRole}. */
+    @Pattern(regexp = "USER|ADMIN", flags = Pattern.Flag.CASE_INSENSITIVE,
+             message = "Role must be one of USER, ADMIN")
     private String role;
 
     private Boolean enabled;
@@ -29,4 +34,6 @@ public class UserFilterDto implements FilterDtoInterface {
     private Instant createdAfter;
 
     private Instant createdBefore;
+
+    private Boolean includeDeleted;
 }
