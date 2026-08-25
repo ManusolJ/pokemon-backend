@@ -66,7 +66,7 @@ public class PasswordResetService {
             return;
         }
 
-        emailService.sendPasswordResetEmail(prepared.email(), prepared.url());
+        emailService.sendPasswordResetEmail(prepared.email(), prepared.url(), tokenExpirationMinutes);
     }
 
     /**
