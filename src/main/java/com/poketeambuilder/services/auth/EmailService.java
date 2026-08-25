@@ -29,8 +29,12 @@ public class EmailService {
     @Value("${app.mail.contact-to}")
     private String contactToAddress;
 
-    /** Sends the one-time password-reset link to the user. */
-    public void sendPasswordResetEmail(String to, String resetUrl) {
+    /**
+     * Sends the one-time password-reset link to the user.
+     *
+     * @param expirationMinutes the token's real lifetime.
+     */
+    public void sendPasswordResetEmail(String to, String resetUrl, int expirationMinutes) {
         SimpleMailMessage message = new SimpleMailMessage();
 
         message.setTo(to);
@@ -40,7 +44,7 @@ public class EmailService {
             "You requested a password reset.\n\n" +
             "Click the link below to reset your password:\n" +
             resetUrl + "\n\n" +
-            "This link expires in 30 minutes.\n\n" +
+            "This link expires in " + expirationMinutes + " minutes.\n\n" +
             "If you didn't request this, you can safely ignore this email."
         );
 
