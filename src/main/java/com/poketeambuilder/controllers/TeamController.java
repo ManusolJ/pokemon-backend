@@ -58,28 +58,28 @@ public class TeamController {
 
     /** Public catalog of teams. */
     @PostMapping("/public/filter")
-    public ResponseEntity<Page<TeamSummaryDto>> getPublicTeams(@AuthenticationPrincipal UserDetails user, @PageableDefault(page = 0, size = 20, sort = "likeCount", direction = Direction.DESC) Pageable pageable, @RequestBody TeamFilterDto filter) {
+    public ResponseEntity<Page<TeamSummaryDto>> getPublicTeams(@AuthenticationPrincipal UserDetails user, @PageableDefault(page = 0, size = 20, sort = "likeCount", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody TeamFilterDto filter) {
         Page<TeamSummaryDto> summaries = teamQueryService.filterPublicSummaries(filter, pageable, usernameOrNull(user));
         return ResponseEntity.ok(summaries);
     }
 
     /** Single public team read. */
     @PostMapping("/public/id")
-    public ResponseEntity<TeamReadDto> getPublicTeamById(@AuthenticationPrincipal UserDetails user, @RequestBody TeamFilterDto filter) {
+    public ResponseEntity<TeamReadDto> getPublicTeamById(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody TeamFilterDto filter) {
         TeamReadDto team = teamQueryService.findPublicTeamById(filter.getId(), usernameOrNull(user));
         return ResponseEntity.ok(team);
     }
 
     /** Authenticated user's own teams (public + private). */
     @PostMapping("/me/filter")
-    public ResponseEntity<Page<TeamSummaryDto>> getMyTeams(@AuthenticationPrincipal UserDetails user, @PageableDefault(page = 0, size = 20, sort = "createdAt", direction = Direction.DESC) Pageable pageable, @RequestBody TeamFilterDto filter) {
+    public ResponseEntity<Page<TeamSummaryDto>> getMyTeams(@AuthenticationPrincipal UserDetails user, @PageableDefault(page = 0, size = 20, sort = "createdAt", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody TeamFilterDto filter) {
         Page<TeamSummaryDto> summaries = teamQueryService.filterOwnedSummaries(filter, pageable, user.getUsername());
         return ResponseEntity.ok(summaries);
     }
 
     /** Single owned-team read. 404s if the team isn't owned by the caller. */
     @PostMapping("/me/id")
-    public ResponseEntity<TeamReadDto> getMyTeamById(@AuthenticationPrincipal UserDetails user, @RequestBody TeamFilterDto filter) {
+    public ResponseEntity<TeamReadDto> getMyTeamById(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody TeamFilterDto filter) {
         TeamReadDto team = teamQueryService.findOwnedTeamById(filter.getId(), user.getUsername());
         return ResponseEntity.ok(team);
     }

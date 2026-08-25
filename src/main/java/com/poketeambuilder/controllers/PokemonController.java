@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -32,28 +34,28 @@ public class PokemonController {
 
     /** Paged Pokemon forms matching the filter. */
     @PostMapping("/filter")
-    public ResponseEntity<Page<PokemonReadDto>> getPokemon(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @RequestBody PokemonFilterDto filter) {
+    public ResponseEntity<Page<PokemonReadDto>> getPokemon(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @Valid @RequestBody PokemonFilterDto filter) {
         Page<PokemonReadDto> pokemon = pokemonQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(pokemon);
     }
 
     /** Single Pokemon form by id (filter.id). */
     @PostMapping("/id")
-    public ResponseEntity<PokemonReadDto> getPokemonById(@RequestBody PokemonFilterDto filter) {
+    public ResponseEntity<PokemonReadDto> getPokemonById(@Valid @RequestBody PokemonFilterDto filter) {
         PokemonReadDto pokemon = pokemonQueryService.findById(filter.getId());
         return ResponseEntity.ok(pokemon);
     }
 
     /** Paged Pokemon forms as lightweight summaries. */
     @PostMapping("/summaries")
-    public ResponseEntity<Page<PokemonSummaryDto>> getPokemonSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @RequestBody PokemonFilterDto filter) {
+    public ResponseEntity<Page<PokemonSummaryDto>> getPokemonSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable, @Valid @RequestBody PokemonFilterDto filter) {
         Page<PokemonSummaryDto> pokemonSummaries = pokemonQueryService.filterSummaries(filter, pageable);
         return ResponseEntity.ok(pokemonSummaries);
     }
 
     /** Count of Pokemon forms matching the filter. */
     @PostMapping("/count")
-    public ResponseEntity<Long> getPokemonCount(@RequestBody PokemonFilterDto filter) {
+    public ResponseEntity<Long> getPokemonCount(@Valid @RequestBody PokemonFilterDto filter) {
         Long pokemonCount = pokemonQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(pokemonCount);
     }

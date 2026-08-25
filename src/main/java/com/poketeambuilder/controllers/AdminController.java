@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -59,7 +61,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<SeedLogReadDto>> getSeedLogs(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable,
-            @RequestBody SeedLogFilterDto filter) {
+            @Valid @RequestBody SeedLogFilterDto filter) {
         Page<SeedLogReadDto> page = seedLogQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(page);
     }
@@ -69,7 +71,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<AuditLogReadDto>> getAuditLogs(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable,
-            @RequestBody AuditLogFilterDto filter) {
+            @Valid @RequestBody AuditLogFilterDto filter) {
         Page<AuditLogReadDto> page = auditLogQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(page);
     }

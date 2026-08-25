@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -37,7 +39,7 @@ public class MoveController {
     @PostMapping("/filter")
     public ResponseEntity<Page<MoveReadDto>> getMoves(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable,
-            @RequestBody MoveFilterDto filter) {
+            @Valid @RequestBody MoveFilterDto filter) {
         Page<MoveReadDto> moves = moveQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(moves);
     }
@@ -46,21 +48,21 @@ public class MoveController {
     @PostMapping("/summaries")
     public ResponseEntity<Page<MoveSummaryDto>> getMoveSummaries(
             @PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.ASC) Pageable pageable,
-            @RequestBody MoveFilterDto filter) {
+            @Valid @RequestBody MoveFilterDto filter) {
         Page<MoveSummaryDto> summaries = moveQueryService.filterSummaries(filter, pageable);
         return ResponseEntity.ok(summaries);
     }
 
     /** Single move by id (filter.id). */
     @PostMapping("/id")
-    public ResponseEntity<MoveReadDto> getMoveById(@RequestBody MoveFilterDto filter) {
+    public ResponseEntity<MoveReadDto> getMoveById(@Valid @RequestBody MoveFilterDto filter) {
         MoveReadDto move = moveQueryService.findById(filter.getId());
         return ResponseEntity.ok(move);
     }
 
     /** Count of moves matching the filter. */
     @PostMapping("/count")
-    public ResponseEntity<Long> getMoveCount(@RequestBody MoveFilterDto filter) {
+    public ResponseEntity<Long> getMoveCount(@Valid @RequestBody MoveFilterDto filter) {
         long count = moveQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(count);
     }

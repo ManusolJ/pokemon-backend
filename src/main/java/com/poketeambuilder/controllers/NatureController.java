@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -32,21 +34,21 @@ public class NatureController {
 
     /** Paged natures matching the filter. */
     @PostMapping("/filter")
-    public ResponseEntity<Page<NatureReadDto>> getNatures(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody NatureFilterDto filter) {
+    public ResponseEntity<Page<NatureReadDto>> getNatures(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody NatureFilterDto filter) {
         Page<NatureReadDto> natures = natureQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(natures);
     }
 
     /** Single nature by id (filter.id). */
     @PostMapping("/id")
-    public ResponseEntity<NatureReadDto> getNatureById(@RequestBody NatureFilterDto filter) {
+    public ResponseEntity<NatureReadDto> getNatureById(@Valid @RequestBody NatureFilterDto filter) {
         NatureReadDto nature = natureQueryService.findById(filter.getId());
         return ResponseEntity.ok(nature);
     }
 
     /** Count of natures matching the filter. */
     @PostMapping("/count")
-    public ResponseEntity<Long> getNatureCount(@RequestBody NatureFilterDto filter) {
+    public ResponseEntity<Long> getNatureCount(@Valid @RequestBody NatureFilterDto filter) {
         long count = natureQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(count);
     }

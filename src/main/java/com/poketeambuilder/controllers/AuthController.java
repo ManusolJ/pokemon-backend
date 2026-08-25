@@ -15,6 +15,8 @@ import com.poketeambuilder.dtos.auth.PasswordResetConfirmDto;
 import com.poketeambuilder.dtos.auth.PasswordResetRequestDto;
 import com.poketeambuilder.dtos.auth.RefreshTokenRequestDto;
 
+import com.poketeambuilder.infrastructure.security.AuthRateLimitFilter;
+
 import com.poketeambuilder.services.auth.AuthService;
 import com.poketeambuilder.services.auth.PasswordResetService;
 

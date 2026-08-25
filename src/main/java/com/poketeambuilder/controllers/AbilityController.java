@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -33,28 +35,28 @@ public class AbilityController {
 
     /** Paged abilities matching the filter. */
     @PostMapping("/filter")
-    public ResponseEntity<Page<AbilityReadDto>> getAbilities(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody AbilityFilterDto filter) {
+    public ResponseEntity<Page<AbilityReadDto>> getAbilities(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody AbilityFilterDto filter) {
         Page<AbilityReadDto> abilities = abilityQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(abilities);
     }
 
     /** Paged abilities as lightweight summaries. */
     @PostMapping("/summaries")
-    public ResponseEntity<Page<AbilitySummaryDto>> getAbilitySummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody AbilityFilterDto filter) {
+    public ResponseEntity<Page<AbilitySummaryDto>> getAbilitySummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody AbilityFilterDto filter) {
         Page<AbilitySummaryDto> summaries = abilityQueryService.filterAbilitySummaries(filter, pageable);
         return ResponseEntity.ok(summaries);
     }
 
     /** Single ability by id (filter.id). */
     @PostMapping("/id")
-    public ResponseEntity<AbilityReadDto> getAbilityById(@RequestBody AbilityFilterDto filter) {
+    public ResponseEntity<AbilityReadDto> getAbilityById(@Valid @RequestBody AbilityFilterDto filter) {
         AbilityReadDto ability = abilityQueryService.findById(filter.getId());
         return ResponseEntity.ok(ability);
     }
 
     /** Count of abilities matching the filter. */
     @PostMapping("/count")
-    public ResponseEntity<Long> getAbilityCount(@RequestBody AbilityFilterDto filter) {
+    public ResponseEntity<Long> getAbilityCount(@Valid @RequestBody AbilityFilterDto filter) {
         long count = abilityQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(count);
     }

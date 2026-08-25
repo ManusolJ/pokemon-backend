@@ -83,7 +83,7 @@ public class UserController {
     /** Admin: paged user listing filtered by {@link UserFilterDto}. */
     @PostMapping("/admin/filter")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<UserReadDto>> getUsers(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody UserFilterDto filter) {
+    public ResponseEntity<Page<UserReadDto>> getUsers(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody UserFilterDto filter) {
         Page<UserReadDto> users = userQueryService.filterEntities(filter, pageable);
         return ResponseEntity.ok(users);
     }
@@ -91,7 +91,7 @@ public class UserController {
     /** Admin: paged lightweight summaries (id + username + email + role + enabled). */
     @PostMapping("/admin/summaries")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<UserSummaryDto>> getUserSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @RequestBody UserFilterDto filter) {
+    public ResponseEntity<Page<UserSummaryDto>> getUserSummaries(@PageableDefault(page = 0, size = 20, sort = "id", direction = Direction.DESC) Pageable pageable, @Valid @RequestBody UserFilterDto filter) {
         Page<UserSummaryDto> summaries = userQueryService.filterSummaries(filter, pageable);
         return ResponseEntity.ok(summaries);
     }
@@ -99,7 +99,7 @@ public class UserController {
     /** Admin: single-user fetch by id. */
     @PostMapping("/admin/id")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserReadDto> getUserById(@RequestBody UserFilterDto filter) {
+    public ResponseEntity<UserReadDto> getUserById(@Valid @RequestBody UserFilterDto filter) {
         UserReadDto user = userQueryService.findById(filter.getId());
         return ResponseEntity.ok(user);
     }
@@ -107,7 +107,7 @@ public class UserController {
     /** Admin: count of users matching a filter. */
     @PostMapping("/admin/count")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Long> getUserCount(@RequestBody UserFilterDto filter) {
+    public ResponseEntity<Long> getUserCount(@Valid @RequestBody UserFilterDto filter) {
         long count = userQueryService.countFilteredEntities(filter);
         return ResponseEntity.ok(count);
     }
