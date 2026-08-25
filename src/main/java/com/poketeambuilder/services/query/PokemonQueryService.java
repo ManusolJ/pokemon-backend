@@ -159,10 +159,6 @@ public class PokemonQueryService extends AbstractQueryService<Pokemon, Integer, 
     protected Specification<Pokemon> buildSpecification(@NotNull PokemonFilterDto filter) {
         SpecificationBuilder<Pokemon> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

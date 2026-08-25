@@ -74,10 +74,6 @@ public class AbilityQueryService extends AbstractQueryService<Ability, Integer, 
     protected Specification<Ability> buildSpecification(@NotNull AbilityFilterDto filter) {
         SpecificationBuilder<Ability> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

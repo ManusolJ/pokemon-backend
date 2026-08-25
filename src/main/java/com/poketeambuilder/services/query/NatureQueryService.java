@@ -67,10 +67,6 @@ public class NatureQueryService extends AbstractQueryService<Nature, Integer, Na
     protected Specification<Nature> buildSpecification(@NotNull NatureFilterDto filter) {
         SpecificationBuilder<Nature> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

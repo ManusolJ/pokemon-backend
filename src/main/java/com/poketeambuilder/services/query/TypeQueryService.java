@@ -65,10 +65,6 @@ public class TypeQueryService extends AbstractQueryService<Type, Integer, TypeFi
     protected Specification<Type> buildSpecification(@NotNull TypeFilterDto filter) {
         SpecificationBuilder<Type> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

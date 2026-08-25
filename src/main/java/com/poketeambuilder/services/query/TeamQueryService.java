@@ -131,6 +131,13 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return withPokemonAndLike(dto, pokemonMap.getOrDefault(id, List.of()), likedIds.contains(id));
     }
 
+    /**
+     * Full-DTO listing. No endpoint routes here today - the controller serves summaries - but the
+     * override has to exist: {@code AbstractQueryService.filterEntities} maps through
+     * {@code TeamMapper.toReadDto}, which ignores {@code pokemon} and {@code likedByCurrentUser},
+     * so inheriting it would hand back rosterless teams with the like flag always false. The
+     * enrichment below is what makes the inherited contract truthful.
+     */
     @Override
     public Page<TeamReadDto> filterEntities(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable) {
         return filterEntities(filter, pageable, null);
@@ -205,7 +212,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     }
 
     /** Generic team summary listing. Enriches each row with sprite URLs + the liked-by-me flag. */
-    public Page<TeamSummaryDto> filterSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
+    private Page<TeamSummaryDto> filterSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
         Page<TeamSummaryDto> page = filterAndMap(filter, pageable, teamMapper::toSummaryDto);
 
         List<Long> ids = page.getContent().stream().map(TeamSummaryDto::id).toList();
@@ -227,10 +234,6 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
     @Override
     protected Specification<Team> buildSpecification(@NotNull TeamFilterDto filter) {
         SpecificationBuilder<Team> builder = new SpecificationBuilder<>();
-
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
 
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
@@ -278,7 +281,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
                         Collectors.toList())));
     }
 
-    /** Pulls the per-slot sprite URLs only. UIsed by the summary listings to avoid the full join. */
+    /** Pulls the per-slot sprite URLs only. Used by the summary listings to avoid the full join. */
     private Map<Long, List<String>> fetchSpritesForTeams(List<Long> teamIds) {
         return teamPokemonRepository.findSpritesByTeamIdIn(teamIds).stream()
                 .sorted(Comparator.comparing(TeamSpriteProjection::getSlot))
@@ -320,7 +323,8 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
 
     private TeamSummaryDto withSpritesAndLike(TeamSummaryDto dto, List<String> sprites, boolean liked) {
         return new TeamSummaryDto(
-                dto.id(), dto.name(), dto.slug(), dto.isPublic(), dto.likeCount(), dto.createdAt(),dto.updatedAt() ,dto.owner(), sprites, liked);
+                    dto.id(), dto.name(), dto.slug(), dto.isPublic(), dto.likeCount(),
+                dto.createdAt(), dto.updatedAt(), dto.owner(), sprites, liked);
     }
 
     private TeamPokemonReadDto withMoves(TeamPokemonReadDto dto, List<TeamPokemonMoveEmbedDto> moves) {

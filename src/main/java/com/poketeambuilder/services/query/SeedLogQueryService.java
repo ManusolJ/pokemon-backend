@@ -11,6 +11,7 @@ import com.poketeambuilder.mappers.implementation.SeedLogMapper;
 import com.poketeambuilder.repositories.BaseRepository;
 import com.poketeambuilder.repositories.SeedLogRepository;
 
+import com.poketeambuilder.utils.enums.SeedStatus;
 import com.poketeambuilder.utils.enums.SearchOperation;
 import com.poketeambuilder.utils.specification.SpecificationBuilder;
 
@@ -67,15 +68,11 @@ public class SeedLogQueryService extends AbstractQueryService<SeedLog, Long, See
     protected Specification<SeedLog> buildSpecification(@NotNull SeedLogFilterDto filter) {
         SpecificationBuilder<SeedLog> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }
         if (filter.getStatus() != null && !filter.getStatus().isBlank()) {
-            builder.with(FIELD_STATUS, filter.getStatus(), SearchOperation.EQUAL);
+            builder.with(FIELD_STATUS, SeedStatus.fromValue(filter.getStatus()), SearchOperation.EQUAL);
         }
         if (filter.getTriggeredBy() != null && !filter.getTriggeredBy().isBlank()) {
             builder.with(FIELD_TRIGGERED_BY, filter.getTriggeredBy(), SearchOperation.LIKE);

@@ -108,14 +108,9 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
         return getRepository().count(buildSpecification(filter));
     }
 
-    /** Existence check by id, used by command services before applying mutations. */
-    protected boolean existsById(@NotNull ID id) {
-        return getRepository().existsById(id);
-    }
-
     /**
      * Override hook for subclasses that want to JOIN-FETCH associations on read queries.
-     * Called on every data query (skipped on count queries). Default is no operattion.
+     * Called on every data query (skipped on count queries). Default is no operation.
      */
     protected void applyFetches(Root<E> root, CriteriaQuery<?> query) {
 
@@ -153,6 +148,7 @@ public abstract class AbstractQueryService<E, ID, F extends FilterDtoInterface, 
             return loader.get();
         }
 
+        @SuppressWarnings("unchecked")
         T value = (T) cache.get(key, loader::get);
 
         return value;

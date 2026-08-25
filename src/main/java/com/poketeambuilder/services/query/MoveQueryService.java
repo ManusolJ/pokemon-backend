@@ -33,6 +33,7 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.criteria.CriteriaQuery;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -92,7 +93,7 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     }
 
     /** Compact projection for embed / picker use cases. */
-    public Page<MoveSummaryDto> filterSummaries(@NotNull MoveFilterDto filter, @NotNull Pageable pageable) {
+    public Page<MoveSummaryDto> filterSummaries(@Valid @NotNull MoveFilterDto filter, @NotNull Pageable pageable) {
         return filterAndMap(filter, pageable, moveMapper::toSummaryDto);
     }
 
@@ -105,10 +106,6 @@ public class MoveQueryService extends AbstractQueryService<Move, Integer, MoveFi
     @Override
     protected Specification<Move> buildSpecification(@NotNull MoveFilterDto filter) {
         SpecificationBuilder<Move> builder = new SpecificationBuilder<>();
-
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
 
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);

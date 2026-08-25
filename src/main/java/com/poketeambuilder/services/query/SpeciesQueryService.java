@@ -190,10 +190,6 @@ public class SpeciesQueryService extends AbstractQueryService<PokemonSpecies, In
     protected Specification<PokemonSpecies> buildSpecification(@NotNull PokemonFilterDto filter) {
         SpecificationBuilder<PokemonSpecies> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

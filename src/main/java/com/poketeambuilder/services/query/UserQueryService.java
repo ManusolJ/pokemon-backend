@@ -31,7 +31,10 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-/** Read access to {@link AppUser} for the admin endpoints. Uncached. */
+/**
+ * Read access to {@link AppUser} for the admin endpoints. Uncached.
+ *
+ */
 @Service
 @Validated
 public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFilterDto, UserReadDto> {
@@ -90,7 +93,9 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     protected Specification<AppUser> buildSpecification(@NotNull UserFilterDto filter) {
         SpecificationBuilder<AppUser> builder = new SpecificationBuilder<>();
 
-        builder.with(FIELD_DELETED_AT, null, SearchOperation.IS_NULL);
+        if (!filter.getIncludeDeleted()) {
+            builder.with(FIELD_DELETED_AT, null, SearchOperation.IS_NULL);
+        }
 
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);

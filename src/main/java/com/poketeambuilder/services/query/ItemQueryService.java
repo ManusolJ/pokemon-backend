@@ -74,10 +74,6 @@ public class ItemQueryService extends AbstractQueryService<Item, Integer, ItemFi
     protected Specification<Item> buildSpecification(@NotNull ItemFilterDto filter) {
         SpecificationBuilder<Item> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getId() != null) {
             builder.with(FIELD_ID, filter.getId(), SearchOperation.EQUAL);
         }

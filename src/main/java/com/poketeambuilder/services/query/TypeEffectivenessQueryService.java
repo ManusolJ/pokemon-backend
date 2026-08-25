@@ -78,10 +78,6 @@ public class TypeEffectivenessQueryService extends AbstractQueryService<TypeEffe
     protected Specification<TypeEffectiveness> buildSpecification(@NotNull TypeEffectivenessFilterDto filter) {
         SpecificationBuilder<TypeEffectiveness> builder = new SpecificationBuilder<>();
 
-        if (!filter.hasAnyCriteria()) {
-            return builder.build();
-        }
-
         if (filter.getAttackingTypeId() != null) {
             builder.with(FIELD_ATTACKING_TYPE_ID, filter.getAttackingTypeId(), SearchOperation.EQUAL);
         }
