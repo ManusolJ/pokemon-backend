@@ -1,5 +1,7 @@
 package com.poketeambuilder.entities;
 
+import com.poketeambuilder.infrastructure.validation.annotations.ValidEvSpread;
+
 import com.poketeambuilder.utils.enums.PokemonGender;
 
 import jakarta.persistence.Id;
@@ -192,8 +194,8 @@ public class TeamPokemon {
     @PrePersist
     @PreUpdate
     private void validateEvTotal() {
-        if (evHp + evAtk + evDef + evSpAtk + evSpDef + evSpeed > 510) {
-            throw new IllegalArgumentException("Total EVs cannot exceed 510");
+        if (evHp + evAtk + evDef + evSpAtk + evSpDef + evSpeed > ValidEvSpread.MAX_TOTAL_EVS) {
+            throw new IllegalArgumentException("Total EVs cannot exceed " + ValidEvSpread.MAX_TOTAL_EVS);
         }
     }
 }
