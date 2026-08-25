@@ -1,10 +1,10 @@
 <div align="center">
 
-# PokéTeam Builder - Backend
+# PokeTeam Builder - Backend
 
 **REST API powering [pokemon-team-builder.com](https://pokemon-team-builder.com)**
 
-A competitive team builder with a full reference Pokédex, a team analysis engine,
+A competitive team builder with a full reference Pokedex, a team analysis engine,
 community sharing and an administration panel.
 
 <br>
@@ -29,6 +29,7 @@ community sharing and an administration panel.
 <a href="#design-decisions">Design decisions</a> ·
 <a href="#api-overview">API</a> ·
 <a href="#running-it-locally">Running it</a> ·
+<a href="#testing">Testing</a> ·
 <a href="#deployment">Deployment</a> ·
 <a href="#project-status-and-roadmap">Roadmap</a>
 
@@ -75,12 +76,12 @@ community sharing and an administration panel.
 
 ## Why it exists
 
-Competitive Pokémon players work across a fragmented set of tools: one site has a
-searchable Pokédex but no builder, another has a builder but no way to publish a team,
+Competitive Pokemon players work across a fragmented set of tools: one site has a
+searchable Pokedex but no builder, another has a builder but no way to publish a team,
 and none of them keep a synchronised copy of the official game data. Building a single
 team means juggling three tabs and a notes file.
 
-PokéTeam Builder unifies data exploration, team composition and team sharing behind one
+PokeTeam Builder unifies data exploration, team composition and team sharing behind one
 API, backed by a local mirror of the official dataset so the app does not depend on a
 third-party service being up at request time.
 
@@ -90,7 +91,7 @@ third-party service being up at request time.
 
 ### Team building
 
-- Teams of up to six Pokémon, each configured with nickname, level, gender, shiny flag,
+- Teams of up to six Pokemon, each configured with nickname, level, gender, shiny flag,
   ability, nature, held item, Tera type and up to four moves.
 - Full EV and IV spreads stored per team member, with derived stats calculated from base
   stats, nature and level.
@@ -111,19 +112,25 @@ every roster edit, so it runs client-side rather than costing a round trip per c
 | **Role spread**        | Each member classified into a competitive role derived from its stat distribution and moveset. |
 | **Team stats**         | Per-stat totals, averages and the team's base stat total.                                      |
 
-### Reference data (Pokédex)
+### Reference data (Pokedex)
 
 Paginated and filterable catalogues, all served from the local database:
 
 | Resource  | Entries | Filters                                                                                                           |
 | :-------- | ------: | :---------------------------------------------------------------------------------------------------------------- |
-| Pokémon   |   1,025 | name, type, generation, baby / mythical / legendary / genderless, pre-evolution, evolution item, base stat ranges |
+| Pokemon   |   1,291 | name, type, generation, baby / mythical / legendary / genderless, pre-evolution, evolution item, base stat ranges |
+| Species   |   1,025 | name, generation, evolution line, egg group, growth rate                                                          |
 | Moves     |     919 | name, type, category, power range, accuracy range                                                                 |
-| Abilities |     311 | name                                                                                                              |
-| Items     |     305 | name, category                                                                                                    |
+| Abilities |     313 | name                                                                                                              |
+| Items     |     350 | name, category                                                                                                    |
 | Natures   |      25 | stat increased / decreased                                                                                        |
 
 Plus a type-effectiveness matrix that resolves dual-type defending combinations.
+
+> [!NOTE]
+> Counts are as of the most recent seed. `Pokemon` counts forms - regional variants, megas
+> and Gmax each have their own row, while `Species` counts evolution lines. PokeAPI keeps
+> adding entries, so a later re-seed will move these numbers.
 
 ### Accounts
 
@@ -137,7 +144,7 @@ Plus a type-effectiveness matrix that resolves dual-type defending combinations.
 - **User management:** search and filter by role, status and registration date; edit,
   disable or delete accounts.
 - **Seed process:** on-demand synchronisation of the entire dataset from
-  [PokéAPI](https://pokeapi.co/), behind an explicit destructive-operation confirmation.
+  [PokeAPI](https://pokeapi.co/), behind an explicit destructive-operation confirmation.
 - **Seed logs:** every run recorded with trigger, duration, records inserted, error count
   and terminal state. A representative run: **127,633 records in 15m 43s with 0 errors.**
 - **Audit logs:** a separate trail of administrative actions.
@@ -161,7 +168,7 @@ flowchart TD
         DB[("PostgreSQL 17<br>Flyway V1-V24")]
     end
 
-    PokeAPI["PokéAPI"]
+    PokeAPI["PokeAPI"]
     Brevo["Brevo"]
 
     Browser -- HTTPS --> SPA
@@ -186,7 +193,7 @@ services/
   ├── query/      read paths
   ├── command/    write paths
   ├── auth/       authentication and token lifecycle
-  └── seed/       PokéAPI synchronisation
+  └── seed/       PokeAPI synchronisation
 repositories/     Spring Data JPA
 entities/         JPA model
 dtos/             front · pokeapi · auth
@@ -206,9 +213,9 @@ validation-heavy.
 ### Idempotent seeding keyed on external IDs
 
 The dataset is not bundled with the application. An administrator triggers an import from
-PokéAPI, and the obvious risk is that re-importing would orphan every saved team.
+PokeAPI, and the obvious risk is that re-importing would orphan every saved team.
 
-Catalogue entities are therefore keyed on **PokéAPI's own stable identifiers** rather than
+Catalogue entities are therefore keyed on **PokeAPI's own stable identifiers** rather than
 locally generated surrogate keys. A re-seed saves every row under the id it already has, so
 reference data is replaced in place and user-owned rows keep pointing at the same species,
 moves and items.
@@ -222,7 +229,7 @@ with no `ON DELETE` action, so the database would refuse the delete outright.
 
 The endpoint follows a **fire-and-poll** pattern: it writes a `seed_log` row, returns
 immediately, and runs the synchronisation on a background thread with pagination and
-retries against PokéAPI. Progress and outcome are read back from the log rather than held
+retries against PokeAPI. Progress and outcome are read back from the log rather than held
 open on an HTTP connection, since a 15-minute request would time out at every layer in
 between.
 
@@ -231,13 +238,13 @@ year, so a scheduled job would burn requests against a free public API for nothi
 
 ### Species and forms as separate entities
 
-`PokemonSpecies` models the Pokédex-level entity (Pikachu: evolution chain, egg groups,
+`PokemonSpecies` models the Pokedex-level entity (Pikachu: evolution chain, egg groups,
 flavour text). `Pokemon` models a concrete battle form (Mega Venusaur: its own base stats,
 types, sprites and abilities).
 
 Collapsing them into one table breaks immediately, because regional variants and mega
 evolutions share a species but differ in every stat that matters competitively. Splitting
-them keeps the Pokédex browsable by species while the team builder references exactly the
+them keeps the Pokedex browsable by species while the team builder references exactly the
 form being used.
 
 ### Cloudflare Tunnel instead of port forwarding
@@ -273,7 +280,7 @@ runs on hardware I own.
 
 ### Caching and pagination
 
-Pokédex reads are cached in memory with Caffeine, and every list endpoint paginates and
+Pokedex reads are cached in memory with Caffeine, and every list endpoint paginates and
 filters in SQL through a shared filter DTO. With 1,025 species and 919 moves, filtering in
 application memory would mean loading the entire catalogue per request.
 
@@ -294,14 +301,14 @@ past their retention window takes the teams with them by cascade.
 
 All endpoints live under `/api`.
 
-| Group              | Representative endpoints                                                                                                        | Access                |
-| :----------------- | :------------------------------------------------------------------------------------------------------------------------------ | :-------------------- |
-| **Authentication** | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/password-reset-request`, `/auth/password-reset`        | Public (rate-limited) |
-| **Pokédex**        | `/pokemon`, `/species`, `/moves`, `/abilities`, `/items`, `/types`, `/natures` - each with `filter`, `id`, `summaries`, `count` | Public                |
-| **Teams**          | `/teams/public/filter`, `/teams/public/id`, `/teams/me/filter`, `/teams/me/id`, `/teams` (CRUD), `/teams/{id}/like`             | Mixed                 |
-| **Users**          | `/users`                                                                                                                        | Authenticated         |
-| **Administration** | `/admin/seed`, `/admin/seed-logs/filter`, `/admin/audit-logs/filter`, `/admin/users/{id}/batch`                                 | `ADMIN`               |
-| **Contact**        | `/contact`                                                                                                                      | Public                |
+| Group              | Representative endpoints                                                                                                                                                                                      | Access                |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------- |
+| **Authentication** | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/password-reset-request`, `/auth/password-reset`                                                                                      | Public (rate-limited) |
+| **Pokedex**        | `/pokemon`, `/species`, `/moves`, `/abilities`, `/items` - each with `filter`, `id`, `summaries`, `count`; `/types` and `/natures` without `summaries`; plus `/types/effectiveness` and `/moves/pokemon/{id}` | Public                |
+| **Teams**          | `/teams/public/filter`, `/teams/public/id`, `/teams/me/filter`, `/teams/me/id`, `/teams` (CRUD), `/teams/{id}/like`                                                                                           | Mixed                 |
+| **Users**          | `/users`                                                                                                                                                                                                      | Authenticated         |
+| **Administration** | `/admin/seed`, `/admin/seed-logs/filter`, `/admin/audit-logs/filter`, `/users/admin/filter`, `/users/admin/batch/{disable,reactivate,hard}`                                                                   | `ADMIN`               |
+| **Contact**        | `/contact`                                                                                                                                                                                                    | Public                |
 
 ---
 
@@ -328,21 +335,37 @@ All endpoints live under `/api`.
 
 ## Running it locally
 
-**Requirements:** Docker and Docker Compose. Nothing else - the JDK and PostgreSQL both
-run in containers.
+**Requirements:** Docker for PostgreSQL, and a JDK 21 to run the application. The dev
+Compose file starts the database only - the app runs on the host, so it restarts fast and
+attaches to a debugger. Only `docker-compose.prod.yml` containerises both.
 
 ```bash
 git clone https://github.com/ManusolJ/pokemon-backend.git
 cd pokemon-backend
-
-cp .env.example .env.dev
-# fill in the values - see the table below
-
-docker compose -f docker-compose.dev.yml up --build
 ```
 
-Flyway applies all migrations automatically on startup. The API is then available at
-`http://localhost:${PORT}`, with Swagger UI at `/swagger-ui.html`.
+Two env files, read by different things:
+
+```bash
+cp .env.example .env.dev   # the Postgres container, via Compose
+cp .env.example .env       # the application, via springboot4-dotenv
+```
+
+`.env.dev` needs the `POSTGRES_*` values. `.env` needs those plus `DB_*`, `JWT_SECRET` and
+the `MAIL_*` block - see the table below.
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+```bash
+./mvnw spring-boot:run
+```
+
+Flyway applies all migrations on application startup, not on database startup. The API is
+then at `http://localhost:${PORT}` (8080 by default), with Swagger UI at `/swagger-ui.html`
+
+- enabled in the `dev` profile and switched off in `prod`.
 
 ### First-run setup
 
@@ -359,7 +382,7 @@ UPDATE app_user SET role = 'ADMIN' WHERE username = '<your-username>';
 panel, or `POST /api/admin/seed`.
 
 > [!IMPORTANT]
-> A full seed run takes roughly 15 minutes and makes several thousand requests to PokéAPI.
+> A full seed run takes roughly 15 minutes and makes several thousand requests to PokeAPI.
 > Run it once and keep the volume.
 
 ### Environment variables
@@ -373,16 +396,61 @@ panel, or `POST /api/admin/seed`.
 | **Security**             | `JWT_SECRET`, `ACCESS_TOKEN_EXPIRATION_MS`, `REFRESH_TOKEN_EXPIRATION_MS`, `PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES`, `PASSWORD_RESET_BASE_URL` |
 
 > [!IMPORTANT]
-> `.env.example` documents every supported variable. Development reads `.env.dev`,
-> production reads `.env.prod`; neither is committed.
+> `.env.example` documents every supported variable. Compose reads `.env.dev` in development
+> and `.env.prod` in production; the application reads `.env` when run on the host. None of
+> the three is committed.
+
+---
+
+## Testing
+
+On Windows PowerShell and `cmd`:
+
+```bash
+.\mvnw.cmd verify
+```
+
+`mvn verify` works too if Maven is on PATH;
+
+JUnit 6 with Mockito and AssertJ, plus Testcontainers for anything that touches the database.
+A JaCoCo report lands in `target/site/jacoco/`.
+
+| Layer            | What it covers                                                                                                                                                              |
+| :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pure units**   | Filter-to-predicate translation, token hashing, the PokeAPI text and sprite helpers, item de-duplication. No Spring context.                                                |
+| **Services**     | Token issuing and parsing, the refresh-rotation lifecycle including reuse detection, the last-administrator guard, team ownership and roster legality. Mockito, no context. |
+| **Access rules** | `@WebMvcTest` against the real routes: which paths are public, which need a token, which need `ADMIN`.                                                                      |
+| **Schema**       | Testcontainers on PostgreSQL 17 with the real migrations - foreign-key protection of catalogue rows, the partial indexes, and the repository queries.                       |
+
+### Running the schema tests
+
+The schema layer needs a real PostgreSQL. It **skips** the tests that need one when it isn't available.
+
+Two ways to run them locally. If Testcontainers can reach your Docker daemon, nothing to do:
+
+```bash
+.\mvnw.cmd verify
+```
+
+If it can't - Docker Desktop's API proxy answers the CLI but rejects the Java client on some
+builds. Point the tests at a database you start yourself:
+
+```bash
+docker run -d --rm --name poketeam-test-db -e POSTGRES_USER=poketeam -e POSTGRES_PASSWORD=poketeam -e POSTGRES_DB=poketeam_test -p 55432:5432 postgres:17-alpine
+```
+
+```bash
+.\mvnw.cmd verify -Dtest.datasource.url=jdbc:postgresql://localhost:55432/poketeam_test
+```
+
+Flyway builds the schema from scratch on whatever database it is given, so use a throwaway
+one.
 
 ---
 
 ## Deployment
 
 Deployment is automated.
-
-> Pushing to `main` is the entire operational procedure.
 
 ```mermaid
 flowchart LR
@@ -415,27 +483,26 @@ published exclusively through the Cloudflare Tunnel.
 
 Live and in use, but not finished. Known gaps, in the order I intend to close them:
 
-- [ ] **Automated tests.** The filter-to-predicate translation in `BaseSpecification` is
-      covered; the auth service - login, refresh rotation, reuse detection - and the seed
-      pipeline's mapping layer are next. Testcontainers for the repository layer after that,
-      since the interesting failures there are constraint behaviour H2 won't reproduce.
+- [ ] **Broader test coverage.** The suite covers the auth lifecycle, the access rules, the
+      business-rule services and the schema; the query services and the MapStruct mappers are
+      the next targets. See [Testing](#testing).
 - [ ] **Observability.** Metrics and traces; right now failure diagnosis is log-based.
 - [ ] **Cancellable seed runs.** The import cannot be interrupted once started.
 - [ ] **Staging environment** in the pipeline, with manual promotion to production.
 - [ ] **Team comparator** - pit two public teams against each other and analyse the
       matchup.
 - [ ] **Showdown import/export** in the standard team format.
-- [ ] **Admin statistics dashboard** - teams created per day, most-used Pokémon, like
+- [ ] **Admin statistics dashboard** - teams created per day, most-used Pokemon, like
       rates.
 
 ---
 
 ## Disclaimer
 
-> Pokémon and all related names are trademarks of Nintendo, Game Freak and The Pokémon
+> Pokemon and all related names are trademarks of Nintendo, Game Freak and The Pokemon
 > Company. This is a non-commercial fan project built for learning purposes and is not
 > affiliated with or endorsed by them. Game data comes from the community-maintained
-> [PokéAPI](https://pokeapi.co/).
+> [PokeAPI](https://pokeapi.co/).
 
 ---
 

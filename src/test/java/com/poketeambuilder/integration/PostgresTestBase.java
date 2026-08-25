@@ -1,6 +1,9 @@
 package com.poketeambuilder.integration;
 
-import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -29,7 +32,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ActiveProfiles("test")
 @Import(com.poketeambuilder.configuration.CacheConfig.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@EnabledIf("com.poketeambuilder.integration.PostgresTestBase#databaseAvailable")
+@ExtendWith(PostgresTestBase.DatabaseAvailable.class)
 public abstract class PostgresTestBase {
 
     private static final String POSTGRES_IMAGE = "postgres:17-alpine";
@@ -39,9 +42,26 @@ public abstract class PostgresTestBase {
     private static final String EXTERNAL_PASSWORD = propertyOrDefault("test.datasource.password", "poketeam");
 
     private static PostgreSQLContainer<?> container;
+    private static Boolean dockerUsable;
 
     static boolean databaseAvailable() {
-        return EXTERNAL_URL != null || DockerClientFactory.instance().isDockerAvailable();
+        return EXTERNAL_URL != null || dockerUsable();
+    }
+
+    /**
+     * Whether Testcontainers can actually obtain a Docker client.
+     *
+     */
+    private static synchronized boolean dockerUsable() {
+        if (dockerUsable == null) {
+            try {
+                DockerClientFactory.instance().client();
+                dockerUsable = true;
+            } catch (Throwable failure) {
+                dockerUsable = false;
+            }
+        }
+        return dockerUsable;
     }
 
     @DynamicPropertySource
@@ -74,5 +94,20 @@ public abstract class PostgresTestBase {
     private static String propertyOrDefault(String key, String fallback) {
         String value = property(key);
         return value == null ? fallback : value;
+    }
+
+    /**
+     * Skips these tests when there is no database to run them against.
+     *
+     */
+    static class DatabaseAvailable implements ExecutionCondition {
+
+        @Override
+        public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+            return databaseAvailable()
+                    ? ConditionEvaluationResult.enabled("A database is available")
+                    : ConditionEvaluationResult.disabled(
+                            "No -Dtest.datasource.url given and Docker is not usable from the JVM");
+        }
     }
 }
