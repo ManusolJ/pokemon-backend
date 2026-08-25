@@ -26,10 +26,12 @@ import com.poketeambuilder.utils.enums.AuditAction;
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import org.springframework.stereotype.Service;
@@ -138,9 +140,9 @@ public class AuthService {
             throw new InvalidTokenException("Refresh token expired");
         }
 
-        refreshTokenService.revoke(storedToken);
+        UserDetails userDetails = loadActiveUser(storedToken);
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(storedToken.getUser().getUsername());
+        refreshTokenService.revoke(storedToken);
 
         String newAccessToken = jwtService.generateAccessToken(userDetails);
         String newRefreshToken = jwtService.generateRefreshToken(userDetails);
@@ -149,6 +151,29 @@ public class AuthService {
                 Instant.now().plusMillis(refreshTokenExpirationMs));
 
         return new TokenResponseDto(newAccessToken, newRefreshToken, accessTokenExpirationMs);
+    }
+
+    /**
+     * Resolves the token's owner and refuses to mint anything for an account that can no longer
+     * sign in.
+     *
+     */
+    private UserDetails loadActiveUser(RefreshToken storedToken) {
+        UserDetails userDetails;
+
+        try {
+            userDetails = customUserDetailsService.loadUserByUsername(storedToken.getUser().getUsername());
+        } catch (UsernameNotFoundException e) {
+            refreshTokenService.revokeFamily(storedToken.getFamilyId());
+            throw new InvalidTokenException("Refresh token no longer resolves to an active account");
+        }
+
+        if (!userDetails.isEnabled()) {
+            refreshTokenService.revokeFamily(storedToken.getFamilyId());
+            throw new DisabledException("This account has been disabled");
+        }
+
+        return userDetails;
     }
 
     private Optional<AppUser> resolveUser(String identifier) {
