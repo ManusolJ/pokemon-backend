@@ -93,7 +93,7 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
     protected Specification<AppUser> buildSpecification(@NotNull UserFilterDto filter) {
         SpecificationBuilder<AppUser> builder = new SpecificationBuilder<>();
 
-        if (!filter.getIncludeDeleted()) {
+        if (!Boolean.TRUE.equals(filter.getIncludeDeleted())) {
             builder.with(FIELD_DELETED_AT, null, SearchOperation.IS_NULL);
         }
 
