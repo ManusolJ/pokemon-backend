@@ -6,6 +6,8 @@ import java.time.Duration;
 
 import java.util.List;
 
+import com.poketeambuilder.configuration.RateLimitProperties;
+
 import org.springframework.http.HttpStatus;
 
 import org.springframework.stereotype.Component;
@@ -30,11 +32,12 @@ import lombok.RequiredArgsConstructor;
  * per minute per IP, evicted after 5 minutes of inactivity. Returns a JSON 429 with a
  * {@code Retry-After} header when the bucket is empty.
  *
- * <p>The bucket key is {@code getRemoteAddr()}, never a forwarded-for header read straight
- * off the request: that header is client-supplied, so keying on it lets a caller mint a fresh
- * bucket per request and walk past the limit entirely. Behind the tunnel, prod sets
- * {@code server.forward-headers-strategy: framework}, which resolves the real client address
- * before this filter runs.</p>
+ * <p>The bucket key must be an address the client can't choose. {@code X-Forwarded-For} is not
+ * one: it is client-supplied, Cloudflare appends to it rather than replacing it, and the
+ * {@code framework} forward-headers strategy resolves {@code getRemoteAddr()} from its leftmost
+ * entry - so keying on either lets a caller mint a fresh bucket per request. Behind the tunnel
+ * the key is {@code CF-Connecting-IP} instead ({@link RateLimitProperties#clientIpHeader()}),
+ * which Cloudflare always overwrites. With no header configured the socket address is used.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -45,6 +48,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final List<String> RATE_LIMITED_PATH_PREFIXES = List.of("/api/auth/", "/api/contact");
 
     private final SecurityErrorWriter errorWriter;
+    private final RateLimitProperties rateLimitProperties;
 
     private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
         .expireAfterAccess(Duration.ofMinutes(5))
@@ -53,7 +57,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        Bucket bucket = buckets.get(request.getRemoteAddr(), k -> createBucket());
+        Bucket bucket = buckets.get(clientKey(request), k -> createBucket());
 
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
@@ -70,6 +74,20 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
         return RATE_LIMITED_PATH_PREFIXES.stream().noneMatch(uri::startsWith);
+    }
+
+    /** The trusted proxy's client-address header when one is configured and present, else the socket address. */
+    private String clientKey(HttpServletRequest request) {
+        String header = rateLimitProperties.clientIpHeader();
+
+        if (header != null && !header.isBlank()) {
+            String value = request.getHeader(header);
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+
+        return request.getRemoteAddr();
     }
 
     private Bucket createBucket() {

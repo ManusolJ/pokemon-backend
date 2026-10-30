@@ -7,6 +7,8 @@ import java.time.Instant;
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
 
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
+
 import com.poketeambuilder.dtos.auth.LoginDto;
 import com.poketeambuilder.dtos.auth.RegisterDto;
 import com.poketeambuilder.dtos.auth.TokenResponseDto;
@@ -22,8 +24,8 @@ import com.poketeambuilder.mappers.implementation.UserMapper;
 import com.poketeambuilder.services.command.AuditLogCommandService;
 
 import com.poketeambuilder.utils.enums.AuditAction;
+import com.poketeambuilder.utils.identity.IdentifierNormalizer;
 
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -59,41 +61,51 @@ public class AuthService {
     private final AuditLogCommandService auditLogCommandService;
     private final CustomUserDetailsService customUserDetailsService;
 
+    /**
+     * Hash an unknown identifier's password is checked against, so a miss costs one bcrypt
+     * comparison just like a hit. Built lazily with the configured encoder so its cost factor
+     * matches real hashes.
+     */
+    private volatile String timingDummyHash;
+
     /** Registers a new user with a fresh refresh-token family. */
     @Transactional
     public TokenResponseDto register(RegisterDto registerDto) {
-        if (appUserRepository.existsByUsernameAndDeletedAtIsNull(registerDto.getUsername())) {
+        if (appUserRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull(registerDto.getUsername())) {
             throw new ResourceAlreadyExistsException("Username is already taken");
         }
-        if (appUserRepository.existsByEmailAndDeletedAtIsNull(registerDto.getEmail())) {
+        if (appUserRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(registerDto.getEmail())) {
             throw new ResourceAlreadyExistsException("Email is already registered");
         }
 
         AppUser newUser = userMapper.toEntity(registerDto);
+        newUser.setEmail(IdentifierNormalizer.email(registerDto.getEmail()));
         newUser.setPassword(passwordEncoder.encode(registerDto.getPassword()));
 
         appUserRepository.save(newUser);
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(newUser.getUsername());
-
-        return buildTokenResponse(userDetails, newUser);
+        return buildTokenResponse(newUser);
     }
 
     /**
      * Authenticates by username-or-email + password, issues a new token pair under a fresh
      * family. An unknown identifier and a wrong password both end in
-     * {@link BadCredentialsException}, so the response can't be used to work out which
-     * accounts exist.
+     * {@link BadCredentialsException} after one bcrypt comparison each, so neither the response
+     * nor its timing can be used to work out which accounts exist.
      */
     public TokenResponseDto login(LoginDto loginDto) {
-        AppUser user = resolveUser(loginDto.getIdentifier())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        Optional<AppUser> resolved = resolveUser(loginDto.getIdentifier());
+
+        if (resolved.isEmpty()) {
+            spendEquivalentPasswordCheck(loginDto.getPassword());
+            throw new BadCredentialsException("Invalid credentials");
+        }
+
+        AppUser user = resolved.get();
 
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), loginDto.getPassword()));
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
-
-        return buildTokenResponse(userDetails, user);
+        return buildTokenResponse(user);
     }
 
     /** Revokes the entire refresh-token family belonging to the supplied refresh token. */
@@ -104,20 +116,26 @@ public class AuthService {
     }
 
     /**
-     * Rotates the refresh token: marks the supplied one as revoked, issues a new pair under
-     * the same family. If the supplied token is already revoked, treats it as a replay attack,
-     * revokes the entire family, and writes a {@code SECURITY_REFRESH_TOKEN_REUSE_DETECTED}
-     * audit log entry.
+     * Rotates the refresh token: spends the supplied one, issues a new pair under the same
+     * family. If the supplied token was already spent, treats it as a replay attack, revokes
+     * the entire family, and writes a {@code SECURITY_REFRESH_TOKEN_REUSE_DETECTED} audit entry.
+     *
+     * <p>Spending is a conditional UPDATE, so of two concurrent refreshes of one token exactly
+     * one wins; the other takes the reuse path instead of minting a second live branch.</p>
+     *
+     * <p>The rejections below still commit ({@code noRollbackFor}): each one revokes something
+     * before throwing, and a rollback would undo the revocation while the audit log claimed it
+     * happened, leaving a stolen token family alive.</p>
      */
-    @Transactional
+    @Transactional(noRollbackFor = {InvalidTokenException.class, DisabledException.class})
     public TokenResponseDto refresh(RefreshTokenRequestDto refreshTokenDto) {
-        String rawToken = refreshTokenDto.refreshToken();
+        RefreshToken storedToken = refreshTokenService.findByRawToken(refreshTokenDto.refreshToken());
 
-        RefreshToken storedToken = refreshTokenService.findByRawToken(rawToken);
+        UUID familyId = storedToken.getFamilyId();
+        AppUser owner = storedToken.getUser();
 
-        if (storedToken.isRevoked()) {
-            UUID familyId = storedToken.getFamilyId();
-            String username = storedToken.getUser().getUsername();
+        if (!refreshTokenService.consume(storedToken)) {
+            String username = owner.getUsername();
             refreshTokenService.revokeFamily(familyId);
             log.warn("Refresh token reuse detected for user '{}', family {} — revoking all sessions", username, familyId);
             auditLogCommandService.log(username,
@@ -132,14 +150,12 @@ public class AuthService {
             throw new InvalidTokenException("Refresh token expired");
         }
 
-        UserDetails userDetails = loadActiveUser(storedToken);
+        AuthenticatedUser principal = loadActiveUser(owner.getId(), familyId);
 
-        refreshTokenService.revoke(storedToken);
+        String newAccessToken = jwtService.generateAccessToken(principal);
+        String newRefreshToken = jwtService.generateRefreshToken(principal);
 
-        String newAccessToken = jwtService.generateAccessToken(userDetails);
-        String newRefreshToken = jwtService.generateRefreshToken(userDetails);
-
-        refreshTokenService.create(storedToken.getUser(), newRefreshToken, storedToken.getFamilyId(),
+        refreshTokenService.create(owner, newRefreshToken, familyId,
                 Instant.now().plusMillis(jwtService.getRefreshTokenExpirationMs()));
 
         return new TokenResponseDto(newAccessToken, newRefreshToken, jwtService.getAccessTokenExpirationMs());
@@ -147,38 +163,48 @@ public class AuthService {
 
     /**
      * Resolves the token's owner and refuses to mint anything for an account that can no longer
-     * sign in.
-     *
+     * sign in, ending the whole family on the way out.
      */
-    private UserDetails loadActiveUser(RefreshToken storedToken) {
-        UserDetails userDetails;
+    private AuthenticatedUser loadActiveUser(Long userId, UUID familyId) {
+        AuthenticatedUser principal;
 
         try {
-            userDetails = customUserDetailsService.loadUserByUsername(storedToken.getUser().getUsername());
+            principal = customUserDetailsService.loadUserById(userId);
         } catch (UsernameNotFoundException e) {
-            refreshTokenService.revokeFamily(storedToken.getFamilyId());
+            refreshTokenService.revokeFamily(familyId);
             throw new InvalidTokenException("Refresh token no longer resolves to an active account");
         }
 
-        if (!userDetails.isEnabled()) {
-            refreshTokenService.revokeFamily(storedToken.getFamilyId());
+        if (!principal.isEnabled()) {
+            refreshTokenService.revokeFamily(familyId);
             throw new DisabledException("This account has been disabled");
         }
 
-        return userDetails;
+        return principal;
     }
 
     private Optional<AppUser> resolveUser(String identifier) {
         if (identifier.contains("@")) {
-            return appUserRepository.findByEmailAndDeletedAtIsNull(identifier);
+            return appUserRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(IdentifierNormalizer.email(identifier));
         }
 
-        return appUserRepository.findByUsernameAndDeletedAtIsNull(identifier);
+        return appUserRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull(identifier);
     }
 
-    private TokenResponseDto buildTokenResponse(UserDetails userDetails, AppUser user) {
-        String accessToken = jwtService.generateAccessToken(userDetails);
-        String refreshToken = jwtService.generateRefreshToken(userDetails);
+    private void spendEquivalentPasswordCheck(String rawPassword) {
+        String dummyHash = timingDummyHash;
+        if (dummyHash == null) {
+            dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
+            timingDummyHash = dummyHash;
+        }
+        passwordEncoder.matches(rawPassword, dummyHash);
+    }
+
+    private TokenResponseDto buildTokenResponse(AppUser user) {
+        AuthenticatedUser principal = AuthenticatedUser.of(user);
+
+        String accessToken = jwtService.generateAccessToken(principal);
+        String refreshToken = jwtService.generateRefreshToken(principal);
 
         UUID familyId = UUID.randomUUID();
         Instant expiresAt = Instant.now().plusMillis(jwtService.getRefreshTokenExpirationMs());

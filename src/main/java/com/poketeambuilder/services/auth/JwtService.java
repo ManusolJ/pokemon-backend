@@ -3,6 +3,8 @@ package com.poketeambuilder.services.auth;
 import java.util.Map;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
+import java.util.Optional;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -11,8 +13,10 @@ import org.springframework.stereotype.Service;
 
 import com.poketeambuilder.configuration.JwtProperties;
 
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
+
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.Claims;
@@ -24,11 +28,20 @@ import io.jsonwebtoken.security.Keys;
  * (short-lived, carry the user's authorities) and refresh tokens (longer-lived, no
  * authorities). The {@code type} claim discriminates between them so the filter chain can
  * refuse a refresh token where an access token is required.
+ *
+ * <p>The subject is the user's id, never the username: usernames can be changed and re-registered,
+ * so a name-based subject could resolve to a different account than the one the token was issued
+ * to. The username rides along in its own claim for display and audit labels only.</p>
+ *
+ * <p>Every token carries a random {@code jti}. Without it, two tokens issued to the same user in
+ * the same second are byte-identical (HMAC is deterministic and the dates are second-precision),
+ * and the second refresh token would collide on {@code refresh_token.token_hash UNIQUE}.</p>
  */
 @Service
 public class JwtService {
 
     public static final String CLAIM_AUTHORITIES = "authorities";
+    public static final String CLAIM_USERNAME = "username";
 
     private static final String CLAIM_TOKEN_TYPE = "type";
     private static final String TOKEN_TYPE_ACCESS = "access";
@@ -62,34 +75,61 @@ public class JwtService {
     }
 
     /** Builds an access token carrying the user's authorities for the security context. */
-    public String generateAccessToken(UserDetails userDetails) {
-        List<String> roles = userDetails.getAuthorities().stream()
+    public String generateAccessToken(AuthenticatedUser user) {
+        List<String> roles = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
-        return buildToken(Map.of(CLAIM_AUTHORITIES, roles), userDetails, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
+        return buildToken(Map.of(CLAIM_AUTHORITIES, roles), user, accessTokenExpirationMs, TOKEN_TYPE_ACCESS);
     }
 
     /** Builds a refresh token (no authorities embedded). */
-    public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(Map.of(), userDetails, refreshTokenExpirationMs, TOKEN_TYPE_REFRESH);
+    public String generateRefreshToken(AuthenticatedUser user) {
+        return buildToken(Map.of(), user, refreshTokenExpirationMs, TOKEN_TYPE_REFRESH);
     }
 
-    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expirationMs, String tokenType) {
+    private String buildToken(Map<String, Object> extraClaims, AuthenticatedUser user, long expirationMs, String tokenType) {
         return Jwts.builder()
                 .claims(extraClaims)
+                .id(UUID.randomUUID().toString())
                 .issuer(ISSUER)
                 .audience().add(AUDIENCE).and()
                 .claim(CLAIM_TOKEN_TYPE, tokenType)
+                .claim(CLAIM_USERNAME, user.getUsername())
                 .issuedAt(new Date())
                 .signWith(signingKey)
-                .subject(userDetails.getUsername())
+                .subject(String.valueOf(user.getId()))
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .compact();
     }
 
-    /** Subject claim. */
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    /**
+     * Verifies an access token and rebuilds the principal it was issued for, parsing it once.
+     * Empty when the token is genuine but is not an access token, or carries no usable subject
+     * (tokens minted before the subject became the user id hold a username there).
+     *
+     * @throws io.jsonwebtoken.JwtException on a bad signature, expiry, issuer or audience
+     * @throws IllegalArgumentException     on an empty token
+     */
+    public Optional<AuthenticatedUser> parseAccessToken(String token) {
+        Claims claims = extractAllClaims(token);
+
+        if (!TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class))) {
+            return Optional.empty();
+        }
+
+        Long userId = parseUserId(claims.getSubject());
+        String username = claims.get(CLAIM_USERNAME, String.class);
+
+        if (userId == null || username == null || username.isBlank()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new AuthenticatedUser(userId, username, "", true, authoritiesOf(claims)));
+    }
+
+    /** Subject claim as a user id, or {@code null} when it isn't one. */
+    public Long extractUserId(String token) {
+        return parseUserId(extractClaim(token, Claims::getSubject));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
@@ -114,5 +154,29 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private static Long parseUserId(String subject) {
+        if (subject == null || subject.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(subject);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Reads the {@code authorities} claim as a list of role strings and wraps them as {@link SimpleGrantedAuthority}. */
+    private static List<GrantedAuthority> authoritiesOf(Claims claims) {
+        Object raw = claims.get(CLAIM_AUTHORITIES);
+        if (!(raw instanceof List<?> list)) {
+            return List.of();
+        }
+        return list.stream()
+                .map(Object::toString)
+                .map(SimpleGrantedAuthority::new)
+                .map(GrantedAuthority.class::cast)
+                .toList();
     }
 }

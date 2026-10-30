@@ -21,6 +21,18 @@ public interface RefreshTokenRepository extends BaseRepository<RefreshToken, Lon
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     /**
+     * Spends a token by flipping {@code revoked} only if it is still unset. The row lock the
+     * UPDATE takes makes this the single point two concurrent refreshes of the same token race
+     * through: exactly one sees {@code 1}, the other sees {@code 0} and is treated as a replay.
+     *
+     * <p>Deliberately leaves the persistence context alone: the caller still holds the loaded
+     * token and its owner, and clearing would detach them mid-request.</p>
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.id = :id AND rt.revoked = false")
+    int revokeIfActive(@Param("id") Long id);
+
+    /**
      * Bulk-revokes every token in the given rotation family in a single UPDATE. Avoids the
      * load-and-iterate pattern when token-reuse is detected and we need to invalidate the
      * whole lineage immediately.

@@ -378,6 +378,7 @@ public class UserCommandService {
             throw new ResourceAlreadyExistsException(
                     "Cannot reactivate: username '" + user.getUsername() + "' is now held by another user");
         }
+        
         if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(user.getEmail())) {
             throw new ResourceAlreadyExistsException(
                     "Cannot reactivate: email '" + user.getEmail() + "' is now held by another user");

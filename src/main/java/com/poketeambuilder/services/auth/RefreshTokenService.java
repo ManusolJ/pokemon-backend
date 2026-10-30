@@ -50,11 +50,14 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(token);
     }
 
-    /** Marks a single token as revoked. */
+    /**
+     * Atomically spends a token. Returns {@code false} if it was already revoked — either a
+     * replay of a spent token, or the losing side of two concurrent refreshes of the same one.
+     * Either way the caller must treat it as reuse.
+     */
     @Transactional
-    public void revoke(RefreshToken token) {
-        token.setRevoked(true);
-        refreshTokenRepository.save(token);
+    public boolean consume(RefreshToken token) {
+        return refreshTokenRepository.revokeIfActive(token.getId()) == 1;
     }
 
     /** Revokes every token in the given rotation family in one bulk UPDATE. */

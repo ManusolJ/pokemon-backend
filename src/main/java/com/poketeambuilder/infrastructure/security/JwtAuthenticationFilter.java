@@ -1,18 +1,12 @@
 package com.poketeambuilder.infrastructure.security;
 
-import java.util.List;
-import java.util.Collection;
 import java.io.IOException;
 
 import com.poketeambuilder.services.auth.JwtService;
 
 import org.springframework.stereotype.Component;
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
@@ -33,11 +27,11 @@ import lombok.extern.slf4j.Slf4j;
  * signature and expiry, and installs an {@link UsernamePasswordAuthenticationToken} on the
  * {@link SecurityContextHolder}.
  *
- * <p>Authentication is built directly from JWT claims (subject = username, {@code authorities}
- * claim = role list) — no database round-trip per request. The trade-off is that role and
- * disabled-flag changes only take effect at the next access-token issuance (~15 minutes).
- * Long-lived sessions are handled via the refresh-token rotation flow, which IS DB-backed
- * and revoked immediately on password change / disable.</p>
+ * <p>Authentication is built directly from JWT claims (subject = user id, {@code username}
+ * claim = display name, {@code authorities} claim = role list) — no database round-trip per
+ * request. The trade-off is that role and disabled-flag changes only take effect at the next
+ * access-token issuance (~15 minutes). Long-lived sessions are handled via the refresh-token
+ * rotation flow, which IS DB-backed and revoked immediately on password change / disable.</p>
  *
  * <p>Parsing failures (expired, malformed, tampered, bad signature) are caught and logged;
  * the request continues unauthenticated so {@link AuthEntryPoint} can produce a clean 401
@@ -83,53 +77,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Parses the JWT, verifies it is an access token, and populates the security context with
-     * a {@link UserDetails} principal so downstream {@code @AuthenticationPrincipal UserDetails}
-     * controller params keep working. Throws {@link JwtException} on any parse / signature /
-     * expiry failure, the outer {@code doFilterInternal} catches and falls back to anonymous.
+     * Parses the JWT once and, if it is an access token, populates the security context with an
+     * {@link AuthenticatedUser} principal for {@code @AuthenticationPrincipal} controller params.
+     * Throws {@link JwtException} on any parse / signature / expiry failure, the outer
+     * {@code doFilterInternal} catches and falls back to anonymous.
      */
     private void authenticateFromToken(String token, HttpServletRequest request) {
-        if (!jwtService.isAccessToken(token)) {
-            return;
-        }
-
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             return;
         }
 
-        String username = jwtService.extractUsername(token);
-        if (username == null || username.isBlank()) {
-            return;
-        }
+        jwtService.parseAccessToken(token).ifPresent(principal -> {
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 
-        Collection<GrantedAuthority> authorities = extractAuthorities(token);
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        UserDetails principal = User.withUsername(username)
-                .password("")
-                .authorities(authorities)
-                .build();
-
-        UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(principal, null, authorities);
-
-        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-        SecurityContextHolder.getContext().setAuthentication(authToken);
-    }
-
-    /** Reads the {@code authorities} claim as a list of role strings and wraps them as {@link SimpleGrantedAuthority}. */
-    private Collection<GrantedAuthority> extractAuthorities(String token) {
-        List<String> roles = jwtService.extractClaim(token, claims -> {
-            Object raw = claims.get(JwtService.CLAIM_AUTHORITIES);
-            if (raw instanceof List<?> list) {
-                return list.stream().map(Object::toString).toList();
-            }
-            return List.<String>of();
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         });
-
-        return roles.stream()
-                .map(SimpleGrantedAuthority::new)
-                .map(GrantedAuthority.class::cast)
-                .toList();
     }
 }
