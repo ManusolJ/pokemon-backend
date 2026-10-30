@@ -56,40 +56,35 @@ public class SeedOrchestratorCommandService {
 
     private final CacheManager cacheManager;
 
-    /** Runs the full seed pipeline. Returns the aggregated entries-added / errors counts. */
-    public SeedResultDto seed() {
-        clearDerivedData();
-        evictAllCaches();
-
-        SeedResultDto result = typeSeedService.seed()
-                .add(natureSeedService.seed())
-                .add(abilitySeedService.seed())
-                .add(itemSeedService.seed())
-                .add(moveSeedService.seed())
-                .add(speciesSeedService.seed())
-                .add(pokemonSeedService.seed());
-
-        evictAllCaches();
-
-        log.info("Seed completed: {} entries, {} errors", result.entriesAdded(), result.errors());
-
-        return result;
-    }
-
     /**
-     * Truncates the join tables the pipeline derives wholesale — learnsets, ability slots and
-     * the effectiveness matrix — so rows PokeAPI has since dropped don't linger.
+     * Runs the full seed pipeline. Returns the aggregated entries-added / errors counts.
      *
-     * <p>The catalogue tables themselves are deliberately left alone. Every one of them is
-     * referenced by {@code team_pokemon} or {@code team_pokemon_move}, whose foreign keys
-     * carry no {@code ON DELETE} action, so a blanket delete is refused outright by the
-     * database the moment a single team exists. It isn't needed either: catalogue entities are
-     * keyed on PokeAPI's own ids, so re-saving them updates in place and user rows keep
-     * pointing at the same species, moves and items.</p>
+     * <p>The derived join tables - learnsets, ability slots and the effectiveness matrix - are
+     * rebuilt by their seed services inside the same transaction that refills them, so they are
+     * never visible half-empty and a failed run leaves the previous data in place. The catalogue
+     * tables are upserted in place under PokeAPI's own ids: every one of them is referenced by
+     * {@code team_pokemon} or {@code team_pokemon_move}, whose foreign keys carry no
+     * {@code ON DELETE} action, so they can't be cleared while a single team exists.</p>
+     *
+     * <p>Caches are evicted however the run ends: entries read mid-run hold partial data and
+     * would otherwise outlive a failure for up to a day.</p>
      */
-    private void clearDerivedData() {
-        pokemonSeedService.clearDerivedData();
-        typeSeedService.clearDerivedData();
+    public SeedResultDto seed() {
+        try {
+            SeedResultDto result = typeSeedService.seed()
+                    .add(natureSeedService.seed())
+                    .add(abilitySeedService.seed())
+                    .add(itemSeedService.seed())
+                    .add(moveSeedService.seed())
+                    .add(speciesSeedService.seed())
+                    .add(pokemonSeedService.seed());
+
+            log.info("Seed completed: {} entries, {} errors", result.entriesAdded(), result.errors());
+
+            return result;
+        } finally {
+            evictAllCaches();
+        }
     }
 
     private void evictAllCaches() {
