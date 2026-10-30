@@ -26,7 +26,6 @@ import com.poketeambuilder.repositories.TypeEffectivenessRepository;
 import com.poketeambuilder.services.command.PokeApiClient;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -78,15 +77,6 @@ public class TypeSeedService {
         return SeedResultDto.of(persisted.typesSaved() + persisted.effectivenessSaved(), fetched.errors());
     }
 
-    @Transactional
-    /**
-     * Empties the effectiveness matrix, which is rebuilt in full on every run. The
-     * {@code type} rows survive: {@code pokemon} and {@code team_pokemon} both reference them.
-     */
-    public void clearDerivedData() {
-        typeEffectivenessRepository.deleteAllInBatch();
-    }
-
     private FetchResult fetchAll() {
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(TYPE_ENDPOINT).stream()
                 .filter(resource -> {
@@ -119,7 +109,18 @@ public class TypeSeedService {
         return new PersistResult(entities.size(), effectivenessCount);
     }
 
+    /**
+     * Rebuilds the effectiveness matrix in full. The {@code type} rows survive: {@code pokemon}
+     * and {@code team_pokemon} both reference them. The delete shares the refill's transaction,
+     * so readers never see an empty matrix and a failure leaves the previous one in place.
+     */
     private int seedTypeEffectiveness(List<TypeApiDto> apiDtos) {
+        if (apiDtos.isEmpty()) {
+            return 0;
+        }
+
+        typeEffectivenessRepository.deleteAllInBatch();
+
         Set<Integer> allTypeIds = apiDtos.stream()
                 .map(TypeApiDto::id)
                 .collect(Collectors.toSet());

@@ -39,7 +39,6 @@ import com.poketeambuilder.repositories.PokemonAbilityRepository;
 import com.poketeambuilder.services.command.PokeApiClient;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -113,17 +112,6 @@ public class PokemonSeedService {
         return SeedResultDto.of(forms.saved() + abilities.saved() + moves.saved(), moves.errors());
     }
 
-    /**
-     * Empties the two join tables this service rebuilds from scratch on every run. The
-     * {@code pokemon} rows themselves survive: {@code team_pokemon} references them, and they
-     * are re-saved under their PokeAPI ids anyway.
-     */
-    @Transactional
-    public void clearDerivedData() {
-        pokemonMoveRepository.deleteAllInBatch();
-        pokemonAbilityRepository.deleteAllInBatch();
-    }
-
     private FetchResult fetchAll() {
         List<PokeApiResource> resources = pokeApiClient.fetchAllResources(POKEMON_ENDPOINT);
 
@@ -190,9 +178,21 @@ public class PokemonSeedService {
         }
     }
 
+    /**
+     * Rebuilds {@code pokemon_ability} from scratch, so slots PokeAPI has since dropped don't
+     * linger. The delete runs in the same transaction as the refill: readers keep seeing the
+     * previous rows until the new set commits, and a failure rolls back to them instead of
+     * leaving the table empty. Skipped outright when nothing was fetched.
+     */
     private PersistResult persistAbilities(List<PokemonApiDto> pokemonDtos, int initialErrors) {
+        if (pokemonDtos.isEmpty()) {
+            return new PersistResult(0, initialErrors);
+        }
+
         List<PokemonAbility> entries = new ArrayList<>();
         int errors = initialErrors;
+
+        pokemonAbilityRepository.deleteAllInBatch();
 
         for (PokemonApiDto dto : pokemonDtos) {
             if (dto.abilities() == null) {
@@ -226,9 +226,16 @@ public class PokemonSeedService {
         return new PersistResult(entries.size(), errors);
     }
 
+    /** Rebuilds {@code pokemon_move} the same way {@link #persistAbilities} rebuilds ability slots. */
     private PersistResult persistMoves(List<PokemonApiDto> pokemonDtos, int initialErrors) {
+        if (pokemonDtos.isEmpty()) {
+            return new PersistResult(0, initialErrors);
+        }
+
         List<PokemonMove> entries = new ArrayList<>();
         int errors = initialErrors;
+
+        pokemonMoveRepository.deleteAllInBatch();
 
         Set<Integer> seededMoveIds = Set.copyOf(moveRepository.findAllIds());
 
