@@ -63,6 +63,8 @@ public class SecurityConfig {
             "/api/teams/public/filter", "/api/teams/public/id"
     };
 
+    private static final String SHARED_TEAM_READ = "/api/teams/shared/*";
+
     private final CorsProperties corsProperties;
     private final AuthEntryPoint authEntryPoint;
     private final AccessDeniedHandler accessDeniedHandler;
@@ -83,6 +85,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, PUBLIC_CATALOG_READS).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_TEAM_READS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/moves/pokemon/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, SHARED_TEAM_READ).permitAll()
                         .requestMatchers("/api/contact").permitAll()
                         .requestMatchers(
                                 "/api-docs/**",
