@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -55,8 +55,12 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Install cloudflared
+        env:
+          CLOUDFLARED_VERSION: "2026.10.1"
+          CLOUDFLARED_SHA256: "200573c872174ab449965655febadef8edfbb144ebcaa391b700b2dedbadb3cd"
         run: |
-          curl -fsSL --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          curl -fsSL --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64.deb"
+          echo "${CLOUDFLARED_SHA256}  cloudflared.deb" | sha256sum --check --strict
           sudo dpkg -i cloudflared.deb
 
       - name: Setup SSH
@@ -74,11 +78,13 @@ jobs:
           EOF
 
       - name: Deploy
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
-          ssh deploy.necobotultimus.org bash -s <<'REMOTE'
+          ssh deploy.necobotultimus.org bash -s -- "$DEPLOY_SHA" <<'REMOTE'
           set -euo pipefail
           cd ~/poketeam-backend
           git fetch --quiet origin
-          git reset --hard origin/main
+          git reset --hard "$1"
           bash deploy.sh
           REMOTE
