@@ -21,9 +21,7 @@ public interface RefreshTokenRepository extends BaseRepository<RefreshToken, Lon
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
     /**
-     * Spends a token by flipping {@code revoked} only if it is still unset. The row lock the
-     * UPDATE takes makes this the single point two concurrent refreshes of the same token race
-     * through: exactly one sees {@code 1}, the other sees {@code 0} and is treated as a replay.
+     * Spends a token by flipping {@code revoked} only if it is still unset.
      *
      * <p>Deliberately leaves the persistence context alone: the caller still holds the loaded
      * token and its owner, and clearing would detach them mid-request.</p>

@@ -29,19 +29,13 @@ import io.jsonwebtoken.security.Keys;
  * authorities). The {@code type} claim discriminates between them so the filter chain can
  * refuse a refresh token where an access token is required.
  *
- * <p>The subject is the user's id, never the username: usernames can be changed and re-registered,
- * so a name-based subject could resolve to a different account than the one the token was issued
- * to. The username rides along in its own claim for display and audit labels only.</p>
- *
- * <p>Every token carries a random {@code jti}. Without it, two tokens issued to the same user in
- * the same second are byte-identical (HMAC is deterministic and the dates are second-precision),
- * and the second refresh token would collide on {@code refresh_token.token_hash UNIQUE}.</p>
+ * <p>Every token carries a random {@code jti}.
  */
 @Service
 public class JwtService {
 
-    public static final String CLAIM_AUTHORITIES = "authorities";
     public static final String CLAIM_USERNAME = "username";
+    public static final String CLAIM_AUTHORITIES = "authorities";
 
     private static final String CLAIM_TOKEN_TYPE = "type";
     private static final String TOKEN_TYPE_ACCESS = "access";
