@@ -3,6 +3,8 @@ package com.poketeambuilder.controllers;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
+import java.sql.SQLException;
+
 import org.springframework.context.i18n.LocaleContextHolder;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -55,11 +57,9 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    /**
-     * Validation failures on a {@code @Valid @RequestBody}. Overridden rather than declared as a
-     * fresh {@code @ExceptionHandler}: the base class already maps this type, and two mappings for
-     * one exception in the same advice fails the context at startup.
-     */
+    /** PostgreSQL's SQLSTATE for {@code unique_violation}. */
+    private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
@@ -78,12 +78,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return super.handleExceptionInternal(ex, body, headers, HttpStatus.BAD_REQUEST, request);
     }
 
-    /**
-     * Re-bodies everything the base class handles, so framework failures and domain failures look
-     * the same to the caller. The message comes from Spring's own {@link ProblemDetail} detail
-     * where there is one - that text is already written for client consumption - and falls back
-     * to the status reason phrase, so nothing internal leaks.
-     */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
         if (statusCode.is5xxServerError()) {
@@ -106,11 +100,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username/email or password", request);
     }
 
-    /**
-     * Only reachable from the paths that resolve a {@code UserDetails} directly; the
-     * authentication manager hides it behind {@link BadCredentialsException}. Answered as a
-     * generic 401 so the exception's "User not found: x" message never reaches the caller.
-     */
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<ErrorResponseDto> handleUsernameNotFound(UsernameNotFoundException ex, HttpServletRequest request) {
         log.debug("Unresolvable principal at {}: {}", request.getRequestURI(), ex.getMessage());
@@ -127,11 +116,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, "This account has been disabled", request);
     }
 
-    /**
-     * Covers denials raised by {@code @PreAuthorize} on a controller method. Denials from the
-     * authorization filter never reach this class, so {@code AuthAccessDeniedHandler} answers
-     * those with the same status and body.
-     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDto> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.debug("Access denied at {}: {}", request.getRequestURI(), ex.getMessage());
@@ -169,13 +153,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    /**
-     * Caught when a request references a non-existent FK (e.g. a malicious pokemonId in a
-     * team save). Mapped to 400 with a generic message so constraint names are not leaked.
-     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
         log.warn("Data integrity violation at {}: {}", request.getRequestURI(), ex.getMostSpecificCause().getMessage());
+
+        if (isUniqueViolation(ex)) {
+            return buildResponse(HttpStatus.CONFLICT, "Request conflicts with existing data", request);
+        }
+
         return buildResponse(HttpStatus.BAD_REQUEST, "Request references invalid or conflicting data", request);
     }
 
@@ -189,11 +174,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return buildResponse(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
     }
 
-    /**
-     * Catch-all for anything not explicitly mapped above. Logs the full stack trace so a
-     * production 500 leaves something investigatable; the response stays sanitized so we
-     * don't leak internals to the caller.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception at {} {}", request.getMethod(), request.getRequestURI(), ex);
@@ -208,6 +188,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 request.getRequestURI());
 
         return ResponseEntity.status(status).body(body);
+    }
+
+    private static boolean isUniqueViolation(Throwable ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sqlException && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String detailFor(Exception ex, HttpStatusCode statusCode) {
