@@ -1,4 +1,7 @@
 spring:
+  datasource:
+    password: ${DB_PASSWORD:poketeam}
+
   jpa:
     show-sql: true
     properties:

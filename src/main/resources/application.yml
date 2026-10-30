@@ -2,10 +2,6 @@ spring:
   application:
     name: poketeam-builder
 
-  profiles:
-    active:
-      - ${SPRING_PROFILES_ACTIVE:dev}
-
   threads:
     virtual:
       enabled: true
@@ -14,7 +10,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:pokemon_sql}
     username: ${DB_USER:poketeam}
-    password: ${DB_PASSWORD:poketeam}
+    password: ${DB_PASSWORD}
     hikari:
       minimum-idle: 2
       maximum-pool-size: 10
@@ -29,6 +25,11 @@ spring:
       "[hibernate.order_inserts]": true
       "[hibernate.order_updates]": true
       "[hibernate.jdbc.batch_versioned_data]": true
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100
 
   # Flyway
   flyway:
@@ -69,6 +70,9 @@ app:
     read-timeout: 10s
     request-delay: 200ms
 
+  rate-limit:
+    client-ip-header: ${RATE_LIMIT_CLIENT_IP_HEADER:}
+
   jwt:
     secret: ${JWT_SECRET}
     access-token-expiration-ms: ${ACCESS_TOKEN_EXPIRATION_MS:900000}
@@ -78,11 +82,12 @@ app:
 server:
   port: ${PORT:8080}
 
-# OpenAPI / Swagger
 springdoc:
   api-docs:
+    enabled: false
     path: /api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html
     operations-sorter: method
 

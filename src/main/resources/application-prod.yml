@@ -22,6 +22,10 @@ server:
   shutdown: graceful
   forward-headers-strategy: framework
 
+app:
+  rate-limit:
+    client-ip-header: ${RATE_LIMIT_CLIENT_IP_HEADER:CF-Connecting-IP}
+
 # Disable Swagger / OpenAPI in prod.
 springdoc:
   api-docs:
