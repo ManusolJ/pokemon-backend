@@ -76,12 +76,12 @@ public class UserQueryService extends AbstractQueryService<AppUser, Long, UserFi
         return userRepository;
     }
 
-    /** Self-service / admin lookup by exact username. Throws when the user doesn't exist. */
-    public UserReadDto findByUsername(@NotNull String username) {
-        return userRepository.findByUsernameAndDeletedAtIsNull(username)
+    /** Self-service lookup of an active (non-tombstoned) account by id. Throws when there is none. */
+    public UserReadDto findActiveById(@NotNull Long id) {
+        return userRepository.findByIdAndDeletedAtIsNull(id)
                 .map(userMapper::toReadDto)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("User '%s' not found", username)));
+                        String.format("User with id '%s' not found", id)));
     }
 
     /** Compact projection for the admin user listing. */

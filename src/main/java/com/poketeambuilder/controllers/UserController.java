@@ -8,6 +8,9 @@ import com.poketeambuilder.dtos.front.user.PasswordChangeDto;
 
 import com.poketeambuilder.dtos.front.admin.user.AdminUserUpdateDto;
 import com.poketeambuilder.dtos.front.admin.user.BatchUserActionDto;
+import com.poketeambuilder.dtos.front.admin.user.BatchUserActionResultDto;
+
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
 
 import com.poketeambuilder.services.query.UserQueryService;
 import com.poketeambuilder.services.command.UserCommandService;
@@ -20,7 +23,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import org.springframework.web.bind.annotation.PutMapping;
@@ -54,29 +56,29 @@ public class UserController {
 
     /** Returns the authenticated user's full profile. */
     @GetMapping("/me")
-    public ResponseEntity<UserReadDto> getMe(@AuthenticationPrincipal UserDetails user) {
-        UserReadDto profile = userQueryService.findByUsername(user.getUsername());
+    public ResponseEntity<UserReadDto> getMe(@AuthenticationPrincipal AuthenticatedUser user) {
+        UserReadDto profile = userQueryService.findActiveById(user.getId());
         return ResponseEntity.ok(profile);
     }
 
     /** Updates the authenticated user's profile (email/username). */
     @PutMapping("/me")
-    public ResponseEntity<UserReadDto> updateMe(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody UserUpdateDto dto) {
-        UserReadDto updated = userCommandService.updateProfile(user.getUsername(), dto);
+    public ResponseEntity<UserReadDto> updateMe(@AuthenticationPrincipal AuthenticatedUser user, @Valid @RequestBody UserUpdateDto dto) {
+        UserReadDto updated = userCommandService.updateProfile(user.getId(), dto);
         return ResponseEntity.ok(updated);
     }
 
     /** Changes the authenticated user's password. Revokes every active session on success. */
     @PostMapping("/me/password")
-    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal UserDetails user, @Valid @RequestBody PasswordChangeDto dto) {
-        userCommandService.changePassword(user.getUsername(), dto);
+    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal AuthenticatedUser user, @Valid @RequestBody PasswordChangeDto dto) {
+        userCommandService.changePassword(user.getId(), dto);
         return ResponseEntity.noContent().build();
     }
 
     /** Self-service soft-delete: disables the account and revokes every active session. */
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal UserDetails user) {
-        userCommandService.softDeleteAccount(user.getUsername());
+    public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal AuthenticatedUser user) {
+        userCommandService.softDeleteAccount(user.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -115,7 +117,7 @@ public class UserController {
     /** Admin: update a user's role/email/username/enabled flag. */
     @PutMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserReadDto> adminUpdateUser(@AuthenticationPrincipal UserDetails admin, @PathVariable Long id, @Valid @RequestBody AdminUserUpdateDto dto) {
+    public ResponseEntity<UserReadDto> adminUpdateUser(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id, @Valid @RequestBody AdminUserUpdateDto dto) {
         UserReadDto updated = userCommandService.adminUpdateUser(admin.getUsername(), id, dto);
         return ResponseEntity.ok(updated);
     }
@@ -123,7 +125,7 @@ public class UserController {
     /** Admin: soft-delete (disable). Revokes every active session for the target user. */
     @DeleteMapping("/admin/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> adminSoftDeleteUser(@AuthenticationPrincipal UserDetails admin, @PathVariable Long id) {
+    public ResponseEntity<Void> adminSoftDeleteUser(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id) {
         userCommandService.adminSoftDeleteUser(admin.getUsername(), id);
         return ResponseEntity.noContent().build();
     }
@@ -131,7 +133,7 @@ public class UserController {
     /** Admin: re-enable a previously-disabled account. */
     @PostMapping("/admin/{id}/reactivate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<UserReadDto> adminReactivateUser(@AuthenticationPrincipal UserDetails admin, @PathVariable Long id) {
+    public ResponseEntity<UserReadDto> adminReactivateUser(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id) {
         UserReadDto reactivated = userCommandService.adminReactivateUser(admin.getUsername(), id);
         return ResponseEntity.ok(reactivated);
     }
@@ -139,32 +141,32 @@ public class UserController {
     /** Admin: hard-delete. Removes the user row entirely (cascades wipe associated tokens). */
     @DeleteMapping("/admin/{id}/hard")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> adminHardDeleteUser(@AuthenticationPrincipal UserDetails admin, @PathVariable Long id) {
+    public ResponseEntity<Void> adminHardDeleteUser(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id) {
         userCommandService.adminHardDeleteUser(admin.getUsername(), id);
         return ResponseEntity.noContent().build();
     }
 
-    /** Admin: bulk soft-delete. Missing ids are skipped, errors are logged. */
+    /** Admin: bulk soft-delete. Answers with what happened to each id. */
     @PostMapping("/admin/batch/disable")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> adminBatchSoftDelete(@AuthenticationPrincipal UserDetails admin, @Valid @RequestBody BatchUserActionDto dto) {
-        userCommandService.adminBatchSoftDelete(admin.getUsername(), dto.getIds());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<BatchUserActionResultDto> adminBatchSoftDelete(@AuthenticationPrincipal AuthenticatedUser admin, @Valid @RequestBody BatchUserActionDto dto) {
+        BatchUserActionResultDto result = userCommandService.adminBatchSoftDelete(admin.getUsername(), dto.getIds());
+        return ResponseEntity.ok(result);
     }
 
-    /** Admin: bulk reactivation. */
+    /** Admin: bulk reactivation. Answers with what happened to each id. */
     @PostMapping("/admin/batch/reactivate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> adminBatchReactivate(@AuthenticationPrincipal UserDetails admin, @Valid @RequestBody BatchUserActionDto dto) {
-        userCommandService.adminBatchReactivate(admin.getUsername(), dto.getIds());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<BatchUserActionResultDto> adminBatchReactivate(@AuthenticationPrincipal AuthenticatedUser admin, @Valid @RequestBody BatchUserActionDto dto) {
+        BatchUserActionResultDto result = userCommandService.adminBatchReactivate(admin.getUsername(), dto.getIds());
+        return ResponseEntity.ok(result);
     }
 
-    /** Admin: bulk hard-delete. */
+    /** Admin: bulk hard-delete. Answers with what happened to each id. */
     @PostMapping("/admin/batch/hard")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> adminBatchHardDelete(@AuthenticationPrincipal UserDetails admin, @Valid @RequestBody BatchUserActionDto dto) {
-        userCommandService.adminBatchHardDelete(admin.getUsername(), dto.getIds());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<BatchUserActionResultDto> adminBatchHardDelete(@AuthenticationPrincipal AuthenticatedUser admin, @Valid @RequestBody BatchUserActionDto dto) {
+        BatchUserActionResultDto result = userCommandService.adminBatchHardDelete(admin.getUsername(), dto.getIds());
+        return ResponseEntity.ok(result);
     }
 }
