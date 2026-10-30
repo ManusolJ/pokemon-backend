@@ -27,10 +27,9 @@ import lombok.extern.slf4j.Slf4j;
  * signature and expiry, and installs an {@link UsernamePasswordAuthenticationToken} on the
  * {@link SecurityContextHolder}.
  *
- * <p>Authentication is built directly from JWT claims (subject = user id, {@code username}
- * claim = display name, {@code authorities} claim = role list) — no database round-trip per
- * request. The trade-off is that role and disabled-flag changes only take effect at the next
- * access-token issuance (~15 minutes). Long-lived sessions are handled via the refresh-token
+ * <p>Authentication is built directly from JWT claims. The trade-off is that role and
+ * disabled-flag changes only take effect at the next access-token issuance (~15 minutes).
+ * Long-lived sessions are handled via the refresh-token
  * rotation flow, which IS DB-backed and revoked immediately on password change / disable.</p>
  *
  * <p>Parsing failures (expired, malformed, tampered, bad signature) are caught and logged;

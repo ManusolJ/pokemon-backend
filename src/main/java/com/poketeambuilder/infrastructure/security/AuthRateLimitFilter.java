@@ -32,12 +32,6 @@ import lombok.RequiredArgsConstructor;
  * per minute per IP, evicted after 5 minutes of inactivity. Returns a JSON 429 with a
  * {@code Retry-After} header when the bucket is empty.
  *
- * <p>The bucket key must be an address the client can't choose. {@code X-Forwarded-For} is not
- * one: it is client-supplied, Cloudflare appends to it rather than replacing it, and the
- * {@code framework} forward-headers strategy resolves {@code getRemoteAddr()} from its leftmost
- * entry - so keying on either lets a caller mint a fresh bucket per request. Behind the tunnel
- * the key is {@code CF-Connecting-IP} instead ({@link RateLimitProperties#clientIpHeader()}),
- * which Cloudflare always overwrites. With no header configured the socket address is used.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -76,7 +70,6 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         return RATE_LIMITED_PATH_PREFIXES.stream().noneMatch(uri::startsWith);
     }
 
-    /** The trusted proxy's client-address header when one is configured and present, else the socket address. */
     private String clientKey(HttpServletRequest request) {
         String header = rateLimitProperties.clientIpHeader();
 
