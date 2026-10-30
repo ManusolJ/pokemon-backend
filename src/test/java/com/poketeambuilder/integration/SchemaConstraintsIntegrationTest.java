@@ -114,7 +114,80 @@ class SchemaConstraintsIntegrationTest extends PostgresTestBase {
                 """)).hasStackTraceContaining("uq_app_user_username_active");
     }
 
+    @Test
+    @DisplayName("Two live accounts cannot hold usernames that differ only by case")
+    void liveUsernamesAreUniqueIgnoringCase() {
+        execute("""
+                INSERT INTO app_user (id, username, email, password_hash)
+                VALUES (1, 'ash', 'ash@one.test', 'hash')
+                """);
+
+        assertThatThrownBy(() -> execute("""
+                INSERT INTO app_user (id, username, email, password_hash)
+                VALUES (2, 'ASH', 'ash@two.test', 'hash')
+                """)).hasStackTraceContaining("uq_app_user_username_active_ci");
+    }
+
+    @Test
+    @DisplayName("Two live accounts cannot hold e-mails that differ only by case")
+    void liveEmailsAreUniqueIgnoringCase() {
+        execute("""
+                INSERT INTO app_user (id, username, email, password_hash)
+                VALUES (1, 'ash', 'ash@pallet.test', 'hash')
+                """);
+
+        assertThatThrownBy(() -> execute("""
+                INSERT INTO app_user (id, username, email, password_hash)
+                VALUES (2, 'misty', 'Ash@Pallet.test', 'hash')
+                """)).hasStackTraceContaining("uq_app_user_email_active_ci");
+    }
+
+    // --- like counter -----------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Liking and unliking moves the team's counter")
+    void likeCounterFollowsLikeRows() {
+        givenATeamOwnedByAshAndAFan();
+
+        execute("INSERT INTO team_like (user_id, team_id) VALUES (2, 1)");
+        assertThat(likeCount()).isEqualTo(1);
+
+        execute("DELETE FROM team_like WHERE user_id = 2 AND team_id = 1");
+        assertThat(likeCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("Deleting a fan's account takes their like off the counter, not just the like row")
+    void likeCounterFollowsCascadedDeletes() {
+        givenATeamOwnedByAshAndAFan();
+        execute("INSERT INTO team_like (user_id, team_id) VALUES (2, 1)");
+
+        execute("DELETE FROM app_user WHERE id = 2");
+
+        assertThat(count("SELECT count(*) FROM team_like")).isZero();
+        assertThat(likeCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("Deleting a liked team works; the trigger doesn't trip over the vanishing row")
+    void deletingALikedTeamIsClean() {
+        givenATeamOwnedByAshAndAFan();
+        execute("INSERT INTO team_like (user_id, team_id) VALUES (2, 1)");
+
+        assertThatCode(() -> execute("DELETE FROM team WHERE id = 1")).doesNotThrowAnyException();
+    }
+
     // --- fixtures ------------------------------------------------------------------------------
+
+    private void givenATeamOwnedByAshAndAFan() {
+        execute("INSERT INTO app_user (id, username, email, password_hash) VALUES (1, 'ash', 'ash@pallet.test', 'hash')");
+        execute("INSERT INTO app_user (id, username, email, password_hash) VALUES (2, 'misty', 'misty@cerulean.test', 'hash')");
+        execute("INSERT INTO team (id, user_id, name, is_public) VALUES (1, 1, 'Kanto', true)");
+    }
+
+    private long likeCount() {
+        return count("SELECT like_count FROM team WHERE id = 1");
+    }
 
     private void givenTheCatalogue() {
         execute("INSERT INTO type (id, name) VALUES (13, 'electric')");

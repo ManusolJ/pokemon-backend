@@ -1,17 +1,20 @@
 package com.poketeambuilder.services.auth;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import com.poketeambuilder.configuration.JwtProperties;
 
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
+
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -25,8 +28,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Token issuing and parsing. The security-relevant properties here are that a refresh token
- * cannot stand in for an access token, and that a token this service didn't sign is rejected
- * whatever it claims.
+ * cannot stand in for an access token, that a token this service didn't sign is rejected
+ * whatever it claims, that the subject is the immutable user id rather than a reusable name,
+ * and that no two tokens are ever identical.
  */
 class JwtServiceTest {
 
@@ -36,10 +40,10 @@ class JwtServiceTest {
 
     private JwtService jwtService;
 
-    private final UserDetails user = User.withUsername("ash")
-            .password("")
-            .authorities("ROLE_USER")
-            .build();
+    private static final long USER_ID = 42L;
+
+    private final AuthenticatedUser user = new AuthenticatedUser(
+            USER_ID, "ash", "", true, List.of(new SimpleGrantedAuthority("ROLE_USER")));
 
     @BeforeEach
     void setUp() {
@@ -47,13 +51,66 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("An access token carries the subject and the user's authorities")
-    void accessTokenCarriesSubjectAndAuthorities() {
+    @DisplayName("An access token's subject is the user id; the username rides in its own claim")
+    void accessTokenCarriesIdSubjectUsernameAndAuthorities() {
         String token = jwtService.generateAccessToken(user);
         Object authorities = jwtService.extractClaim(token, claims -> claims.get("authorities"));
 
-        assertThat(jwtService.extractUsername(token)).isEqualTo("ash");
+        assertThat(jwtService.extractUserId(token)).isEqualTo(USER_ID);
+        String subject = jwtService.extractClaim(token, Claims::getSubject);
+        String username = jwtService.extractClaim(token, claims -> claims.get("username", String.class));
+
+        assertThat(subject).isEqualTo("42");
+        assertThat(username).isEqualTo("ash");
         assertThat(authorities).isEqualTo(List.of("ROLE_USER"));
+    }
+
+    @Test
+    @DisplayName("Parsing an access token rebuilds the principal it was issued for")
+    void parseAccessTokenRebuildsThePrincipal() {
+        Optional<AuthenticatedUser> parsed = jwtService.parseAccessToken(jwtService.generateAccessToken(user));
+
+        assertThat(parsed).isPresent();
+        assertThat(parsed.get().getId()).isEqualTo(USER_ID);
+        assertThat(parsed.get().getUsername()).isEqualTo("ash");
+        assertThat(parsed.get().getAuthorities()).extracting(Object::toString).containsExactly("ROLE_USER");
+    }
+
+    @Test
+    @DisplayName("A refresh token parses to no principal, so it can't authenticate a request")
+    void parseAccessTokenRefusesRefreshTokens() {
+        assertThat(jwtService.parseAccessToken(jwtService.generateRefreshToken(user))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A pre-migration token with a username subject parses to no principal instead of failing")
+    void parseAccessTokenRefusesLegacyUsernameSubject() {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET));
+
+        String legacy = Jwts.builder()
+                .subject("ash")
+                .issuer("poketeam-builder")
+                .audience().add("poketeam-builder-api").and()
+                .claim("type", "access")
+                .claim("authorities", List.of("ROLE_USER"))
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_TTL_MS))
+                .signWith(key)
+                .compact();
+
+        assertThat(jwtService.parseAccessToken(legacy)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Two tokens issued to the same user in the same instant still differ")
+    void tokensIssuedTogetherAreDistinct() {
+        String first = jwtService.generateRefreshToken(user);
+        String second = jwtService.generateRefreshToken(user);
+
+        String firstJti = jwtService.extractClaim(first, Claims::getId);
+        String secondJti = jwtService.extractClaim(second, Claims::getId);
+
+        assertThat(first).isNotEqualTo(second);
+        assertThat(firstJti).isNotBlank().isNotEqualTo(secondJti);
     }
 
     @Test
@@ -89,7 +146,7 @@ class JwtServiceTest {
                 .signWith(otherKey)
                 .compact();
 
-        assertThatThrownBy(() -> jwtService.extractUsername(forged)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.extractUserId(forged)).isInstanceOf(JwtException.class);
     }
 
     @Test
@@ -115,8 +172,8 @@ class JwtServiceTest {
                 .signWith(key)
                 .compact();
 
-        assertThatThrownBy(() -> jwtService.extractUsername(wrongIssuer)).isInstanceOf(JwtException.class);
-        assertThatThrownBy(() -> jwtService.extractUsername(wrongAudience)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.extractUserId(wrongIssuer)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.extractUserId(wrongAudience)).isInstanceOf(JwtException.class);
     }
 
     @Test
@@ -126,16 +183,16 @@ class JwtServiceTest {
 
         String expired = alreadyExpired.generateAccessToken(user);
 
-        assertThatThrownBy(() -> jwtService.extractUsername(expired)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() -> jwtService.extractUserId(expired)).isInstanceOf(JwtException.class);
     }
 
     @Test
-    @DisplayName("A malformed or empty token raises rather than resolving to a username")
+    @DisplayName("A malformed or empty token raises rather than resolving to a user")
     void rejectsMalformedInput() {
-        assertThatThrownBy(() -> jwtService.extractUsername("not-a-jwt"))
+        assertThatThrownBy(() -> jwtService.extractUserId("not-a-jwt"))
                 .isInstanceOf(JwtException.class);
 
-        assertThatThrownBy(() -> jwtService.extractUsername(""))
+        assertThatThrownBy(() -> jwtService.extractUserId(""))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

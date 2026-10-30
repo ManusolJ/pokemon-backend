@@ -37,19 +37,50 @@ class RepositoryQueriesIntegrationTest extends PostgresTestBase {
     @Autowired private PokemonMoveRepository pokemonMoveRepository;
     @Autowired private PokemonAbilityRepository pokemonAbilityRepository;
 
-    // --- last-administrator count ---------------------------------------------------------
+    // --- last-administrator lock -------------------------------------------------------------
 
     @Test
-    @DisplayName("Counts only administrators who could actually sign in")
-    void countsSignedInCapableAdminsOnly() {
+    @DisplayName("Locks only administrators who could actually sign in")
+    void locksSignedInCapableAdminsOnly() {
         persist(admin("oak", true, null));
         persist(admin("elm", false, null));
         persist(admin("birch", true, Instant.now()));
         persist(regular("ash"));
         em.flush();
 
-        assertThat(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN)).isEqualTo(1);
-        assertThat(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.USER)).isEqualTo(1);
+        assertThat(userRepository.lockActiveByRole(UserRole.ADMIN)).extracting(AppUser::getUsername).containsExactly("oak");
+        assertThat(userRepository.lockActiveByRole(UserRole.USER)).extracting(AppUser::getUsername).containsExactly("ash");
+    }
+
+    // --- identifier lookups ----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Username and e-mail lookups ignore case and skip tombstoned rows")
+    void identifierLookupsIgnoreCase() {
+        persist(regular("Ash"));
+        AppUser gone = regular("gary");
+        gone.setDeletedAt(Instant.now());
+        persist(gone);
+        em.flush();
+
+        assertThat(userRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull("ASH")).isPresent();
+        assertThat(userRepository.findByEmailIgnoreCaseAndDeletedAtIsNull("Ash@Test.Local")).isPresent();
+        assertThat(userRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull("ash")).isTrue();
+        assertThat(userRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull("GARY")).isFalse();
+    }
+
+    @Test
+    @DisplayName("The id lookup used for every authenticated request skips tombstoned rows")
+    void idLookupSkipsTombstonedRows() {
+        AppUser live = regular("ash");
+        AppUser gone = regular("gary");
+        gone.setDeletedAt(Instant.now());
+        persist(live);
+        persist(gone);
+        em.flush();
+
+        assertThat(userRepository.findByIdAndDeletedAtIsNull(live.getId())).isPresent();
+        assertThat(userRepository.findByIdAndDeletedAtIsNull(gone.getId())).isEmpty();
     }
 
     // --- public team visibility -------------------------------------------------------------
@@ -63,6 +94,29 @@ class RepositoryQueriesIntegrationTest extends PostgresTestBase {
 
         assertThat(teamRepository.existsByIdAndOwnerDeletedAtIsNull(live)).isTrue();
         assertThat(teamRepository.existsByIdAndOwnerDeletedAtIsNull(orphaned)).isFalse();
+    }
+
+    // --- share links -------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("A share link resolves to its team whether or not the team is public")
+    void shareLinksResolvePrivateTeams() {
+        long team = givenATeamOwnedBy("ash", null);
+        native_("UPDATE team SET share_slug = 'slug-ash', is_public = false WHERE id = " + team);
+        em.flush();
+
+        assertThat(teamRepository.findShareableIdBySlug("slug-ash")).contains(team);
+        assertThat(teamRepository.findShareableIdBySlug("slug-unknown")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A share link stops resolving once the owner's account is tombstoned")
+    void shareLinksDieWithTheAccount() {
+        long team = givenATeamOwnedBy("gary", Instant.now());
+        native_("UPDATE team SET share_slug = 'slug-gary' WHERE id = " + team);
+        em.flush();
+
+        assertThat(teamRepository.findShareableIdBySlug("slug-gary")).isEmpty();
     }
 
     // --- roster legality ----------------------------------------------------------------------

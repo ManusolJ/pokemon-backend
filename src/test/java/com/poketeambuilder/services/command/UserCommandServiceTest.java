@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import com.poketeambuilder.dtos.front.user.UserUpdateDto;
 import com.poketeambuilder.dtos.front.user.PasswordChangeDto;
 import com.poketeambuilder.dtos.front.admin.user.AdminUserUpdateDto;
+import com.poketeambuilder.dtos.front.admin.user.BatchUserActionResultDto;
 
 import com.poketeambuilder.entities.AppUser;
 
@@ -17,6 +18,7 @@ import com.poketeambuilder.mappers.implementation.UserMapper;
 
 import com.poketeambuilder.repositories.UserRepository;
 
+import com.poketeambuilder.services.auth.EmailChangedEvent;
 import com.poketeambuilder.services.auth.RefreshTokenService;
 
 import com.poketeambuilder.utils.enums.AuditAction;
@@ -32,6 +34,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.context.ApplicationEventPublisher;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -71,6 +75,7 @@ class UserCommandServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private TransactionTemplate transactionTemplate;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuditLogCommandService auditLogCommandService;
 
     @InjectMocks private UserCommandService userCommandService;
@@ -87,7 +92,7 @@ class UserCommandServiceTest {
 
         lenient().when(userRepository.findById(ADMIN_ID)).thenReturn(Optional.of(admin));
         lenient().when(userRepository.findById(USER_ID)).thenReturn(Optional.of(regularUser));
-        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(regularUser));
+        lenient().when(userRepository.findByIdAndDeletedAtIsNull(USER_ID)).thenReturn(Optional.of(regularUser));
         lenient().when(userRepository.save(any(AppUser.class))).thenAnswer(call -> call.getArgument(0));
     }
 
@@ -140,7 +145,7 @@ class UserCommandServiceTest {
     @Test
     @DisplayName("With a second administrator in place, the first can be removed")
     void allowsRemovalWhenAnotherAdminExists() {
-        when(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN)).thenReturn(2L);
+        when(userRepository.lockActiveByRole(UserRole.ADMIN)).thenReturn(List.of(admin, user(3L, "elm", UserRole.ADMIN)));
 
         assertThatCode(() -> userCommandService.adminSoftDeleteUser("oak", ADMIN_ID)).doesNotThrowAnyException();
 
@@ -174,7 +179,7 @@ class UserCommandServiceTest {
         when(passwordEncoder.matches("current", "hashed")).thenReturn(true);
         when(passwordEncoder.encode("brand-new")).thenReturn("new-hash");
 
-        userCommandService.changePassword("ash", passwordChange("current", "brand-new"));
+        userCommandService.changePassword(USER_ID, passwordChange("current", "brand-new"));
 
         assertThat(regularUser.getPassword()).isEqualTo("new-hash");
         verify(refreshTokenService).revokeAllForUser(USER_ID);
@@ -185,7 +190,7 @@ class UserCommandServiceTest {
     void wrongCurrentPasswordIsRejected() {
         when(passwordEncoder.matches("guess", "hashed")).thenReturn(false);
 
-        assertThatThrownBy(() -> userCommandService.changePassword("ash", passwordChange("guess", "brand-new")))
+        assertThatThrownBy(() -> userCommandService.changePassword(USER_ID, passwordChange("guess", "brand-new")))
                 .isInstanceOf(BadPasswordException.class);
 
         assertThat(regularUser.getPassword()).isEqualTo("hashed");
@@ -193,25 +198,56 @@ class UserCommandServiceTest {
     }
 
     @Test
-    @DisplayName("Renaming an account revokes its sessions, since the token subject no longer resolves")
+    @DisplayName("Renaming an account revokes its sessions, since their username claim is now stale")
     void usernameChangeRevokesSessions() {
-        userCommandService.updateProfile("ash", profileUpdate("misty", null));
+        givenCorrectCurrentPassword();
+
+        userCommandService.updateProfile(USER_ID, profileUpdate("misty", null));
 
         verify(refreshTokenService).revokeAllForUser(USER_ID);
     }
 
     @Test
-    @DisplayName("Changing only the e-mail leaves sessions alone")
-    void emailChangeKeepsSessions() {
-        userCommandService.updateProfile("ash", profileUpdate(null, "new@address.test"));
+    @DisplayName("Changing the e-mail ends every session and notifies the old address")
+    void emailChangeRevokesSessionsAndNotifiesOldAddress() {
+        givenCorrectCurrentPassword();
+
+        userCommandService.updateProfile(USER_ID, profileUpdate(null, "new@address.test"));
+
+        verify(refreshTokenService).revokeAllForUser(USER_ID);
+        verify(eventPublisher).publishEvent(new EmailChangedEvent("ash", "ash@test.local"));
+    }
+
+    @Test
+    @DisplayName("A profile change with the wrong current password is refused before anything is written")
+    void profileChangeRequiresTheCurrentPassword() {
+        when(passwordEncoder.matches("current", "hashed")).thenReturn(false);
+
+        assertThatThrownBy(() -> userCommandService.updateProfile(USER_ID, profileUpdate(null, "attacker@evil.test")))
+                .isInstanceOf(BadPasswordException.class);
+
+        verify(userMapper, never()).updateEntity(any(UserUpdateDto.class), any());
+        verify(userRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("Re-submitting the current e-mail in another case is not a change")
+    void sameEmailInAnotherCaseIsNotAChange() {
+        givenCorrectCurrentPassword();
+
+        userCommandService.updateProfile(USER_ID, profileUpdate(null, "ASH@test.local"));
 
         verify(refreshTokenService, never()).revokeAllForUser(anyLong());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
     @DisplayName("Submitting the same username is not a rename")
     void unchangedUsernameIsNotARename() {
-        userCommandService.updateProfile("ash", profileUpdate("ash", null));
+        givenCorrectCurrentPassword();
+
+        userCommandService.updateProfile(USER_ID, profileUpdate("ash", null));
 
         verify(refreshTokenService, never()).revokeAllForUser(anyLong());
     }
@@ -219,7 +255,7 @@ class UserCommandServiceTest {
     @Test
     @DisplayName("Tombstoning disables the account, stamps it, and ends its sessions")
     void tombstoneDisablesStampsAndRevokes() {
-        userCommandService.softDeleteAccount("ash");
+        userCommandService.softDeleteAccount(USER_ID);
 
         assertThat(regularUser.getEnabled()).isFalse();
         assertThat(regularUser.getDeletedAt()).isNotNull();
@@ -283,6 +319,25 @@ class UserCommandServiceTest {
     }
 
     @Test
+    @DisplayName("A batch reports each id's outcome instead of claiming every one succeeded")
+    void batchReportsPerIdOutcome() {
+        runTransactionsInline();
+        onlyOneAdminRemains();
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(7L)).thenThrow(new IllegalStateException("boom"));
+
+        BatchUserActionResultDto result = userCommandService.adminBatchSoftDelete("oak", List.of(USER_ID, 99L, ADMIN_ID, 7L));
+
+        assertThat(result.succeeded()).containsExactly(USER_ID);
+        assertThat(result.skipped()).containsExactly(99L, ADMIN_ID);
+        assertThat(result.failed()).containsExactly(7L);
+
+        verify(auditLogCommandService).log(eq("oak"), eq(AuditAction.ADMIN_BATCH_SOFT_DELETE),
+                eq("User"), isNull(), auditDetails.capture());
+        assertThat(auditDetails.getValue()).contains("succeeded [2]").contains("skipped [99, 1]").contains("failed [7]");
+    }
+
+    @Test
     @DisplayName("A batch records its ids in details, not in the 50-character entity_id column")
     void batchAuditKeepsIdsOutOfTheReferenceColumn() {
         runTransactionsInline();
@@ -322,7 +377,11 @@ class UserCommandServiceTest {
      * meant to go unused there.
      */
     private void onlyOneAdminRemains() {
-        lenient().when(userRepository.countByRoleAndEnabledTrueAndDeletedAtIsNull(UserRole.ADMIN)).thenReturn(1L);
+        lenient().when(userRepository.lockActiveByRole(UserRole.ADMIN)).thenReturn(List.of(admin));
+    }
+
+    private void givenCorrectCurrentPassword() {
+        when(passwordEncoder.matches("current", "hashed")).thenReturn(true);
     }
 
     @SuppressWarnings("unchecked")
@@ -353,6 +412,7 @@ class UserCommandServiceTest {
 
     private UserUpdateDto profileUpdate(String newUsername, String newEmail) {
         UserUpdateDto dto = new UserUpdateDto();
+        ReflectionTestUtils.setField(dto, "currentPassword", "current");
         ReflectionTestUtils.setField(dto, "newUsername", newUsername);
         ReflectionTestUtils.setField(dto, "newEmail", newEmail);
         return dto;

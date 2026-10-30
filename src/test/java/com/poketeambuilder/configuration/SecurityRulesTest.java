@@ -6,6 +6,7 @@ import com.poketeambuilder.controllers.TeamController;
 import com.poketeambuilder.controllers.UserController;
 
 import com.poketeambuilder.infrastructure.security.AuthEntryPoint;
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
 import com.poketeambuilder.infrastructure.security.AuthAccessDeniedHandler;
 import com.poketeambuilder.infrastructure.security.AuthRateLimitFilter;
 import com.poketeambuilder.infrastructure.security.JwtAuthenticationFilter;
@@ -23,6 +24,8 @@ import com.poketeambuilder.services.query.UserQueryService;
 
 import com.poketeambuilder.entities.SeedLog;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +40,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 
 import org.springframework.http.MediaType;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -74,7 +79,7 @@ import static org.mockito.Mockito.when;
     JwtAuthenticationFilter.class,
 })
 @ActiveProfiles("test")
-@EnableConfigurationProperties({ CorsProperties.class, JwtProperties.class })
+@EnableConfigurationProperties({ CorsProperties.class, JwtProperties.class, RateLimitProperties.class })
 class SecurityRulesTest {
 
     private static final String EMPTY_FILTER = "{}";
@@ -132,6 +137,16 @@ class SecurityRulesTest {
                             .content(EMPTY_FILTER))
                     .andExpect(status().isUnauthorized());
         }
+
+        @Test
+        @DisplayName("A share link opens anonymously, but rotating one needs the owner signed in")
+        void shareLinksAreReadOnlyForAnonymousCallers() throws Exception {
+            mockMvc.perform(get("/api/teams/shared/00000000-0000-4000-8000-000000000000"))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/api/teams/1/share-link/rotate"))
+                    .andExpect(status().isUnauthorized());
+        }
     }
 
     @Nested
@@ -152,7 +167,7 @@ class SecurityRulesTest {
         void profileRequiresAuthentication() throws Exception {
             mockMvc.perform(get("/api/users/me")).andExpect(status().isUnauthorized());
 
-            mockMvc.perform(get("/api/users/me").with(user("ash").roles("USER")))
+            mockMvc.perform(get("/api/users/me").with(user(signedIn(2L, "ash", "ROLE_USER"))))
                     .andExpect(status().isOk());
         }
     }
@@ -170,14 +185,14 @@ class SecurityRulesTest {
         @Test
         @DisplayName("A signed-in non-admin gets 403, not 401")
         void adminRoutesRejectOrdinaryUsers() throws Exception {
-            mockMvc.perform(post("/api/admin/seed").with(user("ash").roles("USER")))
+            mockMvc.perform(post("/api/admin/seed").with(user(signedIn(2L, "ash", "ROLE_USER"))))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         @DisplayName("An admin reaches the seed trigger")
         void adminReachesTheSeedTrigger() throws Exception {
-            mockMvc.perform(post("/api/admin/seed").with(user("oak").roles("ADMIN")))
+            mockMvc.perform(post("/api/admin/seed").with(user(signedIn(1L, "oak", "ROLE_ADMIN"))))
                     .andExpect(status().isAccepted());
         }
 
@@ -187,14 +202,22 @@ class SecurityRulesTest {
             mockMvc.perform(post("/api/users/admin/filter")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(EMPTY_FILTER)
-                            .with(user("ash").roles("USER")))
+                            .with(user(signedIn(2L, "ash", "ROLE_USER"))))
                     .andExpect(status().isForbidden());
 
-            mockMvc.perform(delete("/api/teams/admin/1").with(user("ash").roles("USER")))
+            mockMvc.perform(delete("/api/teams/admin/1").with(user(signedIn(2L, "ash", "ROLE_USER"))))
                     .andExpect(status().isForbidden());
 
-            mockMvc.perform(delete("/api/teams/admin/1").with(user("oak").roles("ADMIN")))
+            mockMvc.perform(delete("/api/teams/admin/1").with(user(signedIn(1L, "oak", "ROLE_ADMIN"))))
                     .andExpect(status().isNoContent());
         }
+    }
+
+    /**
+     * The principal the JWT filter installs. Controllers read the caller's id off it, so a plain
+     * {@code user("ash")} principal would resolve to {@code null} there.
+     */
+    private static AuthenticatedUser signedIn(long id, String username, String role) {
+        return new AuthenticatedUser(id, username, "", true, List.of(new SimpleGrantedAuthority(role)));
     }
 }

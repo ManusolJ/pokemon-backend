@@ -1,5 +1,6 @@
 package com.poketeambuilder.services.auth;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
 import java.time.Instant;
@@ -14,6 +15,8 @@ import com.poketeambuilder.entities.RefreshToken;
 
 import com.poketeambuilder.infrastructure.exceptions.InvalidTokenException;
 import com.poketeambuilder.infrastructure.exceptions.ResourceAlreadyExistsException;
+
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
 
 import com.poketeambuilder.mappers.implementation.UserMapper;
 
@@ -37,16 +40,18 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.test.util.ReflectionTestUtils;
+
+import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -57,13 +62,18 @@ import static org.mockito.Mockito.when;
  * Registration, sign-in and the refresh-rotation lifecycle.
  *
  * <p>Two properties here are security invariants rather than features. Sign-in must fail the
- * same way for an unknown account as for a wrong password, or the endpoint becomes an account
- * enumeration oracle. And presenting an already-spent refresh token has to be treated as a
- * leak, which means revoking the whole family rather than just refusing the one token.</p>
+ * same way - and at the same cost - for an unknown account as for a wrong password, or the
+ * endpoint becomes an account enumeration oracle. And presenting an already-spent refresh token
+ * has to be treated as a leak, which means revoking the whole family rather than just refusing
+ * the one token.</p>
+ *
+ * <p>These are mock-based, so they pin down the calls made, not what the database ends up
+ * holding; {@code RefreshTokenRotationIntegrationTest} checks the committed state.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    private static final long USER_ID = 1L;
     private static final String USERNAME = "ash";
     private static final String EMAIL = "ash@pallet.town";
     private static final long ACCESS_TTL_MS = 900_000L;
@@ -88,7 +98,7 @@ class AuthServiceTest {
         lenient().when(jwtService.getRefreshTokenExpirationMs()).thenReturn(REFRESH_TTL_MS);
 
         user = AppUser.builder()
-                .id(1L)
+                .id(USER_ID)
                 .username(USERNAME)
                 .email(EMAIL)
                 .password("hashed")
@@ -96,9 +106,7 @@ class AuthServiceTest {
                 .enabled(true)
                 .build();
 
-        UserDetails principal = User.withUsername(USERNAME).password("").authorities("ROLE_USER").build();
-
-        lenient().when(customUserDetailsService.loadUserByUsername(USERNAME)).thenReturn(principal);
+        lenient().when(customUserDetailsService.loadUserById(USER_ID)).thenReturn(principal(true));
         lenient().when(jwtService.generateAccessToken(any())).thenReturn("access-token");
         lenient().when(jwtService.generateRefreshToken(any())).thenReturn("refresh-token");
     }
@@ -106,20 +114,21 @@ class AuthServiceTest {
     // --- sign-in -----------------------------------------------------------------------
 
     @Test
-    @DisplayName("An unknown identifier fails as bad credentials, not as a missing resource")
+    @DisplayName("An unknown identifier fails as bad credentials, after a password check like a real one")
     void unknownIdentifierIsIndistinguishableFromWrongPassword() {
-        when(appUserRepository.findByUsernameAndDeletedAtIsNull("nobody")).thenReturn(Optional.empty());
+        when(appUserRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull("nobody")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(login("nobody", "whatever")))
                 .isInstanceOf(BadCredentialsException.class);
 
         verify(authenticationManager, never()).authenticate(any());
+        verify(passwordEncoder).matches(eq("whatever"), any());
     }
 
     @Test
     @DisplayName("An unknown e-mail fails the same way, and doesn't echo the address back")
     void unknownEmailLeaksNothing() {
-        when(appUserRepository.findByEmailAndDeletedAtIsNull("ghost@nowhere.test")).thenReturn(Optional.empty());
+        when(appUserRepository.findByEmailIgnoreCaseAndDeletedAtIsNull("ghost@nowhere.test")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(login("ghost@nowhere.test", "whatever")))
                 .isInstanceOf(BadCredentialsException.class)
@@ -127,20 +136,20 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("An identifier containing @ is resolved as an e-mail")
+    @DisplayName("An identifier containing @ is resolved as an e-mail, in its normalised form")
     void resolvesEmailIdentifiers() {
-        when(appUserRepository.findByEmailAndDeletedAtIsNull(EMAIL)).thenReturn(Optional.of(user));
+        when(appUserRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(EMAIL)).thenReturn(Optional.of(user));
 
-        authService.login(login(EMAIL, "secret"));
+        authService.login(login("  Ash@Pallet.Town ", "secret"));
 
-        verify(appUserRepository).findByEmailAndDeletedAtIsNull(EMAIL);
-        verify(appUserRepository, never()).findByUsernameAndDeletedAtIsNull(any());
+        verify(appUserRepository).findByEmailIgnoreCaseAndDeletedAtIsNull(EMAIL);
+        verify(appUserRepository, never()).findByUsernameIgnoreCaseAndDeletedAtIsNull(any());
     }
 
     @Test
     @DisplayName("Signing in issues a token pair and opens a new rotation family")
     void loginIssuesTokenPairUnderAFreshFamily() {
-        when(appUserRepository.findByUsernameAndDeletedAtIsNull(USERNAME)).thenReturn(Optional.of(user));
+        when(appUserRepository.findByUsernameIgnoreCaseAndDeletedAtIsNull(USERNAME)).thenReturn(Optional.of(user));
 
         TokenResponseDto response = authService.login(login(USERNAME, "secret"));
 
@@ -150,6 +159,7 @@ class AuthServiceTest {
 
         verify(authenticationManager).authenticate(any());
         verify(refreshTokenService).create(eq(user), eq("refresh-token"), any(UUID.class), any(Instant.class));
+        verify(jwtService).generateAccessToken(argThat(principal -> principal.getId() == USER_ID));
     }
 
     // --- registration ------------------------------------------------------------------
@@ -157,7 +167,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("A taken username is refused before anything is written")
     void refusesTakenUsername() {
-        when(appUserRepository.existsByUsernameAndDeletedAtIsNull(USERNAME)).thenReturn(true);
+        when(appUserRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull(USERNAME)).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(register()))
                 .isInstanceOf(ResourceAlreadyExistsException.class);
@@ -168,8 +178,8 @@ class AuthServiceTest {
     @Test
     @DisplayName("A taken e-mail is refused before anything is written")
     void refusesTakenEmail() {
-        when(appUserRepository.existsByUsernameAndDeletedAtIsNull(USERNAME)).thenReturn(false);
-        when(appUserRepository.existsByEmailAndDeletedAtIsNull(EMAIL)).thenReturn(true);
+        when(appUserRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull(USERNAME)).thenReturn(false);
+        when(appUserRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(EMAIL)).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(register()))
                 .isInstanceOf(ResourceAlreadyExistsException.class);
@@ -180,8 +190,8 @@ class AuthServiceTest {
     @Test
     @DisplayName("Registration stores the password hashed, never the submitted value")
     void registrationHashesThePassword() {
-        when(appUserRepository.existsByUsernameAndDeletedAtIsNull(USERNAME)).thenReturn(false);
-        when(appUserRepository.existsByEmailAndDeletedAtIsNull(EMAIL)).thenReturn(false);
+        when(appUserRepository.existsByUsernameIgnoreCaseAndDeletedAtIsNull(USERNAME)).thenReturn(false);
+        when(appUserRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(EMAIL)).thenReturn(false);
         when(userMapper.toEntity(any(RegisterDto.class))).thenReturn(user);
         when(passwordEncoder.encode("plaintext")).thenReturn("hashed-by-encoder");
 
@@ -189,6 +199,18 @@ class AuthServiceTest {
 
         assertThat(user.getPassword()).isEqualTo("hashed-by-encoder");
         verify(appUserRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("Registration stores the e-mail lower-cased, so later lookups agree on it")
+    void registrationNormalisesTheEmail() {
+        RegisterDto dto = register();
+        ReflectionTestUtils.setField(dto, "email", "Ash@Pallet.TOWN");
+        when(userMapper.toEntity(any(RegisterDto.class))).thenReturn(user);
+
+        authService.register(dto);
+
+        assertThat(user.getEmail()).isEqualTo(EMAIL);
     }
 
     // --- refresh rotation --------------------------------------------------------------
@@ -200,10 +222,11 @@ class AuthServiceTest {
         RefreshToken stored = storedToken(family, false, Instant.now().plusSeconds(3600));
 
         when(refreshTokenService.findByRawToken("raw")).thenReturn(stored);
+        when(refreshTokenService.consume(stored)).thenReturn(true);
 
         authService.refresh(new RefreshTokenRequestDto("raw"));
 
-        verify(refreshTokenService).revoke(stored);
+        verify(refreshTokenService).consume(stored);
         verify(refreshTokenService).create(eq(user), eq("refresh-token"), eq(family), any(Instant.class));
         verify(refreshTokenService, never()).revokeFamily(any());
     }
@@ -215,6 +238,7 @@ class AuthServiceTest {
         RefreshToken spent = storedToken(family, true, Instant.now().plusSeconds(3600));
 
         when(refreshTokenService.findByRawToken("raw")).thenReturn(spent);
+        when(refreshTokenService.consume(spent)).thenReturn(false);
 
         assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
                 .isInstanceOf(InvalidTokenException.class);
@@ -230,11 +254,41 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Losing a concurrent refresh race is treated as reuse, not as a second rotation")
+    void losingTheRefreshRaceIsTreatedAsReuse() {
+        UUID family = UUID.randomUUID();
+        // Loaded while still unrevoked; another request spends it before this one does.
+        RefreshToken raced = storedToken(family, false, Instant.now().plusSeconds(3600));
+
+        when(refreshTokenService.findByRawToken("raw")).thenReturn(raced);
+        when(refreshTokenService.consume(raced)).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
+                .isInstanceOf(InvalidTokenException.class);
+
+        verify(refreshTokenService).revokeFamily(family);
+        verify(jwtService, never()).generateRefreshToken(any());
+        verify(refreshTokenService, never()).create(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Refresh rejections commit, so the revocations they make aren't rolled back")
+    void refreshRejectionsDoNotRollBack() throws NoSuchMethodException {
+        Transactional transactional = AuthService.class
+                .getMethod("refresh", RefreshTokenRequestDto.class)
+                .getAnnotation(Transactional.class);
+
+        assertThat(transactional.noRollbackFor())
+                .contains(InvalidTokenException.class, DisabledException.class);
+    }
+
+    @Test
     @DisplayName("An expired token is refused without issuing anything")
     void expiredTokenIsRefused() {
         RefreshToken expired = storedToken(UUID.randomUUID(), false, Instant.now().minusSeconds(1));
 
         when(refreshTokenService.findByRawToken("raw")).thenReturn(expired);
+        when(refreshTokenService.consume(expired)).thenReturn(true);
 
         assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
                 .isInstanceOf(InvalidTokenException.class);
@@ -247,10 +301,10 @@ class AuthServiceTest {
     @DisplayName("A disabled account cannot refresh, and the attempt ends the whole family")
     void refreshRefusesADisabledAccount() {
         UUID family = UUID.randomUUID();
-        when(refreshTokenService.findByRawToken("raw"))
-                .thenReturn(storedToken(family, false, Instant.now().plusSeconds(3600)));
-        when(customUserDetailsService.loadUserByUsername(USERNAME))
-                .thenReturn(User.withUsername(USERNAME).password("").authorities("ROLE_USER").disabled(true).build());
+        RefreshToken stored = storedToken(family, false, Instant.now().plusSeconds(3600));
+        when(refreshTokenService.findByRawToken("raw")).thenReturn(stored);
+        when(refreshTokenService.consume(stored)).thenReturn(true);
+        when(customUserDetailsService.loadUserById(USER_ID)).thenReturn(principal(false));
 
         assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
                 .isInstanceOf(DisabledException.class);
@@ -264,31 +318,17 @@ class AuthServiceTest {
     @DisplayName("A token whose account no longer resolves is refused, not reported as a server fault")
     void refreshRefusesAVanishedAccount() {
         UUID family = UUID.randomUUID();
-        when(refreshTokenService.findByRawToken("raw"))
-                .thenReturn(storedToken(family, false, Instant.now().plusSeconds(3600)));
-        when(customUserDetailsService.loadUserByUsername(USERNAME))
-                .thenThrow(new UsernameNotFoundException("User not found: " + USERNAME));
+        RefreshToken stored = storedToken(family, false, Instant.now().plusSeconds(3600));
+        when(refreshTokenService.findByRawToken("raw")).thenReturn(stored);
+        when(refreshTokenService.consume(stored)).thenReturn(true);
+        when(customUserDetailsService.loadUserById(USER_ID))
+                .thenThrow(new UsernameNotFoundException("User not found: " + USER_ID));
 
         assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
                 .isInstanceOf(InvalidTokenException.class);
 
         verify(refreshTokenService).revokeFamily(family);
         verify(refreshTokenService, never()).create(any(), any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("The presented token is only spent once the account has been cleared")
-    void refreshChecksTheAccountBeforeSpendingTheToken() {
-        UUID family = UUID.randomUUID();
-        RefreshToken stored = storedToken(family, false, Instant.now().plusSeconds(3600));
-        when(refreshTokenService.findByRawToken("raw")).thenReturn(stored);
-        when(customUserDetailsService.loadUserByUsername(USERNAME))
-                .thenReturn(User.withUsername(USERNAME).password("").authorities("ROLE_USER").disabled(true).build());
-
-        assertThatThrownBy(() -> authService.refresh(new RefreshTokenRequestDto("raw")))
-                .isInstanceOf(DisabledException.class);
-
-        verify(refreshTokenService, never()).revoke(stored);
     }
 
     // --- sign-out ----------------------------------------------------------------------
@@ -322,6 +362,10 @@ class AuthServiceTest {
         ReflectionTestUtils.setField(dto, "password", "plaintext");
         ReflectionTestUtils.setField(dto, "confirmPassword", "plaintext");
         return dto;
+    }
+
+    private AuthenticatedUser principal(boolean enabled) {
+        return new AuthenticatedUser(USER_ID, USERNAME, "", enabled, List.of(new SimpleGrantedAuthority("ROLE_USER")));
     }
 
     private RefreshToken storedToken(UUID familyId, boolean revoked, Instant expiresAt) {

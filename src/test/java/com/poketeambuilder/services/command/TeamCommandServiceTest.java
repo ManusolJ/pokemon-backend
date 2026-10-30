@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.poketeambuilder.dtos.front.team.details.TeamCreateDto;
+import com.poketeambuilder.dtos.front.team.details.TeamPatchDto;
 import com.poketeambuilder.dtos.front.team.roster.TeamPokemonCreateDto;
 
 import com.poketeambuilder.entities.AppUser;
@@ -54,7 +55,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -76,6 +76,7 @@ class TeamCommandServiceTest {
     private static final int PIKACHU = 25;
     private static final int STATIC_ABILITY = 9;
     private static final int THUNDERBOLT = 85;
+    private static final String OLD_SLUG = "00000000-0000-4000-8000-000000000000";
 
     @Mock private TeamMapper teamMapper;
     @Mock private TeamPokemonMapper teamPokemonMapper;
@@ -107,8 +108,8 @@ class TeamCommandServiceTest {
         owner = user(OWNER_ID, "ash");
         stranger = user(STRANGER_ID, "gary");
 
-        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("ash")).thenReturn(Optional.of(owner));
-        lenient().when(userRepository.findByUsernameAndDeletedAtIsNull("gary")).thenReturn(Optional.of(stranger));
+        lenient().when(userRepository.findByIdAndDeletedAtIsNull(OWNER_ID)).thenReturn(Optional.of(owner));
+        lenient().when(userRepository.findByIdAndDeletedAtIsNull(STRANGER_ID)).thenReturn(Optional.of(stranger));
         lenient().when(teamMapper.toEntity(any(TeamCreateDto.class))).thenReturn(team(owner, false));
         lenient().when(teamRepository.save(any(Team.class))).thenAnswer(call -> call.getArgument(0));
     }
@@ -120,7 +121,7 @@ class TeamCommandServiceTest {
     void deletingAnotherUsersTeamLooksLikeItDoesNotExist() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
 
-        assertThatThrownBy(() -> teamCommandService.deleteTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.deleteTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(teamRepository, never()).delete(any(Team.class));
@@ -131,7 +132,7 @@ class TeamCommandServiceTest {
     void missingTeamAndForeignTeamAreIndistinguishable() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> teamCommandService.deleteTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.deleteTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -142,11 +143,10 @@ class TeamCommandServiceTest {
     void privateTeamsCannotBeLiked() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, false)));
 
-        assertThatThrownBy(() -> teamCommandService.likeTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.likeTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(teamLikeRepository, never()).save(any());
-        verify(teamRepository, never()).incrementLikeCount(anyLong());
     }
 
     @Test
@@ -154,34 +154,33 @@ class TeamCommandServiceTest {
     void ownersCannotLikeTheirOwnTeam() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
 
-        assertThatThrownBy(() -> teamCommandService.likeTeam("ash", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.likeTeam(OWNER_ID, TEAM_ID))
                 .isInstanceOf(ResourceAlreadyExistsException.class);
 
-        verify(teamRepository, never()).incrementLikeCount(anyLong());
+        verify(teamLikeRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Liking twice is refused, and the counter moves only once")
+    @DisplayName("Liking twice is refused, and no second like row is written")
     void likingTwiceIsRefused() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
         when(teamLikeRepository.existsById(any())).thenReturn(true);
 
-        assertThatThrownBy(() -> teamCommandService.likeTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.likeTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(ResourceAlreadyExistsException.class);
 
-        verify(teamRepository, never()).incrementLikeCount(anyLong());
+        verify(teamLikeRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Liking another user's public team records it and bumps the counter")
+    @DisplayName("Liking another user's public team records it (the counter follows by trigger)")
     void likingAPublicTeamSucceeds() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
         when(teamLikeRepository.existsById(any())).thenReturn(false);
 
-        teamCommandService.likeTeam("gary", TEAM_ID);
+        teamCommandService.likeTeam(STRANGER_ID, TEAM_ID);
 
         verify(teamLikeRepository).save(any());
-        verify(teamRepository).incrementLikeCount(TEAM_ID);
     }
 
     @Test
@@ -190,10 +189,10 @@ class TeamCommandServiceTest {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
         when(teamLikeRepository.existsById(any())).thenReturn(false);
 
-        assertThatThrownBy(() -> teamCommandService.unlikeTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.unlikeTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(teamRepository, never()).decrementLikeCount(anyLong());
+        verify(teamLikeRepository, never()).deleteById(any());
     }
 
     // --- admin moderation ------------------------------------------------------------------
@@ -203,10 +202,10 @@ class TeamCommandServiceTest {
     void adminDeleteKeepsTheDescriptionOutOfTheReferenceColumn() {
         AppUser oak = user(3L, "oak");
         oak.setRole(UserRole.ADMIN);
-        when(userRepository.findByUsernameAndDeletedAtIsNull("oak")).thenReturn(Optional.of(oak));
+        when(userRepository.findByIdAndDeletedAtIsNull(3L)).thenReturn(Optional.of(oak));
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
 
-        teamCommandService.adminDeleteTeam("oak", TEAM_ID);
+        teamCommandService.adminDeleteTeam(3L, TEAM_ID);
 
         verify(auditLogCommandService).log(eq("oak"), eq(AuditAction.ADMIN_TEAM_DELETE),
                 auditEntity.capture(), eq(String.valueOf(TEAM_ID)), auditDetails.capture());
@@ -221,7 +220,7 @@ class TeamCommandServiceTest {
     void adminDeleteRefusesANonAdmin() {
         when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
 
-        assertThatThrownBy(() -> teamCommandService.adminDeleteTeam("gary", TEAM_ID))
+        assertThatThrownBy(() -> teamCommandService.adminDeleteTeam(STRANGER_ID, TEAM_ID))
                 .isInstanceOf(AccessDeniedException.class);
 
         verify(teamRepository, never()).delete(any(Team.class));
@@ -235,7 +234,7 @@ class TeamCommandServiceTest {
         when(pokemonAbilityRepository.existsByIdPokemonIdAndIdAbilityId(PIKACHU, STATIC_ABILITY))
                 .thenReturn(false);
 
-        assertThatThrownBy(() -> teamCommandService.createTeam("ash", createTeam()))
+        assertThatThrownBy(() -> teamCommandService.createTeam(OWNER_ID, createTeam()))
                 .isInstanceOf(IllegalTeamCompositionException.class)
                 .hasMessageContaining("Ability");
 
@@ -249,7 +248,7 @@ class TeamCommandServiceTest {
                 .thenReturn(true);
         when(pokemonMoveRepository.findLearnableMoveIds(anyInt(), any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> teamCommandService.createTeam("ash", createTeam()))
+        assertThatThrownBy(() -> teamCommandService.createTeam(OWNER_ID, createTeam()))
                 .isInstanceOf(IllegalTeamCompositionException.class)
                 .hasMessageContaining("Move");
 
@@ -263,14 +262,111 @@ class TeamCommandServiceTest {
                 .thenReturn(true);
         when(pokemonMoveRepository.findLearnableMoveIds(anyInt(), any())).thenReturn(List.of());
 
-        assertThatThrownBy(() -> teamCommandService.createTeam("ash", createTeam()))
+        assertThatThrownBy(() -> teamCommandService.createTeam(OWNER_ID, createTeam()))
                 .isInstanceOf(IllegalTeamCompositionException.class);
 
         verify(pokemonAbilityRepository).existsByIdPokemonIdAndIdAbilityId(PIKACHU, STATIC_ABILITY);
         verify(pokemonMoveRepository).findLearnableMoveIds(PIKACHU, List.of(THUNDERBOLT));
     }
 
+    @Test
+    @DisplayName("A Pokemon that lists the same move twice is rejected")
+    void rejectsDuplicateMoves() {
+        when(pokemonAbilityRepository.existsByIdPokemonIdAndIdAbilityId(PIKACHU, STATIC_ABILITY))
+                .thenReturn(true);
+
+        TeamCreateDto dto = createTeam();
+        ReflectionTestUtils.setField(dto.getPokemon().get(0), "moveIds", List.of(THUNDERBOLT, THUNDERBOLT));
+
+        assertThatThrownBy(() -> teamCommandService.createTeam(OWNER_ID, dto))
+                .isInstanceOf(IllegalTeamCompositionException.class)
+                .hasMessageContaining("same move");
+
+        verify(teamPokemonRepository, never()).save(any());
+    }
+
+    // --- ownership by id ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Ownership is decided by user id, so an account that took over the owner's old name has no access")
+    void ownershipFollowsTheIdNotTheName() {
+        // Id 99 now holds the owner's old name "ash"; the team still belongs to id 1.
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team(owner, true)));
+
+        assertThatThrownBy(() -> teamCommandService.deleteTeam(99L, TEAM_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(teamRepository, never()).delete(any(Team.class));
+    }
+
+    // --- share links ---------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Rotating the share link gives the team a new slug")
+    void ownerCanRotateTheShareLink() {
+        Team team = team(owner, false);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+
+        teamCommandService.rotateShareSlug(OWNER_ID, TEAM_ID);
+
+        assertThat(team.getSlug()).isNotNull().isNotEqualTo(OLD_SLUG);
+        verify(teamRepository).save(team);
+    }
+
+    @Test
+    @DisplayName("Only the owner can rotate a share link, and anyone else gets the usual 404")
+    void strangersCannotRotateTheShareLink() {
+        Team team = team(owner, false);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+
+        assertThatThrownBy(() -> teamCommandService.rotateShareSlug(STRANGER_ID, TEAM_ID))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        assertThat(team.getSlug()).isEqualTo(OLD_SLUG);
+    }
+
+    @Test
+    @DisplayName("Making a public team private retires the slug that was on show in the public listing")
+    void goingPrivateRotatesTheSlug() {
+        Team team = team(owner, true);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+
+        teamCommandService.patchTeam(OWNER_ID, TEAM_ID, patch(false));
+
+        assertThat(team.getIsPublic()).isFalse();
+        assertThat(team.getSlug()).isNotEqualTo(OLD_SLUG);
+    }
+
+    @Test
+    @DisplayName("Making a private team public keeps its share link working")
+    void goingPublicKeepsTheSlug() {
+        Team team = team(owner, false);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+
+        teamCommandService.patchTeam(OWNER_ID, TEAM_ID, patch(true));
+
+        assertThat(team.getSlug()).isEqualTo(OLD_SLUG);
+    }
+
+    @Test
+    @DisplayName("A patch that leaves a private team private keeps its share link working")
+    void stayingPrivateKeepsTheSlug() {
+        Team team = team(owner, false);
+        when(teamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+
+        teamCommandService.patchTeam(OWNER_ID, TEAM_ID, patch(false));
+
+        assertThat(team.getSlug()).isEqualTo(OLD_SLUG);
+    }
+
     // --- helpers ---------------------------------------------------------------------------
+
+    private TeamPatchDto patch(boolean isPublic) {
+        TeamPatchDto dto = new TeamPatchDto();
+        ReflectionTestUtils.setField(dto, "isPublic", isPublic);
+        return dto;
+    }
+
 
     private AppUser user(long id, String username) {
         return AppUser.builder()
@@ -289,6 +385,7 @@ class TeamCommandServiceTest {
                 .owner(teamOwner)
                 .name("Kanto")
                 .isPublic(isPublic)
+                .slug(OLD_SLUG)
                 .likeCount(0)
                 .build();
     }
