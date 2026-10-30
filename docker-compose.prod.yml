@@ -5,21 +5,6 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: poketeam-db
-    restart: unless-stopped
-    env_file:
-      - .env.prod
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    logging: *default-logging
-
   app:
     build:
       context: .
@@ -30,9 +15,8 @@ services:
       - .env.prod
     ports:
       - "127.0.0.1:8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    networks:
+      - homelab
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
       interval: 30s
@@ -41,5 +25,6 @@ services:
       start_period: 40s
     logging: *default-logging
 
-volumes:
-  pgdata:
+networks:
+  homelab:
+    external: true
