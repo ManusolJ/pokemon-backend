@@ -8,16 +8,16 @@ import com.poketeambuilder.utils.enums.AuditAction;
 
 import org.springframework.stereotype.Service;
 
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Persists {@link AuditLog} rows. Every {@code log(...)} call runs in its own independent
- * transaction ({@code REQUIRES_NEW}) so audit entries commit even when the surrounding
- * business transaction rolls back.
+ * Persists {@link AuditLog} rows. Each entry joins the caller's transaction, so it commits or
+ * rolls back together with the change it records: the trail never claims something happened
+ * that was undone. Callers whose rejection path must still leave a record (refresh-token reuse)
+ * commit through that rejection rather than relying on a side transaction here.
  */
 @Slf4j
 @Service
@@ -30,13 +30,13 @@ public class AuditLogCommandService {
     private final AuditLogRepository auditLogRepository;
 
     /** Persists an audit entry with optional structured details. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void log(String username, AuditAction action, String entity, String entityId, String details) {
         write(username, action, entity, entityId, details);
     }
 
     /** Persists an audit entry without details. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void log(String username, AuditAction action, String entity, String entityId) {
         write(username, action, entity, entityId, null);
     }
