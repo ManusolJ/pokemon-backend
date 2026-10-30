@@ -7,6 +7,8 @@ import com.poketeambuilder.dtos.front.admin.seed.SeedLogFilterDto;
 import com.poketeambuilder.dtos.front.admin.audit.AuditLogReadDto;
 import com.poketeambuilder.dtos.front.admin.audit.AuditLogFilterDto;
 
+import com.poketeambuilder.infrastructure.security.AuthenticatedUser;
+
 import com.poketeambuilder.services.query.SeedLogQueryService;
 import com.poketeambuilder.services.query.AuditLogQueryService;
 import com.poketeambuilder.services.command.SeedLogCommandService;
@@ -20,7 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,7 +51,7 @@ public class AdminController {
      */
     @PostMapping("/seed")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<SeedLogReadDto> triggerSeed(@AuthenticationPrincipal UserDetails user) {
+    public ResponseEntity<SeedLogReadDto> triggerSeed(@AuthenticationPrincipal AuthenticatedUser user) {
         SeedLog seedLog = seedService.triggerSeed(user.getUsername());
         SeedLogReadDto seedLogReadDto = seedLogQueryService.findById(seedLog.getId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(seedLogReadDto);
