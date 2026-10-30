@@ -37,4 +37,15 @@ public record TeamPokemonReadDto(
     Integer ivSpDef,
     Integer ivSpeed,
     List<TeamPokemonMoveEmbedDto> moves
-) {}
+) {
+
+    /** Copy with the move list filled in; the mapper leaves it unset and the query layer loads it in batch. */
+    public TeamPokemonReadDto withMoves(List<TeamPokemonMoveEmbedDto> loadedMoves) {
+        return new TeamPokemonReadDto(
+                id, slot, nickname, level, gender, shiny,
+                pokemon, ability, nature, heldItem, teraType,
+                evHp, evAtk, evDef, evSpAtk, evSpDef, evSpeed,
+                ivHp, ivAtk, ivDef, ivSpAtk, ivSpDef, ivSpeed,
+                loadedMoves);
+    }
+}

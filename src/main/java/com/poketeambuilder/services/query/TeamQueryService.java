@@ -52,9 +52,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * Read access to {@link Team}. Each entry point resolves the current user's id once (when
- * a username is supplied) and threads it through the helpers so the like-membership query
- * shares a single user lookup with the rest of the call.
+ * Read access to {@link Team}. Entry points take the requester's user id (or {@code null} for
+ * anonymous callers) and thread it through the helpers for the like-membership query.
  *
  * <p>Listings load roster details (full join graph) or sprite-only projections depending on
  * whether the caller needs read DTOs or summaries.</p>
@@ -122,13 +121,12 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return findById(id, null);
     }
 
-    /** {@link #findById(Long)} with the requester's username (for the {@code likedByCurrentUser} flag). */
-    public TeamReadDto findById(@NotNull Long id, String currentUsername) {
+    /** {@link #findById(Long)} with the requester's user id (for the {@code likedByCurrentUser} flag). */
+    public TeamReadDto findById(@NotNull Long id, Long currentUserId) {
         TeamReadDto dto = super.findById(id);
-        Long userId = resolveUserId(currentUsername);
         Map<Long, List<TeamPokemonReadDto>> pokemonMap = fetchPokemonForTeams(List.of(id));
-        Set<Long> likedIds = fetchLikedTeamIds(userId, List.of(id));
-        return withPokemonAndLike(dto, pokemonMap.getOrDefault(id, List.of()), likedIds.contains(id));
+        Set<Long> likedIds = fetchLikedTeamIds(currentUserId, List.of(id));
+        return dto.withRosterAndLike(pokemonMap.getOrDefault(id, List.of()), likedIds.contains(id));
     }
 
     /**
@@ -143,8 +141,8 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return filterEntities(filter, pageable, null);
     }
 
-    /** {@link #filterEntities(TeamFilterDto, Pageable)} with the requester's username. */
-    public Page<TeamReadDto> filterEntities(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
+    /** {@link #filterEntities(TeamFilterDto, Pageable)} with the requester's user id. */
+    public Page<TeamReadDto> filterEntities(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, Long currentUserId) {
         Page<TeamReadDto> page = super.filterEntities(filter, pageable);
 
         List<Long> ids = page.getContent().stream().map(TeamReadDto::id).toList();
@@ -152,12 +150,11 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
             return page;
         }
 
-        Long userId = resolveUserId(currentUsername);
         Map<Long, List<TeamPokemonReadDto>> pokemonMap = fetchPokemonForTeams(ids);
-        Set<Long> likedIds = fetchLikedTeamIds(userId, ids);
+        Set<Long> likedIds = fetchLikedTeamIds(currentUserId, ids);
 
         List<TeamReadDto> enriched = page.getContent().stream()
-                .map(dto -> withPokemonAndLike(dto, pokemonMap.getOrDefault(dto.id(), List.of()), likedIds.contains(dto.id())))
+                .map(dto -> dto.withRosterAndLike(pokemonMap.getOrDefault(dto.id(), List.of()), likedIds.contains(dto.id())))
                 .toList();
 
         return new PageImpl<>(enriched, pageable, page.getTotalElements());
@@ -167,8 +164,8 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
      * Public read of a team by id. Refuses to serve private teams, and teams belonging to a
      * tombstoned account, with a 404 rather than a 403 so neither case leaks existence.
      */
-    public TeamReadDto findPublicTeamById(@NotNull Long id, String currentUsername) {
-        TeamReadDto publicTeam = this.findById(id, currentUsername);
+    public TeamReadDto findPublicTeamById(@NotNull Long id, Long currentUserId) {
+        TeamReadDto publicTeam = this.findById(id, currentUserId);
 
         if (!publicTeam.isPublic() || !teamRepository.existsByIdAndOwnerDeletedAtIsNull(id)) {
             throw new ResourceNotFoundException(String.format("Team with id %s not found", id));
@@ -177,26 +174,38 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return publicTeam;
     }
 
-    /** Owner-only read by id. Refuses to serve teams owned by other users. */
-    public TeamReadDto findOwnedTeamById(@NotNull Long id, @NotNull String currentUsername) {
-        TeamReadDto team = this.findById(id, currentUsername);
+    /**
+     * Read-only view through a share link. Serves private teams too - holding the slug is the
+     * permission - but not teams of a tombstoned account. An unknown slug and a tombstoned owner
+     * answer the same 404.
+     */
+    public TeamReadDto findSharedTeam(@NotNull String slug, Long currentUserId) {
+        Long teamId = teamRepository.findShareableIdBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Shared team not found"));
 
-        if (team.owner() == null || !currentUsername.equals(team.owner().username())) {
-            throw new ResourceNotFoundException(String.format("Team with id %s not found for user '%s'", id, currentUsername));
+        return this.findById(teamId, currentUserId);
+    }
+
+    /** Owner-only read by id. Refuses to serve teams owned by other users. */
+    public TeamReadDto findOwnedTeamById(@NotNull Long id, @NotNull Long currentUserId) {
+        TeamReadDto team = this.findById(id, currentUserId);
+
+        if (team.owner() == null || team.owner().id() != currentUserId) {
+            throw new ResourceNotFoundException(String.format("Team with id %s not found", id));
         }
 
         return team;
     }
 
     /** Teams summary listing. Layered as a defensive copy + userId override on the filter. */
-    public Page<TeamSummaryDto> filterOwnedSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, @NotNull String currentUsername) {
-        Long userId = userRepository.findByUsernameAndDeletedAtIsNull(currentUsername)
+    public Page<TeamSummaryDto> filterOwnedSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, @NotNull Long currentUserId) {
+        Long userId = userRepository.findByIdAndDeletedAtIsNull(currentUserId)
                 .map(AppUser::getId)
-                .orElseThrow(() -> new ResourceNotFoundException(String.format("User '%s' not found", currentUsername)));
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("User with id '%s' not found", currentUserId)));
 
         TeamFilterDto scoped = filter.copy();
         scoped.setUserId(userId);
-        return filterSummaries(scoped, pageable, currentUsername);
+        return filterSummaries(scoped, pageable, userId);
     }
 
     /**
@@ -204,15 +213,15 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
      * {@code isPublic = true} and an active owner forced, so a client can't widen the scope
      * and a tombstoned account's teams drop out of the listing.
      */
-    public Page<TeamSummaryDto> filterPublicSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
+    public Page<TeamSummaryDto> filterPublicSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, Long currentUserId) {
         TeamFilterDto scoped = filter.copy();
         scoped.setIsPublic(true);
         scoped.setOwnerActive(true);
-        return filterSummaries(scoped, pageable, currentUsername);
+        return filterSummaries(scoped, pageable, currentUserId);
     }
 
     /** Generic team summary listing. Enriches each row with sprite URLs + the liked-by-me flag. */
-    private Page<TeamSummaryDto> filterSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, String currentUsername) {
+    private Page<TeamSummaryDto> filterSummaries(@Valid @NotNull TeamFilterDto filter, @NotNull Pageable pageable, Long currentUserId) {
         Page<TeamSummaryDto> page = filterAndMap(filter, pageable, teamMapper::toSummaryDto);
 
         List<Long> ids = page.getContent().stream().map(TeamSummaryDto::id).toList();
@@ -220,12 +229,11 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
             return page;
         }
 
-        Long userId = resolveUserId(currentUsername);
         Map<Long, List<String>> spritesMap = fetchSpritesForTeams(ids);
-        Set<Long> likedIds = fetchLikedTeamIds(userId, ids);
+        Set<Long> likedIds = fetchLikedTeamIds(currentUserId, ids);
 
         List<TeamSummaryDto> enriched = page.getContent().stream()
-                .map(dto -> withSpritesAndLike(dto, spritesMap.getOrDefault(dto.id(), List.of()), likedIds.contains(dto.id())))
+                .map(dto -> dto.withSpritesAndLike(spritesMap.getOrDefault(dto.id(), List.of()), likedIds.contains(dto.id())))
                 .toList();
 
         return new PageImpl<>(enriched, pageable, page.getTotalElements());
@@ -260,14 +268,6 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return builder.build();
     }
 
-    /** Resolves the username to a user id once per service call, or returns {@code null} for anonymous callers. */
-    private Long resolveUserId(String username) {
-        if (username == null || username.isBlank()) {
-            return null;
-        }
-        return userRepository.findByUsernameAndDeletedAtIsNull(username).map(AppUser::getId).orElse(null);
-    }
-
     private Map<Long, List<TeamPokemonReadDto>> fetchPokemonForTeams(List<Long> teamIds) {
         List<TeamPokemon> teamPokemons = teamPokemonRepository.findByTeamIdInWithDetails(teamIds);
 
@@ -277,7 +277,7 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
         return teamPokemons.stream().collect(Collectors.groupingBy(
                 tp -> tp.getTeam().getId(),
                 Collectors.mapping(
-                        tp -> withMoves(teamPokemonMapper.toReadDto(tp), movesMap.getOrDefault(tp.getId(), List.of())),
+                        tp -> teamPokemonMapper.toReadDto(tp).withMoves(movesMap.getOrDefault(tp.getId(), List.of())),
                         Collectors.toList())));
     }
 
@@ -313,26 +313,5 @@ public class TeamQueryService extends AbstractQueryService<Team, Long, TeamFilte
                                                 new TypeReadDto(tpm.getMove().getType().getId(), tpm.getMove().getType().getName())),
                                         tpm.getId().getSlotPosition()),
                                 Collectors.toList())));
-    }
-
-    private TeamReadDto withPokemonAndLike(TeamReadDto dto, List<TeamPokemonReadDto> pokemon, boolean liked) {
-        return new TeamReadDto(
-                dto.id(), dto.name(), dto.slug(), dto.isPublic(), dto.likeCount(),
-                dto.createdAt(), dto.updatedAt(), dto.owner(), pokemon, liked);
-    }
-
-    private TeamSummaryDto withSpritesAndLike(TeamSummaryDto dto, List<String> sprites, boolean liked) {
-        return new TeamSummaryDto(
-                    dto.id(), dto.name(), dto.slug(), dto.isPublic(), dto.likeCount(),
-                dto.createdAt(), dto.updatedAt(), dto.owner(), sprites, liked);
-    }
-
-    private TeamPokemonReadDto withMoves(TeamPokemonReadDto dto, List<TeamPokemonMoveEmbedDto> moves) {
-        return new TeamPokemonReadDto(
-                dto.id(), dto.slot(), dto.nickname(), dto.level(), dto.gender(), dto.shiny(),
-                dto.pokemon(), dto.ability(), dto.nature(), dto.heldItem(), dto.teraType(),
-                dto.evHp(), dto.evAtk(), dto.evDef(), dto.evSpAtk(), dto.evSpDef(), dto.evSpeed(),
-                dto.ivHp(), dto.ivAtk(), dto.ivDef(), dto.ivSpAtk(), dto.ivSpDef(), dto.ivSpeed(),
-                moves);
     }
 }

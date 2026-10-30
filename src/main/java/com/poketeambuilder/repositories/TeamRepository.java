@@ -1,33 +1,25 @@
 package com.poketeambuilder.repositories;
 
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.repository.query.Param;
+import java.util.Optional;
 
 import com.poketeambuilder.entities.Team;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 /**
- * CRUD + specification queries for {@link Team}. Includes atomic counters for the
- * denormalised {@link Team#getLikeCount()}; both clear the persistence context so callers
- * that re-read the team in the same transaction see the new value.
+ * CRUD + specification queries for {@link Team}. The denormalised {@link Team#getLikeCount()}
+ * is maintained by a database trigger on {@code team_like} (V26), so nothing here writes it.
  */
 public interface TeamRepository extends BaseRepository<Team, Long> {
 
-    /**
-     * Atomically increments {@link Team#getLikeCount()} by one.
-     */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Team t SET t.likeCount = t.likeCount + 1 WHERE t.id = :teamId")
-    void incrementLikeCount(@Param("teamId") Long teamId);
-
-    /**
-     * Atomically decrements {@link Team#getLikeCount()} by one, but never below zero — guards
-     * against double-decrement races if a delete is replayed.
-     */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Team t SET t.likeCount = t.likeCount - 1 WHERE t.id = :teamId AND t.likeCount > 0")
-    void decrementLikeCount(@Param("teamId") Long teamId);
-
     /** Whether the team exists and its owner hasn't been tombstoned. Gates the public single-team read. */
     boolean existsByIdAndOwnerDeletedAtIsNull(Long id);
+
+    /**
+     * Resolves a share link to its team, public or private, unless the owner has been tombstoned.
+     * Backs the anonymous read-only share view.
+     */
+    @Query("SELECT t.id FROM Team t WHERE t.slug = :slug AND t.owner.deletedAt IS NULL")
+    Optional<Long> findShareableIdBySlug(@Param("slug") String slug);
 }

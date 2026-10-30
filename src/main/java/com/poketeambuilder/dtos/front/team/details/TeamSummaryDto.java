@@ -20,4 +20,10 @@ public record TeamSummaryDto(
     UserSummaryDto owner,
     List<String> pokemonSprites,
     Boolean likedByCurrentUser
-) {}
+) {
+
+    /** Copy with the sprite strip and per-viewer like flag filled in; see {@link TeamReadDto#withRosterAndLike}. */
+    public TeamSummaryDto withSpritesAndLike(List<String> sprites, boolean liked) {
+        return new TeamSummaryDto(id, name, slug, isPublic, likeCount, createdAt, updatedAt, owner, sprites, liked);
+    }
+}

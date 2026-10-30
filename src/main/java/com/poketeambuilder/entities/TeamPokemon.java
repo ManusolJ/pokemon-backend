@@ -1,5 +1,7 @@
 package com.poketeambuilder.entities;
 
+import com.poketeambuilder.infrastructure.exceptions.IllegalTeamCompositionException;
+
 import com.poketeambuilder.infrastructure.validation.annotations.ValidEvSpread;
 
 import com.poketeambuilder.utils.enums.PokemonGender;
@@ -195,7 +197,7 @@ public class TeamPokemon {
     @PreUpdate
     private void validateEvTotal() {
         if (evHp + evAtk + evDef + evSpAtk + evSpDef + evSpeed > ValidEvSpread.MAX_TOTAL_EVS) {
-            throw new IllegalArgumentException("Total EVs cannot exceed " + ValidEvSpread.MAX_TOTAL_EVS);
+            throw new IllegalTeamCompositionException("Total EVs cannot exceed " + ValidEvSpread.MAX_TOTAL_EVS);
         }
     }
 }

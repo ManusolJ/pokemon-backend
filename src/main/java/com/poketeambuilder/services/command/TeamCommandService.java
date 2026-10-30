@@ -90,12 +90,12 @@ public class TeamCommandService {
 
     /** Creates a team owned by the authenticated user with a fresh share slug. */
     @Transactional
-    public Long createTeam(@NotNull String username, @Valid @NotNull TeamCreateDto dto) {
-        AppUser owner = findUserOrThrow(username);
+    public Long createTeam(@NotNull Long userId, @Valid @NotNull TeamCreateDto dto) {
+        AppUser owner = findUserOrThrow(userId);
 
         Team team = teamMapper.toEntity(dto);
         team.setOwner(owner);
-        team.setSlug(UUID.randomUUID().toString());
+        team.setSlug(newShareSlug());
 
         Team savedTeam = teamRepository.save(team);
 
@@ -106,13 +106,16 @@ public class TeamCommandService {
 
     /** Full-replacement update. Wipes the roster, re-applies scalar fields, rebuilds the roster. */
     @Transactional
-    public Long updateTeam(@NotNull String username, @NotNull Long teamId, @Valid @NotNull TeamUpdateDto dto) {
+    public Long updateTeam(@NotNull Long userId, @NotNull Long teamId, @Valid @NotNull TeamUpdateDto dto) {
         Team team = findTeamOrThrow(teamId);
-        validateOwnership(team, username);
+        validateOwnership(team, userId);
+
+        boolean wasPublic = Boolean.TRUE.equals(team.getIsPublic());
 
         deleteTeamPokemon(team);
 
         teamMapper.updateEntity(dto, team);
+        rotateSlugIfMadePrivate(team, wasPublic);
         Team savedTeam = teamRepository.save(team);
 
         buildAndSavePokemon(savedTeam, dto.getPokemon());
@@ -122,16 +125,30 @@ public class TeamCommandService {
 
     /** Partial update of the team's scalar fields. Does not touch the roster. */
     @Transactional
-    public Long patchTeam(@NotNull String username, @NotNull Long teamId, @Valid @NotNull TeamPatchDto dto) {
+    public Long patchTeam(@NotNull Long userId, @NotNull Long teamId, @Valid @NotNull TeamPatchDto dto) {
         Team team = findTeamOrThrow(teamId);
-        validateOwnership(team, username);
+        validateOwnership(team, userId);
 
         if (dto.getName() != null && !dto.getName().isBlank()) {
             team.setName(dto.getName());
         }
         if (dto.getIsPublic() != null) {
+            boolean wasPublic = Boolean.TRUE.equals(team.getIsPublic());
             team.setIsPublic(dto.getIsPublic());
+            rotateSlugIfMadePrivate(team, wasPublic);
         }
+
+        teamRepository.save(team);
+        return team.getId();
+    }
+
+    /** Owner-only. Replaces the team's share slug, so every link handed out so far stops working. */
+    @Transactional
+    public Long rotateShareSlug(@NotNull Long userId, @NotNull Long teamId) {
+        Team team = findTeamOrThrow(teamId);
+        validateOwnership(team, userId);
+
+        team.setSlug(newShareSlug());
 
         teamRepository.save(team);
         return team.getId();
@@ -139,9 +156,9 @@ public class TeamCommandService {
 
     /** Owner-only delete. Cascades to roster + likes. */
     @Transactional
-    public void deleteTeam(@NotNull String username, @NotNull Long teamId) {
+    public void deleteTeam(@NotNull Long userId, @NotNull Long teamId) {
         Team team = findTeamOrThrow(teamId);
-        validateOwnership(team, username);
+        validateOwnership(team, userId);
 
         deleteTeamPokemon(team);
         deleteTeamLikes(team);
@@ -155,14 +172,14 @@ public class TeamCommandService {
      *
      */
     @Transactional
-    public void adminDeleteTeam(@NotNull String adminUsername, @NotNull Long teamId) {
+    public void adminDeleteTeam(@NotNull Long adminId, @NotNull Long teamId) {
         Team team = findTeamOrThrow(teamId);
 
-        AppUser adminUser = findUserOrThrow(adminUsername);
+        AppUser adminUser = findUserOrThrow(adminId);
 
         if (!isUserAdmin(adminUser)) {
             throw new AccessDeniedException(
-                    String.format("User '%s' is not an administrator", adminUsername));
+                    String.format("User '%s' is not an administrator", adminUser.getUsername()));
         }
 
         String teamDescription = String.format("id: %s, name: %s, owner: %s",
@@ -173,17 +190,19 @@ public class TeamCommandService {
         deleteTeamLikes(team);
         teamRepository.delete(team);
 
-        auditLogCommandService.log(adminUsername, AuditAction.ADMIN_TEAM_DELETE, ENTITY_NAME, teamIdValue, teamDescription);
+        auditLogCommandService.log(adminUser.getUsername(), AuditAction.ADMIN_TEAM_DELETE, ENTITY_NAME, teamIdValue, teamDescription);
     }
 
     /**
-     * Like a public team. 409 if already liked. Increments the denormalised counter atomically.
+     * Like a public team. 409 if already liked. The denormalised counter is maintained by a
+     * trigger on {@code team_like}, so every path that adds or removes a like row - this
+     * one, cascades from deleting a user, the tombstone purge - keeps it in step.
      * Private teams answer 404 rather than 403, matching the read path, so a like attempt can't
      * be used to probe which team ids exist.
      */
     @Transactional
-    public void likeTeam(@NotNull String username, @NotNull Long teamId) {
-        AppUser user = findUserOrThrow(username);
+    public void likeTeam(@NotNull Long userId, @NotNull Long teamId) {
+        AppUser user = findUserOrThrow(userId);
         Team team = findTeamOrThrow(teamId);
 
         if (!Boolean.TRUE.equals(team.getIsPublic())) {
@@ -206,13 +225,12 @@ public class TeamCommandService {
                 .team(team)
                 .build();
         teamLikeRepository.save(like);
-        teamRepository.incrementLikeCount(teamId);
     }
 
-    /** Remove a like. 404 if the user hasn't liked the team. Decrements the counter. */
+    /** Remove a like. 404 if the user hasn't liked the team. The counter follows via trigger. */
     @Transactional
-    public void unlikeTeam(@NotNull String username, @NotNull Long teamId) {
-        AppUser user = findUserOrThrow(username);
+    public void unlikeTeam(@NotNull Long userId, @NotNull Long teamId) {
+        AppUser user = findUserOrThrow(userId);
         findTeamOrThrow(teamId);
 
         TeamLikeId likeId = new TeamLikeId(user.getId(), teamId);
@@ -222,7 +240,6 @@ public class TeamCommandService {
         }
 
         teamLikeRepository.deleteById(likeId);
-        teamRepository.decrementLikeCount(teamId);
     }
 
     private void buildAndSavePokemon(Team team, List<TeamPokemonCreateDto> pokemonDtos) {
@@ -263,9 +280,7 @@ public class TeamCommandService {
     }
 
     /**
-     * Rejects a slot whose ability or moves the chosen form can't legally have. The foreign
-     * keys only prove the rows exist, not that they belong together, so without this the API
-     * accepts any combination the client sends and relies on the UI to offer sane options.
+     * Rejects a slot whose ability or moves the chosen form can't legally have.
      */
     private void validateLegality(TeamPokemonCreateDto dto) {
         Integer pokemonId = dto.getPokemonId();
@@ -276,6 +291,12 @@ public class TeamCommandService {
         }
 
         List<Integer> requested = dto.getMoveIds();
+
+        if (Set.copyOf(requested).size() != requested.size()) {
+            throw new IllegalTeamCompositionException(
+                    String.format("Pokemon %s cannot know the same move twice", pokemonId));
+        }
+
         Set<Integer> learnable = Set.copyOf(pokemonMoveRepository.findLearnableMoveIds(pokemonId, requested));
 
         for (Integer moveId : requested) {
@@ -284,6 +305,16 @@ public class TeamCommandService {
                         String.format("Move %s is not learnable by Pokemon %s", moveId, pokemonId));
             }
         }
+    }
+
+    private void rotateSlugIfMadePrivate(Team team, boolean wasPublic) {
+        if (wasPublic && !Boolean.TRUE.equals(team.getIsPublic())) {
+            team.setSlug(newShareSlug());
+        }
+    }
+
+    private static String newShareSlug() {
+        return UUID.randomUUID().toString();
     }
 
     private void deleteTeamPokemon(Team team) {
@@ -295,10 +326,10 @@ public class TeamCommandService {
         teamLikeRepository.deleteByTeam(team);
     }
 
-    private void validateOwnership(Team team, String username) {
-        if (!team.getOwner().getUsername().equals(username)) {
+    private void validateOwnership(Team team, Long userId) {
+        if (!team.getOwner().getId().equals(userId)) {
             throw new ResourceNotFoundException(
-                    String.format("Team with id '%s' not found for user '%s'", team.getId(), username));
+                    String.format("Team with id '%s' not found", team.getId()));
         }
     }
 
@@ -306,10 +337,10 @@ public class TeamCommandService {
         return UserRole.ADMIN.equals(user.getRole());
     }
 
-    private AppUser findUserOrThrow(String username) {
-        return userRepository.findByUsernameAndDeletedAtIsNull(username)
+    private AppUser findUserOrThrow(Long userId) {
+        return userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("User '%s' not found", username)));
+                        String.format("User with id '%s' not found", userId)));
     }
 
     private Team findTeamOrThrow(Long teamId) {

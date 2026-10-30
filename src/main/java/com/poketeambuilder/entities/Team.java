@@ -26,10 +26,12 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 /**
- * A user-owned team of up to six {@link TeamPokemon}. May be private or shared via
- * {@link #slug} when {@link #isPublic} is true; the share slug is the URL fragment used by
- * the front-end. {@link #likeCount} is denormalised from {@link TeamLike} so listings don't
- * need an aggregate query.
+ * A user-owned team of up to six {@link TeamPokemon}, public or private. {@link #slug} is a
+ * random UUID that works as a read-only share link: anyone holding it can view the team,
+ * private or not. The owner can rotate it to revoke links already handed out, and it rotates
+ * on its own when a public team (whose slug was on show in the public listing) goes private. {@link #likeCount} is denormalised from {@link TeamLike} so listings don't
+ * need an aggregate query. A database trigger owns it; the mapping is read-only after
+ * insert so saving a team loaded before a like can't write a stale count back.
  */
 @Entity
 @Getter
@@ -65,7 +67,7 @@ public class Team {
     private String slug;
 
     @Builder.Default
-    @Column(name = "like_count", nullable = false)
+    @Column(name = "like_count", nullable = false, updatable = false)
     private Integer likeCount = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
