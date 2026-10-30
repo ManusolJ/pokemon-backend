@@ -97,7 +97,9 @@ third-party service being up at request time.
   stats, nature and level.
 - Only canonical data is assignable: a species can only be given the moves and abilities
   it actually learns.
-- Teams are public or private, shareable by slug, and can be liked by other users.
+- Teams are public or private and can be liked by other users.
+- Every team has a read-only share link, private teams included. The owner can rotate it to
+  revoke links already handed out, and it rotates by itself when a public team goes private.
 
 ### Team analysis
 
@@ -136,7 +138,11 @@ Plus a type-effectiveness matrix that resolves dual-type defending combinations.
 
 - Registration, login, logout, password recovery by e-mail and silent access-token
   renewal.
-- Per-IP rate limiting on every authentication endpoint.
+- Usernames and e-mails are unique regardless of case.
+- Changing the e-mail or username requires the current password; an e-mail change ends every
+  session and notifies the old address.
+- Per-IP rate limiting on every authentication endpoint, plus a per-account cap on
+  password-reset e-mails.
 - Soft deletion, so removing an account preserves the audit trail.
 
 ### Administration (`ADMIN` role only)
@@ -163,9 +169,9 @@ flowchart TD
         Tunnel["Tunnel<br>api.*"]
     end
 
-    subgraph host ["Ubuntu 24.04 server &mdash; private Docker network"]
-        App["Spring Boot 4 &middot; Java 21<br>Temurin 25 JRE Alpine"]
-        DB[("PostgreSQL 17<br>Flyway V1-V24")]
+    subgraph host ["Ubuntu 24.04 server &mdash; shared homelab Docker network"]
+        App["Spring Boot 4 &middot; Java 21<br>Temurin 21 JRE Alpine"]
+        DB[("Shared PostgreSQL 17<br>own database &middot; Flyway V1-V26")]
     end
 
     PokeAPI["PokeAPI"]
@@ -181,9 +187,10 @@ flowchart TD
 ```
 
 Stateless client–server split. No server-side sessions and no server-side rendering;
-authentication travels entirely in the `Authorization` header. Both containers share a
-private Docker network and the application binds only to the server's loopback interface,
-which makes the tunnel the sole ingress.
+authentication travels entirely in the `Authorization` header. The database is the server's
+shared PostgreSQL instance, where the app has its own database and owner role and never
+connects as the superuser; the two meet on an internal Docker network. The application binds
+only to the server's loopback interface, which makes the tunnel the sole ingress.
 
 ### Layering
 
@@ -221,8 +228,10 @@ reference data is replaced in place and user-owned rows keep pointing at the sam
 moves and items.
 
 Only the tables the pipeline derives wholesale - learnsets, ability slots, the effectiveness
-matrix - are emptied first, and none of those are referenced by user data. The catalogue
-tables themselves are never deleted: `team_pokemon` and `team_pokemon_move` reference them
+matrix - are rebuilt from scratch, and none of those are referenced by user data. Each one is
+emptied and refilled inside a single transaction, so readers keep seeing the previous rows
+until the new set commits, and a failed run leaves them in place. Caches are cleared however
+the run ends. The catalogue tables themselves are never deleted: `team_pokemon` and `team_pokemon_move` reference them
 with no `ON DELETE` action, so the database would refuse the delete outright.
 
 > Refreshing the entire catalogue is a safe operation.
@@ -264,7 +273,10 @@ sticky sessions and cross-origin cookie handling.
 
 Access tokens are short-lived; refresh tokens are persisted in the database with a family
 identifier and a revocation flag, so a session can be invalidated server-side - which a
-pure stateless JWT cannot do. The frontend interceptor renews proactively before expiry,
+pure stateless JWT cannot do. Refresh tokens rotate on every use, and spending one is a single
+conditional update: presenting a spent token, or losing a race with a concurrent refresh of
+the same one, is treated as theft and revokes the whole family. Tokens identify the user by
+id, not by username, since usernames can be changed and re-registered. The frontend interceptor renews proactively before expiry,
 so the user never sees a failed request mid-session.
 
 This was also the first authentication system I had built. JWT offered the best balance
@@ -276,13 +288,16 @@ be revoked" gap.
 
 Authentication endpoints are rate-limited per IP with Bucket4j. A login endpoint with no
 throttle is a credential-stuffing target from the day it is public, and this application
-runs on hardware I own.
+runs on hardware I own. Behind the tunnel the client address comes from Cloudflare's
+`CF-Connecting-IP` header rather than `X-Forwarded-For`, which the client controls.
 
 ### Caching and pagination
 
 Pokedex reads are cached in memory with Caffeine, and every list endpoint paginates and
 filters in SQL through a shared filter DTO. With 1,025 species and 919 moves, filtering in
-application memory would mean loading the entire catalogue per request.
+application memory would mean loading the entire catalogue per request. Page size is capped
+at 100, and team listings only sort by an allow-list of their own columns, so a sort can't
+reach into the owner's account fields.
 
 ### Soft deletion
 
@@ -306,7 +321,7 @@ All endpoints live under `/api`.
 | :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------- |
 | **Authentication** | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/password-reset-request`, `/auth/password-reset`                                                                                      | Public (rate-limited) |
 | **Pokedex**        | `/pokemon`, `/species`, `/moves`, `/abilities`, `/items` - each with `filter`, `id`, `summaries`, `count`; `/types` and `/natures` without `summaries`; plus `/types/effectiveness` and `/moves/pokemon/{id}` | Public                |
-| **Teams**          | `/teams/public/filter`, `/teams/public/id`, `/teams/me/filter`, `/teams/me/id`, `/teams` (CRUD), `/teams/{id}/like`                                                                                           | Mixed                 |
+| **Teams**          | `/teams/public/filter`, `/teams/public/id`, `/teams/shared/{slug}`, `/teams/me/filter`, `/teams/me/id`, `/teams` (CRUD), `/teams/{id}/like`, `/teams/{id}/share-link/rotate`                                | Mixed                 |
 | **Users**          | `/users`                                                                                                                                                                                                      | Authenticated         |
 | **Administration** | `/admin/seed`, `/admin/seed-logs/filter`, `/admin/audit-logs/filter`, `/users/admin/filter`, `/users/admin/batch/{disable,reactivate,hard}`                                                                   | `ADMIN`               |
 | **Contact**        | `/contact`                                                                                                                                                                                                    | Public                |
@@ -323,12 +338,12 @@ All endpoints live under `/api`.
 | **Rate limiting** | Bucket4j (per-IP, auth endpoints)                        |
 | **Cache**         | Caffeine                                                 |
 | **Database**      | PostgreSQL 17                                            |
-| **Migrations**    | Flyway (V1–V24)                                          |
+| **Migrations**    | Flyway (V1–V26)                                          |
 | **Mapping**       | MapStruct, Lombok                                        |
 | **API docs**      | SpringDoc OpenAPI + Swagger UI                           |
 | **Mail**          | Spring Mail over Brevo SMTP                              |
 | **Build**         | Maven (wrapper included)                                 |
-| **Runtime**       | Multi-stage Docker build → Eclipse Temurin 25 JRE Alpine |
+| **Runtime**       | Multi-stage Docker build → Eclipse Temurin 21 JRE Alpine |
 | **CI/CD**         | GitHub Actions → SSH deploy to self-hosted server        |
 | **Ingress**       | Cloudflare Tunnel                                        |
 
@@ -352,8 +367,12 @@ cp .env.example .env.dev   # the Postgres container, via Compose
 cp .env.example .env       # the application, via springboot4-dotenv
 ```
 
-`.env.dev` needs the `POSTGRES_*` values. `.env` needs those plus `DB_*`, `JWT_SECRET` and
-the `MAIL_*` block - see the table below.
+`.env.dev` needs the `POSTGRES_*` values. `.env` needs those plus `DB_*`, `JWT_SECRET`, the
+`MAIL_*` block and `SPRING_PROFILES_ACTIVE=dev` - see the table below.
+
+> [!IMPORTANT]
+> There is no default profile. Without `SPRING_PROFILES_ACTIVE=dev` the app starts with the
+> production-safe base settings: Swagger off, and no fallback database password.
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
@@ -365,8 +384,7 @@ docker compose -f docker-compose.dev.yml up -d
 
 Flyway applies all migrations on application startup, not on database startup. The API is
 then at `http://localhost:${PORT}` (8080 by default), with Swagger UI at `/swagger-ui.html`
-
-- enabled in the `dev` profile and switched off in `prod`.
+in the `dev` profile only.
 
 ### First-run setup
 
@@ -390,12 +408,13 @@ panel, or `POST /api/admin/seed`.
 
 | Group                    | Variables                                                                                                                                       |
 | :----------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Database (container)** | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`                                                                                             |
+| **Database (container)** | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` - the dev Compose database only                                                            |
 | **Application**          | `PORT`, `SPRING_PROFILES_ACTIVE`, `CORS_ALLOWED_ORIGIN`                                                                                         |
 | **Database (client)**    | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`                                                                                       |
 | **Mail**                 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, `CONTACT_TO`                                                           |
 | **Security**             | `JWT_SECRET`, `ACCESS_TOKEN_EXPIRATION_MS`, `REFRESH_TOKEN_EXPIRATION_MS`, `PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES`, `PASSWORD_RESET_BASE_URL` |
 | **Retention**            | `USER_CLEANUP_GRACE_PERIOD_DAYS`                                                                                                                |
+| **Rate limiting**        | `RATE_LIMIT_CLIENT_IP_HEADER` - header the edge proxy writes the client address into. Blank (the default) uses the socket address; `prod` defaults to `CF-Connecting-IP` |
 
 > [!IMPORTANT]
 > `.env.example` documents every supported variable. Compose reads `.env.dev` in development
@@ -420,9 +439,9 @@ A JaCoCo report lands in `target/site/jacoco/`.
 | Layer            | What it covers                                                                                                                                                              |
 | :--------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Pure units**   | Filter-to-predicate translation, token hashing, the PokeAPI text and sprite helpers, item de-duplication. No Spring context.                                                |
-| **Services**     | Token issuing and parsing, the refresh-rotation lifecycle including reuse detection, the last-administrator guard, team ownership and roster legality. Mockito, no context. |
+| **Services**     | Token issuing and parsing, the refresh-rotation lifecycle including reuse detection, the last-administrator guard, team ownership, share links and roster legality. Mockito, no context. |
 | **Access rules** | `@WebMvcTest` against the real routes: which paths are public, which need a token, which need `ADMIN`.                                                                      |
-| **Schema**       | Testcontainers on PostgreSQL 17 with the real migrations - foreign-key protection of catalogue rows, the partial indexes, and the repository queries.                       |
+| **Schema**       | Testcontainers on PostgreSQL 17 with the real migrations - foreign-key protection of catalogue rows, the case-insensitive partial indexes, the like-count trigger, and the repository queries. Refresh rotation also runs here with real commits, including two refreshes racing on one token. |
 
 ### Running the schema tests
 
@@ -469,15 +488,16 @@ runs the test suite and confirms the Docker image builds. Acts as a quality gate
 the rest of the pipeline on failure.
 
 **Deploy stage** - runs only after a successful verification on `main`. The runner connects
-over SSH to the production server and executes a deployment script versioned in this
-repository, which rebuilds and restarts the Compose stack, then **polls the health endpoint
+over SSH to the production server, checks out the exact commit that was verified, and
+executes a deployment script versioned in this repository, which rebuilds and restarts the Compose stack, then **polls the health endpoint
 for one minute**. If the application reports healthy the deploy is accepted; otherwise the
 script dumps a recent log excerpt and exits non-zero, so the failure is diagnosable from the
 Actions run itself rather than by SSHing in afterwards.
 
-The production stack is PostgreSQL 17 with a persistent volume plus the application
-container, on a private Docker network, with the application bound to loopback only and
-published exclusively through the Cloudflare Tunnel.
+The production stack is the application container alone. It joins the server's shared
+PostgreSQL 17 instance over an external Docker network, under its own database and role,
+and is bound to loopback only and published exclusively through the Cloudflare Tunnel.
+The database is managed outside this repository and is not touched by a deploy.
 
 ---
 
