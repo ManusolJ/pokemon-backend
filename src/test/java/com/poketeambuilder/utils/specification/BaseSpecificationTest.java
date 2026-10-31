@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,22 +35,34 @@ class BaseSpecificationTest {
     @DisplayName("LIKE escapes wildcards the caller supplied")
     void likeEscapesUserSuppliedWildcards() {
         Path<String> path = stringPath();
-        Expression<String> lowered = lowered(path);
+        Expression<String> searchable = searchable(path);
 
         toPredicate(new SearchCriteria("name", "a_b%c", SearchOperation.LIKE));
 
-        verify(cb).like(eq(lowered), eq("%a\\_b\\%c%"), eq('\\'));
+        verify(cb).like(eq(searchable), eq("%a\\_b\\%c%"), eq('\\'));
     }
 
     @Test
     @DisplayName("LIKE trims and lowercases before wrapping in wildcards")
     void likeNormalisesTheTerm() {
         Path<String> path = stringPath();
-        Expression<String> lowered = lowered(path);
+        Expression<String> searchable = searchable(path);
 
         toPredicate(new SearchCriteria("name", "  Pikachu  ", SearchOperation.LIKE));
 
-        verify(cb).like(eq(lowered), eq("%pikachu%"), eq('\\'));
+        verify(cb).like(eq(searchable), eq("%pikachu%"), eq('\\'));
+    }
+
+    @Test
+    @DisplayName("LIKE treats hyphens and spaces alike, so 'swords dance' finds 'swords-dance'")
+    void likeTreatsHyphensAsSpaces() {
+        Path<String> path = stringPath();
+        Expression<String> searchable = searchable(path);
+
+        toPredicate(new SearchCriteria("name", "Swords-Dance", SearchOperation.LIKE));
+        toPredicate(new SearchCriteria("name", "swords dance", SearchOperation.LIKE));
+
+        verify(cb, times(2)).like(eq(searchable), eq("%swords dance%"), eq('\\'));
     }
 
     @Test
@@ -141,10 +154,13 @@ class BaseSpecificationTest {
         return path;
     }
 
+    /** Stubs lower(path) and the replace('-', ' ') wrapped around it; returns the outer expression. */
     @SuppressWarnings("unchecked")
-    private Expression<String> lowered(Path<String> path) {
+    private Expression<String> searchable(Path<String> path) {
         Expression<String> lowered = mock(Expression.class);
+        Expression<String> replaced = mock(Expression.class);
         when(cb.lower(path)).thenReturn(lowered);
-        return lowered;
+        when(cb.function(eq("replace"), eq(String.class), eq(lowered), any(), any())).thenReturn(replaced);
+        return replaced;
     }
 }

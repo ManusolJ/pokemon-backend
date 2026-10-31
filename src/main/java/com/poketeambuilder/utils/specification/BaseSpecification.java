@@ -14,6 +14,7 @@ import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 
@@ -45,7 +46,7 @@ public class BaseSpecification<T> implements Specification<T> {
 
             case LIKE -> {
                 validateString(value, "LIKE");
-                yield cb.like(cb.lower(path.as(String.class)), containsPattern((String) value), LIKE_ESCAPE);
+                yield cb.like(searchableText(path, cb), containsPattern((String) value), LIKE_ESCAPE);
             }
 
             case IS_NULL -> cb.isNull(path);
@@ -65,6 +66,15 @@ public class BaseSpecification<T> implements Specification<T> {
     }
 
     /**
+     * The column as a LIKE compares it: lowercased, with hyphens read as spaces. PokéAPI names are
+     * slugs ({@code swords-dance}), so this lets a search for {@code swords dance} find them.
+     */
+    private Expression<String> searchableText(Path<?> path, CriteriaBuilder cb) {
+        return cb.function("replace", String.class,
+                cb.lower(path.as(String.class)), cb.literal("-"), cb.literal(" "));
+    }
+
+    /**
      * Wraps a search term in wildcards, escaping any the caller supplied. Left unescaped,
      * {@code %} and {@code _} in user input act as pattern metacharacters — so a search for
      * {@code a_b} would also match {@code aab}, and a term of {@code %} would match the whole
@@ -72,6 +82,7 @@ public class BaseSpecification<T> implements Specification<T> {
      */
     private String containsPattern(String value) {
         String escaped = value.trim().toLowerCase()
+                .replace('-', ' ')
                 .replace("\\", "\\\\")
                 .replace("%", "\\%")
                 .replace("_", "\\_");
